@@ -39,18 +39,18 @@ const totalSecondsFromLap = (minutes, seconds, ms) => {
 };
 
 const scramblePhrase = (phrase) => {
-  return phrase
-    .trim()
-    .split(/\s+/)
+  const normalizedPhrase = phrase.trim().replace(/\s+/g, ' ');
+  return normalizedPhrase
+    .split(' ')
     .map((word) => {
       const letters = word.split('');
       for (let i = letters.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1));
         [letters[i], letters[j]] = [letters[j], letters[i]];
       }
-      return letters.join(' ');
+      return letters.join('');
     })
-    .join('   ');
+    .join(' ');
 };
 
 export default function App() {
@@ -96,7 +96,24 @@ export default function App() {
 
   const [activities, setActivities] = useState(() => {
     const saved = localStorage.getItem('ras_edison_activities_v5');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+
+    const parsed = JSON.parse(saved);
+    const migrated = parsed.map((activity) => {
+      const oldScramble = activity.scrambledPhrase || '';
+      if (activity.type !== 'Super Scramble' || !/\s{2,}/.test(oldScramble)) {
+        return activity;
+      }
+      return {
+        ...activity,
+        scrambledPhrase: scramblePhrase(activity.solvedPhrase || activity.title)
+      };
+    });
+
+    if (migrated.some((activity, index) => activity !== parsed[index])) {
+      localStorage.setItem('ras_edison_activities_v5', JSON.stringify(migrated));
+    }
+    return migrated;
   });
 
   const [filterType, setFilterType] = useState('Either');
@@ -111,7 +128,8 @@ export default function App() {
   // Custom Activity Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [newActivity, setNewActivity] = useState({
-    phrase: ''
+    phrase: '',
+    points: 600
   });
 
   useEffect(() => {
@@ -288,7 +306,7 @@ export default function App() {
       id: Date.now().toString(),
       title: phrase,
       type: 'Super Scramble',
-      points: 600,
+      points: Number(newActivity.points) || 600,
       scrambledPhrase: scramblePhrase(phrase),
       solvedPhrase: phrase.toUpperCase(),
       hint: 'Rearrange the letters to reveal the phrase.',
@@ -303,7 +321,7 @@ export default function App() {
     setActivities(prev => [created, ...prev]);
     setCurrentActivity(created);
     setShowAddModal(false);
-    setNewActivity({ phrase: '' });
+    setNewActivity({ phrase: '', points: 600 });
   };
 
   const generateExportCode = () => {
@@ -866,7 +884,7 @@ export default function App() {
                       <div className="text-xs font-bold text-amber-400 uppercase tracking-widest">
                         ✏️ WRITE THIS PHRASE ON THE WHITEBOARD:
                       </div>
-                      <div className="bg-slate-950 text-emerald-400 font-mono font-black text-lg md:text-xl p-3.5 rounded-xl border border-slate-800 text-center tracking-widest select-all">
+                      <div className="bg-slate-950 text-emerald-400 font-mono font-black text-lg md:text-xl p-3.5 rounded-xl border border-slate-800 text-center tracking-widest whitespace-pre-wrap select-all">
                         "{currentActivity.scrambledPhrase}"
                       </div>
 
@@ -1199,7 +1217,7 @@ export default function App() {
               <PlusCircle className="w-5 h-5 text-amber-400" /> Add a Phrase to Scramble
             </h3>
             <p className="text-sm text-slate-400">
-              Type the answer phrase. The app will scramble the letters for you.
+              Letters are shuffled within each word, and spaces between words stay in place.
             </p>
 
             <form onSubmit={handleSaveCustomActivity} className="space-y-4">
@@ -1216,12 +1234,28 @@ export default function App() {
                 />
               </div>
 
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Worth</label>
+                <select
+                  value={newActivity.points}
+                  onChange={(e) => setNewActivity({ ...newActivity, points: Number(e.target.value) })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
+                >
+                  <option value={100}>100 points</option>
+                  <option value={200}>200 points</option>
+                  <option value={300}>300 points</option>
+                  <option value={400}>400 points</option>
+                  <option value={500}>500 points</option>
+                  <option value={600}>600 points</option>
+                </select>
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddModal(false);
-                    setNewActivity({ phrase: '' });
+                    setNewActivity({ phrase: '', points: 600 });
                   }}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
                 >
