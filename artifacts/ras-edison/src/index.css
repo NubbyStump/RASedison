@@ -110,12 +110,21 @@
     @apply font-sans antialiased bg-background text-foreground;
     margin: 0;
     min-width: 320px;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
   button,
   input,
+  select,
   textarea {
     font: inherit;
+  }
+  
+  /* Prevent iOS zoom by ensuring inputs have at least 16px font size */
+  @media screen and (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
   }
 
   button {
@@ -153,6 +162,79 @@
   }
   50% {
     opacity: .8;
+  }
+}
+
+@keyframes projector-message-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -16px) scale(.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.projector-message-region {
+  position: fixed;
+  top: 6.25rem;
+  left: 50%;
+  z-index: 60;
+  width: min(58rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.projector-message-card {
+  position: absolute;
+  left: 50%;
+  width: 100%;
+  transform: translateX(-50%);
+  border: 3px solid rgb(103 232 249);
+  border-radius: 1.5rem;
+  background: rgba(2, 6, 23, .97);
+  color: white;
+  padding: 1.25rem 1.5rem 1.4rem;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .65), 0 0 40px rgba(34, 211, 238, .22);
+  animation: projector-message-in 260ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.projector-message-card p {
+  margin: .65rem 0 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-family: var(--app-font-display);
+  font-size: clamp(1.65rem, 4vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.12;
+}
+
+.projector-message-sender {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  color: rgb(103 232 249);
+  font-size: clamp(.8rem, 1.4vw, 1rem);
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.projector-message-role {
+  border-left: 1px solid rgb(71 85 105);
+  padding-left: .55rem;
+  color: rgb(203 213 225);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .projector-message-region {
+    top: 5.75rem;
+  }
+
+  .projector-message-card {
+    padding: 1rem;
+    border-radius: 1.15rem;
   }
 }
 

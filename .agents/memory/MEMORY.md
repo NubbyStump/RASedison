@@ -1,0 +1,1 @@
+- [Multi-session browser evidence](browser-evidence.md) — verify room identity before trusting browser test observations; inconsistent snapshots are inconclusive.

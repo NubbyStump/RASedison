@@ -1,13 +1,22 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, test } from "node:test";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, pairingMembers, pairingRooms } from "@workspace/db";
-import { commandSchema, reducePairingState, type PairingState } from "./pairing";
 import {
+  commandSchema,
+  projectorMessageInputSchema,
+  reducePairingState,
+  type PairingState,
+} from "./pairing";
+import {
+  calendarMonth,
   executePairingCommand,
   hashPassword,
   passwordMatches,
+  removePairingMember,
+  rolloverActivitiesForLockedRoom,
+  sendProjectorMessage,
 } from "../routes/pairing";
 
 const roomIds: string[] = [];
@@ -61,6 +70,23 @@ test("command validation rejects malformed and extra payload fields", () => {
   }).success, false);
 });
 
+test("projector message validation trims plain text and rejects invalid input", () => {
+  const id = randomUUID();
+  assert.deepEqual(
+    projectorMessageInputSchema.parse({ id, text: "  Meet at the gate  " }),
+    { id, text: "Meet at the gate" },
+  );
+  for (const body of [
+    { id, text: "   " },
+    { id, text: "x".repeat(241) },
+    { id, text: "hidden\u0000control" },
+    { id: "not-a-uuid", text: "Hello" },
+    { id, text: "Hello", extra: true },
+  ]) {
+    assert.equal(projectorMessageInputSchema.safeParse(body).success, false);
+  }
+});
+
 test("room passwords use salted scrypt hashes and timing-safe verification", async () => {
   const first = await hashPassword("1234");
   const second = await hashPassword("1234");
@@ -69,6 +95,17 @@ test("room passwords use salted scrypt hashes and timing-safe verification", asy
   assert.equal(await passwordMatches("1234", first), true);
   assert.equal(await passwordMatches("4321", first), false);
   assert.equal(await passwordMatches("1234", "malformed"), false);
+});
+
+test("calendar month uses the room timezone rather than UTC", () => {
+  assert.equal(
+    calendarMonth(new Date("2025-03-01T07:59:59.000Z"), "America/Los_Angeles"),
+    "2025-02",
+  );
+  assert.equal(
+    calendarMonth(new Date("2025-03-01T08:00:00.000Z"), "America/Los_Angeles"),
+    "2025-03",
+  );
 });
 
 test("room lock prevents lost updates and command ids are idempotent", async () => {
@@ -181,4 +218,198 @@ test("counselors can score but owner-only commands are rejected before mutation"
   const [unchanged] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
   assert.equal(unchanged.version, 2);
   assert.equal((unchanged.state as PairingState).groups[0].score, 5);
+});
+
+test("calendar rollover clears only activities and is idempotent in the same month", async () => {
+  const state: PairingState = {
+    groups: [{ id: "ladybugs", name: "Ladybugs", score: 37 }],
+    history: [{
+      id: "history-1",
+      groupId: "ladybugs",
+      groupName: "Ladybugs",
+      amount: 37,
+      reason: "Preserve me",
+      timestamp: "10:00 AM",
+    }],
+    lapRecords: [{ id: "lap-1", runnerName: "A" }],
+    monthlyRecords: [{ id: "month-1", rewardClaimed: true, month: "August" }],
+    activities: [{ id: "activity-1", title: "Mission" }],
+  };
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state,
+    activitiesMonth: "2025-08",
+    projectorMessages: [{
+      id: randomUUID(),
+      text: "Keep separate",
+      senderName: "Owner",
+      senderRole: "owner",
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 20_000).toISOString(),
+    }],
+  }).returning();
+  roomIds.push(room.id);
+
+  const first = await db.transaction(async (tx) => {
+    await tx.execute(sql`select id from pairing_rooms where id = ${room.id} for update`);
+    const [locked] = await tx.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+    return rolloverActivitiesForLockedRoom(tx, locked, "2025-09");
+  });
+  assert.equal(first.version, 2);
+  assert.equal(first.activitiesMonth, "2025-09");
+  assert.deepEqual((first.state as PairingState).activities, []);
+  assert.deepEqual((first.state as PairingState).groups, state.groups);
+  assert.deepEqual((first.state as PairingState).history, state.history);
+  assert.deepEqual((first.state as PairingState).lapRecords, state.lapRecords);
+  assert.deepEqual((first.state as PairingState).monthlyRecords, state.monthlyRecords);
+  assert.equal(first.projectorMessages[0]?.text, "Keep separate");
+
+  const second = await db.transaction(async (tx) => {
+    await tx.execute(sql`select id from pairing_rooms where id = ${room.id} for update`);
+    const [locked] = await tx.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+    return rolloverActivitiesForLockedRoom(tx, locked, "2025-09");
+  });
+  assert.equal(second.version, 2);
+});
+
+test("projector messages attribute sender and idempotently increment room version once", async () => {
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state: baseState(),
+  }).returning();
+  roomIds.push(room.id);
+  const [counselor] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Ms. Edison",
+    role: "counselor",
+    groupId: "ladybugs",
+    assignmentDate: "2025-01-01",
+    tokenHash: randomUUID(),
+  }).returning();
+  const input = { id: randomUUID(), text: "Line up at the blue doors" };
+
+  const first = await sendProjectorMessage(counselor, input);
+  const replay = await sendProjectorMessage(counselor, input);
+  assert.equal(first.version, 2);
+  assert.equal(replay.version, 2);
+  assert.equal(replay.projectorMessages.length, 1);
+  assert.deepEqual(
+    {
+      id: replay.projectorMessages[0].id,
+      text: replay.projectorMessages[0].text,
+      senderName: replay.projectorMessages[0].senderName,
+      senderRole: replay.projectorMessages[0].senderRole,
+    },
+    { ...input, senderName: "Ms. Edison", senderRole: "counselor" },
+  );
+  assert.equal(
+    Date.parse(replay.projectorMessages[0].expiresAt)
+      - Date.parse(replay.projectorMessages[0].createdAt),
+    20_000,
+  );
+});
+
+test("revoked member cannot send a projector message", async () => {
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state: baseState(),
+  }).returning();
+  roomIds.push(room.id);
+  const [member] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Revoked sender",
+    role: "counselor",
+    tokenHash: randomUUID(),
+    revokedAt: new Date(),
+  }).returning();
+  await assert.rejects(
+    sendProjectorMessage(member, { id: randomUUID(), text: "Should not appear" }),
+    /Unauthorized/,
+  );
+  const [unchanged] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+  assert.equal(unchanged.version, 1);
+  assert.deepEqual(unchanged.projectorMessages, []);
+});
+
+test("concurrent commands serialize after one monthly activities rollover", async () => {
+  const state = baseState();
+  state.activities = [{ id: "old-mission", title: "Old mission" }];
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state,
+    activitiesMonth: "2000-01",
+  }).returning();
+  roomIds.push(room.id);
+  const [owner] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Concurrency owner",
+    role: "owner",
+    tokenHash: randomUUID(),
+  }).returning();
+
+  await Promise.all([
+    executePairingCommand(owner, {
+      id: randomUUID(),
+      type: "addPoints",
+      payload: { groupId: "ladybugs", amount: 3, reason: "One" },
+    }),
+    executePairingCommand(owner, {
+      id: randomUUID(),
+      type: "addPoints",
+      payload: { groupId: "ladybugs", amount: 4, reason: "Two" },
+    }),
+  ]);
+  const [latest] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+  assert.equal(latest.version, 4);
+  assert.equal((latest.state as PairingState).groups[0].score, 7);
+  assert.deepEqual((latest.state as PairingState).activities, []);
+});
+
+test("member removal enforces owner, room, and owner-member boundaries and revokes access", async () => {
+  const [room, otherRoom] = await Promise.all([
+    db.insert(pairingRooms).values({
+      code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+      state: baseState(),
+    }).returning().then(([value]) => value),
+    db.insert(pairingRooms).values({
+      code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+      state: baseState(),
+    }).returning().then(([value]) => value),
+  ]);
+  roomIds.push(room.id, otherRoom.id);
+  const [owner, counselor, secondOwner, otherCounselor] = await Promise.all([
+    db.insert(pairingMembers).values({
+      roomId: room.id, name: "Owner", role: "owner", tokenHash: randomUUID(),
+    }).returning().then(([value]) => value),
+    db.insert(pairingMembers).values({
+      roomId: room.id, name: "Counselor", role: "counselor", tokenHash: randomUUID(),
+    }).returning().then(([value]) => value),
+    db.insert(pairingMembers).values({
+      roomId: room.id, name: "Second owner", role: "owner", tokenHash: randomUUID(),
+    }).returning().then(([value]) => value),
+    db.insert(pairingMembers).values({
+      roomId: otherRoom.id, name: "Other room", role: "counselor", tokenHash: randomUUID(),
+    }).returning().then(([value]) => value),
+  ]);
+
+  assert.deepEqual(await removePairingMember(counselor, owner.id), { error: "forbidden" });
+  assert.deepEqual(await removePairingMember(owner, owner.id), { error: "self" });
+  assert.deepEqual(await removePairingMember(owner, secondOwner.id), { error: "owner" });
+  assert.deepEqual(await removePairingMember(owner, otherCounselor.id), { error: "not-found" });
+
+  const removed = await removePairingMember(owner, counselor.id);
+  if (!("session" in removed) || !removed.session) {
+    assert.fail(`Expected removal session, received ${JSON.stringify(removed)}`);
+  }
+  assert.equal(removed.session.version, 2);
+  assert.equal(removed.session.members.some((member) => member.id === counselor.id), false);
+  assert.deepEqual(await removePairingMember(owner, counselor.id), { error: "not-found" });
+  await assert.rejects(
+    executePairingCommand(counselor, {
+      id: randomUUID(),
+      type: "addPoints",
+      payload: { groupId: "ladybugs", amount: 1, reason: "Revoked" },
+    }),
+    /Unauthorized/,
+  );
 });

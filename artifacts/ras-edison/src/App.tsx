@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from 'react';
 import PairingPanel from './components/PairingPanel';
+import MessageComposer from './components/MessageComposer';
+import ProjectorMessage from './components/ProjectorMessage';
 import { localCalendarDate, usePairing } from './hooks/usePairing';
 import { 
   Trophy, 
@@ -24,7 +26,8 @@ import {
   School,
   ChevronRight,
   Wifi,
-  WifiOff
+  WifiOff,
+  MessageSquare
 } from 'lucide-react';
 
 const formatLapTime = (minutes, seconds, ms) => {
@@ -53,9 +56,17 @@ const scramblePhrase = (phrase) => {
     .join(' ');
 };
 
+const ACTIVITY_MONTH_KEY = 'ras_edison_activities_month_v1';
+const pacificMonthKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Los_Angeles',
+  year: 'numeric',
+  month: '2-digit'
+}).format(date);
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('scoreboard');
   const [sessionModal, setSessionModal] = useState('startup');
+  const [messageComposerOpen, setMessageComposerOpen] = useState(false);
 
   // Persistent Group Scores State
   const [localGroups, setLocalGroups] = useState(() => {
@@ -92,7 +103,7 @@ export default function App() {
     minutes: '0',
     seconds: '',
     ms: '00',
-    courseName: 'Edison Gym Lap',
+    courseName: 'Edison Field Lap',
     date: localCalendarDate()
   });
   const lapSubmittingRef = useRef(false);
@@ -100,6 +111,15 @@ export default function App() {
 
   const [localActivities, setLocalActivities] = useState(() => {
     const saved = localStorage.getItem('ras_edison_activities_v5');
+    const currentMonth = pacificMonthKey();
+    const savedMonth = localStorage.getItem(ACTIVITY_MONTH_KEY);
+    // On the first version with month tracking, mark the current month without
+    // deleting the user's legacy library.
+    localStorage.setItem(ACTIVITY_MONTH_KEY, currentMonth);
+    if (savedMonth && savedMonth !== currentMonth) {
+      localStorage.setItem('ras_edison_activities_v5', '[]');
+      return [];
+    }
     if (!saved) return [];
 
     const parsed = JSON.parse(saved);
@@ -147,6 +167,7 @@ export default function App() {
   const monthlyRecords = pairing.session?.state.monthlyRecords ?? localMonthlyRecords;
   const lapRecords = pairing.session?.state.lapRecords ?? localLapRecords;
   const activities = pairing.session?.state.activities ?? localActivities;
+  const projectorMessages = pairing.session?.projectorMessages ?? [];
   const localSnapshot = () => ({
     groups: localGroups,
     history: localHistory,
@@ -156,7 +177,8 @@ export default function App() {
   });
 
   const saveLocalBackup = () => {
-    localStorage.setItem('ras_edison_pairing_backup_v1', JSON.stringify(localSnapshot()));
+    const { activities: _activities, ...backup } = localSnapshot();
+    localStorage.setItem('ras_edison_pairing_backup_v1', JSON.stringify(backup));
   };
 
   const handleCreatePairing = async (name, password) => {
@@ -196,7 +218,8 @@ export default function App() {
         if (Array.isArray(backup.history)) setLocalHistory(backup.history);
         if (Array.isArray(backup.lapRecords)) setLocalLapRecords(backup.lapRecords);
         if (Array.isArray(backup.monthlyRecords)) setLocalMonthlyRecords(backup.monthlyRecords);
-        if (Array.isArray(backup.activities)) setLocalActivities(backup.activities);
+        // Activities remain in their own month-scoped local store. Never restore
+        // this field from a legacy backup, which could revive an expired library.
       } finally {
         localStorage.removeItem('ras_edison_pairing_backup_v1');
       }
@@ -238,13 +261,24 @@ export default function App() {
     } catch {}
   };
 
+  const handleRemoveMember = async (memberId) => {
+    try {
+      await pairing.removeMember(memberId);
+    } catch {}
+  };
+
   useEffect(() => {
-    if (pairing.needsDailyAssignment) setSessionModal('controls');
-  }, [pairing.needsDailyAssignment]);
+    if (!pairing.session || pairing.status !== 'connected') return;
+    setSessionModal(pairing.needsDailyAssignment ? 'controls' : null);
+  }, [pairing.session?.memberId, pairing.status, pairing.needsDailyAssignment]);
 
   useEffect(() => {
     if (!pairing.isPaired && pairing.error) setSessionModal('startup');
   }, [pairing.isPaired, pairing.error]);
+
+  useEffect(() => {
+    if (!pairing.isPaired) setMessageComposerOpen(false);
+  }, [pairing.isPaired]);
 
   const lapDefaultGroupRef = useRef('Ladybugs');
   useEffect(() => {
@@ -277,6 +311,30 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('ras_edison_activities_v5', JSON.stringify(localActivities));
   }, [localActivities]);
+
+  useEffect(() => {
+    const rollLocalActivities = () => {
+      const currentMonth = pacificMonthKey();
+      const savedMonth = localStorage.getItem(ACTIVITY_MONTH_KEY);
+      if (!savedMonth) {
+        localStorage.setItem(ACTIVITY_MONTH_KEY, currentMonth);
+      } else if (savedMonth !== currentMonth) {
+        localStorage.setItem(ACTIVITY_MONTH_KEY, currentMonth);
+        setLocalActivities([]);
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') rollLocalActivities();
+    };
+    const timer = window.setInterval(rollLocalActivities, 60_000);
+    window.addEventListener('focus', rollLocalActivities);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', rollLocalActivities);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
 
   useEffect(() => {
     setCurrentActivity((current) => {
@@ -404,7 +462,7 @@ export default function App() {
       ms,
       timeFormatted: formatted,
       totalSeconds: totalSecs,
-      courseName: newLap.courseName.trim() || 'Edison Gym Lap',
+      courseName: newLap.courseName.trim() || 'Edison Field Lap',
       date: newLap.date || localCalendarDate(),
       monthYear: currentMonthName
     };
@@ -429,7 +487,7 @@ export default function App() {
       minutes: '0',
       seconds: '',
       ms: '00',
-      courseName: 'Edison Gym Lap',
+      courseName: 'Edison Field Lap',
       date: localCalendarDate()
     });
   };
@@ -536,7 +594,14 @@ export default function App() {
 
   if (activeTab === 'projector') {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-6 md:p-10 font-sans relative overflow-hidden select-none">
+      <div className="min-h-[100dvh] bg-slate-950 text-white flex flex-col justify-between p-6 md:p-10 font-sans relative overflow-hidden select-none">
+        <ProjectorMessage roomId={pairing.session?.roomId ?? null} messages={projectorMessages} />
+        <MessageComposer
+          open={messageComposerOpen}
+          connected={pairing.status === 'connected'}
+          onClose={() => setMessageComposerOpen(false)}
+          onSend={pairing.sendMessage}
+        />
         <PairingPanel
           open={Boolean(sessionModal)}
           mode={sessionModal === 'controls' ? 'controls' : 'startup'}
@@ -551,6 +616,7 @@ export default function App() {
           onCreate={handleCreatePairing}
           onJoin={handleJoinPairing}
           onUpdateAssignment={handleUpdateAssignment}
+          onRemoveMember={handleRemoveMember}
           onLeave={handleLeavePairing}
           onEnd={handleEndPairing}
         />
@@ -564,17 +630,28 @@ export default function App() {
         <div className="absolute bottom-10 right-10 w-[600px] h-[600px] bg-amber-500/10 blur-[180px] rounded-full pointer-events-none" />
 
         {/* Top Control Bar */}
-        <div className="flex items-center justify-between z-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 z-10">
           <button 
             onClick={() => setActiveTab('scoreboard')}
-            className="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-700 text-slate-200 px-5 py-3 rounded-2xl font-bold transition border border-slate-700 shadow-xl text-base md:text-lg"
+            className="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-700 text-slate-200 px-4 md:px-5 py-3 rounded-2xl font-bold transition border border-slate-700 shadow-xl text-sm md:text-lg"
           >
-            <Layout className="w-6 h-6" /> Exit Projector View
+            <Layout className="w-5 h-5 md:w-6 md:h-6 shrink-0" /> <span className="hidden sm:inline">Exit Projector View</span><span className="sm:hidden">Exit View</span>
           </button>
           
-          <div className="flex items-center gap-3 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 px-6 py-3 rounded-2xl font-semibold shadow-inner text-base md:text-lg">
-            <Calendar className="w-6 h-6 text-emerald-400" />
-            <span>{getDaysLeftInMonth()} Days Remaining in {currentMonthName}</span>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {pairing.isPaired && (
+              <button
+                type="button"
+                onClick={() => setMessageComposerOpen(true)}
+                className="flex items-center gap-2 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 px-4 py-3 rounded-2xl font-bold transition border border-cyan-400/40 shadow-xl text-sm"
+              >
+                <MessageSquare className="w-5 h-5 shrink-0" /> <span className="hidden sm:inline">Messages</span>
+              </button>
+            )}
+            <div className="hidden md:flex items-center gap-3 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 px-6 py-3 rounded-2xl font-semibold shadow-inner text-base md:text-lg">
+              <Calendar className="w-6 h-6 text-emerald-400" />
+              <span>{getDaysLeftInMonth()} Days Remaining in {currentMonthName}</span>
+            </div>
           </div>
         </div>
 
@@ -661,7 +738,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans pb-12">
+    <div className="min-h-[100dvh] bg-slate-900 text-slate-100 flex flex-col font-sans pb-12">
       {/* Header Bar */}
       <header className="bg-slate-800/90 backdrop-blur border-b border-slate-700/80 sticky top-0 z-30 px-4 py-3">
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -684,7 +761,7 @@ export default function App() {
           <div className="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-700 overflow-x-auto max-w-full">
             <button
               onClick={() => setActiveTab('scoreboard')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
+              className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
                 activeTab === 'scoreboard' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -692,7 +769,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('generator')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
+              className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
                 activeTab === 'generator' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -700,7 +777,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('fastest_lap')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
+              className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
                 activeTab === 'fastest_lap' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -708,7 +785,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setSessionModal(pairing.isPaired ? 'controls' : 'startup')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs md:text-sm transition shrink-0 border ${pairing.isPaired ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' : 'text-slate-400 border-slate-700 hover:text-white'}`}
+              className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 border ${pairing.isPaired ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' : 'text-slate-400 border-slate-700 hover:text-white'}`}
               aria-label="Open live session controls"
             >
               {pairing.isPaired ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
@@ -716,10 +793,20 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('projector')}
-              className="flex items-center gap-1 px-2.5 py-2 rounded-xl font-bold text-xs text-cyan-400 hover:bg-cyan-950/50 transition border border-cyan-500/20 ml-1 shrink-0"
+              className="flex items-center gap-1 px-2.5 py-2.5 min-h-[44px] rounded-xl font-bold text-xs text-cyan-400 hover:bg-cyan-950/50 transition border border-cyan-500/20 ml-1 shrink-0"
             >
               <Tv className="w-4 h-4" /> Projector
             </button>
+            {pairing.isPaired && (
+              <button
+                type="button"
+                onClick={() => setMessageComposerOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-950/50"
+                aria-label="Compose projector message"
+              >
+                <MessageSquare className="w-4 h-4" /> Messages
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -847,19 +934,22 @@ export default function App() {
                         <div className="grid grid-cols-3 gap-1.5">
                           <button
                             onClick={() => handleAddPoints(group.id, 10)}
-                            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl py-2 font-black text-xs transition active:scale-95"
+                            aria-label={`Add 10 points to ${group.name}`}
+                            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]"
                           >
                             +10
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 50)}
-                            className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl py-2 font-black text-xs transition active:scale-95"
+                            aria-label={`Add 50 points to ${group.name}`}
+                            className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]"
                           >
                             +50
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 100)}
-                            className="bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-200 border border-emerald-500/50 rounded-xl py-2 font-black text-xs transition active:scale-95"
+                            aria-label={`Add 100 points to ${group.name}`}
+                            className="bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-200 border border-emerald-500/50 rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]"
                           >
                             +100
                           </button>
@@ -868,19 +958,22 @@ export default function App() {
                         <div className="grid grid-cols-3 gap-1.5">
                           <button
                             onClick={() => handleAddPoints(group.id, 200)}
-                            className="bg-emerald-500 text-slate-950 hover:bg-emerald-400 rounded-xl py-2 font-black text-xs transition active:scale-95 shadow-md"
+                            aria-label={`Add 200 points to ${group.name}`}
+                            className="bg-emerald-500 text-slate-950 hover:bg-emerald-400 rounded-xl py-2 font-black text-xs transition active:scale-95 shadow-md min-h-[44px]"
                           >
                             +200
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 500)}
-                            className="bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md"
+                            aria-label={`Add 500 points to ${group.name}`}
+                            className="bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md min-h-[44px]"
                           >
                             +500
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 600)}
-                            className="bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md flex items-center justify-center gap-1"
+                            aria-label={`Add 600 points to ${group.name}`}
+                            className="bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md flex items-center justify-center gap-1 min-h-[44px]"
                           >
                             <Sparkles className="w-3.5 h-3.5" /> +600
                           </button>
@@ -889,13 +982,15 @@ export default function App() {
                         <div className="grid grid-cols-2 gap-1.5 pt-1">
                           <button
                             onClick={() => handleAddPoints(group.id, -10)}
-                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl py-1.5 font-bold text-xs transition active:scale-95"
+                            aria-label={`Subtract 10 points from ${group.name}`}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
                           >
                             -10
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, -50)}
-                            className="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl py-1.5 font-bold text-xs transition active:scale-95"
+                            aria-label={`Subtract 50 points from ${group.name}`}
+                            className="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
                           >
                             -50
                           </button>
@@ -1031,6 +1126,7 @@ export default function App() {
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
                     Pick a phrase for the whiteboard or a physical group mission.
+                    Missions and scrambles clear automatically each month on the school’s Pacific time. Scores, laps, and history are kept.
                   </p>
                 </div>
 
@@ -1249,6 +1345,8 @@ export default function App() {
                     <div className="grid grid-cols-3 gap-2">
                       <input
                         type="number"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         min="0"
                         placeholder="Min (0)"
                         value={newLap.minutes}
@@ -1257,6 +1355,8 @@ export default function App() {
                       />
                       <input
                         type="number"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         min="0"
                         max="59"
                         required
@@ -1267,6 +1367,8 @@ export default function App() {
                       />
                       <input
                         type="number"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         min="0"
                         max="99"
                         placeholder="Ms (00)"
@@ -1312,45 +1414,46 @@ export default function App() {
                     No laps recorded this month yet.
                   </div>
                 ) : (
-                  <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-[440px] overflow-y-auto overflow-x-hidden pr-1">
                     {[...currentMonthLaps].sort((a, b) => a.totalSeconds - b.totalSeconds).map((item, index) => {
                       const isTop1 = index === 0;
                       return (
                         <div 
                           key={item.id} 
-                          className={`p-4 rounded-2xl border flex items-center justify-between gap-4 transition ${
+                          className={`p-4 rounded-2xl border flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 transition ${
                             isTop1 
                               ? 'bg-cyan-950/40 border-cyan-500/60 shadow-md ring-1 ring-cyan-500/30' 
                               : 'bg-slate-900/80 border-slate-700/60'
                           }`}
                         >
-                          <div className="flex items-center gap-3.5">
+                          <div className="flex items-center gap-3.5 min-w-[200px] flex-1">
                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
                               isTop1 ? 'bg-cyan-500 text-slate-950 shadow-md' : 'bg-slate-800 text-slate-300'
                             }`}>
                               #{index + 1}
                             </div>
 
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-extrabold text-white text-base">{item.runnerName}</span>
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-medium border border-slate-700">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-white text-base truncate">{item.runnerName}</span>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-medium border border-slate-700 whitespace-nowrap">
                                   {item.group}
                                 </span>
                               </div>
-                              <div className="text-xs text-slate-400 mt-0.5">
+                              <div className="text-xs text-slate-400 mt-0.5 truncate">
                                 {item.courseName} • {item.date}
                               </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
                               <div className="text-xl font-black text-cyan-400 tracking-tight">{item.timeFormatted}</div>
                             </div>
                             <button
                               onClick={() => handleDeleteLap(item.id)}
-                              className="text-slate-500 hover:text-red-400 p-2 rounded-xl transition"
+                              aria-label={`Delete lap for ${item.runnerName}`}
+                              className="text-slate-500 hover:text-red-400 p-2 rounded-xl transition min-h-[44px] min-w-[44px] flex justify-center items-center"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -1381,8 +1484,15 @@ export default function App() {
         onCreate={handleCreatePairing}
         onJoin={handleJoinPairing}
         onUpdateAssignment={handleUpdateAssignment}
+        onRemoveMember={handleRemoveMember}
         onLeave={handleLeavePairing}
         onEnd={handleEndPairing}
+      />
+      <MessageComposer
+        open={messageComposerOpen}
+        connected={pairing.status === 'connected'}
+        onClose={() => setMessageComposerOpen(false)}
+        onSend={pairing.sendMessage}
       />
 
       {/* Modal: Add Custom Scramble or Mission */}

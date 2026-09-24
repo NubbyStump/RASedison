@@ -1,5 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+// Cryptographically secure UUID fallback for older mainstream browsers (e.g. iOS < 15.4 or insecure contexts)
+// This preserves entropy and does not weaken tokens.
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return ('10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) =>
+    (
+      (c as unknown as number) ^
+      (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> ((c as unknown as number) / 4)))
+    ).toString(16)
+  ));
+};
+
 const TOKEN_KEY = 'ras_edison_pairing_token_v1';
 
 export function localCalendarDate(date = new Date()) {
@@ -15,6 +29,15 @@ export type PairingState = {
   lapRecords: any[];
   monthlyRecords: any[];
   activities: any[];
+};
+
+export type ProjectorMessage = {
+  id: string;
+  text: string;
+  senderName: string;
+  senderRole: 'owner' | 'counselor';
+  createdAt: string;
+  expiresAt: string;
 };
 
 export type PairingSession = {
@@ -33,6 +56,7 @@ export type PairingSession = {
     groupId: string | null;
     assignmentDate: string | null;
   }>;
+  projectorMessages: ProjectorMessage[];
   token?: string;
 };
 
@@ -152,7 +176,7 @@ export function usePairing() {
       setIsPaired(false);
       setStatus('local');
       stickyErrorRef.current = true;
-      setError('This pairing session expired or was revoked. Your original local data has been restored; pair again to reconnect.');
+      setError('You were logged out because this session ended or the Program Manager removed you. This device’s local data was not changed; join a session again to reconnect.');
       throw new Error('The pairing session is no longer authorized.');
     }
     if (!response.ok) throw new Error(messageFromResponse(body, `Pairing request failed (${response.status}).`));
@@ -320,7 +344,7 @@ export function usePairing() {
     }
     const generation = generationRef.current;
     const expectedRoom = sessionRef.current.roomId;
-    const id = crypto.randomUUID();
+    const id = generateUUID();
     beginOperation();
     stickyErrorRef.current = false;
     setError('');
@@ -355,6 +379,45 @@ export function usePairing() {
     }
   }, [applySession, authenticatedRequest, beginOperation, endOperation, status]);
 
+  const sendMessage = useCallback(async (text: string) => {
+    if (!tokenRef.current || !sessionRef.current) {
+      throw new Error('Join a live session before sending a projector message.');
+    }
+    if (status !== 'connected') {
+      throw new Error('Messages are blocked while the live session reconnects.');
+    }
+    const generation = generationRef.current;
+    const expectedRoom = sessionRef.current.roomId;
+    const id = generateUUID();
+    beginOperation();
+    let lastError: unknown;
+    try {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const next = await authenticatedRequest(
+            '/api/pairing/message',
+            { method: 'POST', body: JSON.stringify({ id, text }) },
+            generation,
+            expectedRoom,
+          );
+          applySession(next, generation, expectedRoom);
+          return next as PairingSession;
+        } catch (requestError) {
+          lastError = requestError;
+          if (!(requestError instanceof TypeError) || attempt === 1) throw requestError;
+        }
+      }
+      throw lastError;
+    } catch (requestError) {
+      if (generationRef.current === generation && requestError instanceof TypeError) {
+        setStatus('reconnecting');
+      }
+      throw requestError;
+    } finally {
+      endOperation();
+    }
+  }, [applySession, authenticatedRequest, beginOperation, endOperation, status]);
+
   const rotateCode = useCallback(async () => {
     if (!sessionRef.current) throw new Error('The paired room is still loading.');
     const generation = generationRef.current;
@@ -374,6 +437,38 @@ export function usePairing() {
       if (generationRef.current === generation) {
         stickyErrorRef.current = true;
         setError((requestError as Error).message);
+      }
+      throw requestError;
+    } finally {
+      endOperation();
+    }
+  }, [applySession, authenticatedRequest, beginOperation, endOperation]);
+
+  const removeMember = useCallback(async (memberId: string) => {
+    const current = sessionRef.current;
+    if (!current) throw new Error('The paired room is still loading.');
+    if (current.role !== 'owner') throw new Error('Only the Program Manager can remove counselors.');
+    if (memberId === current.memberId) throw new Error('The Program Manager cannot remove themself.');
+    const member = current.members.find((item) => item.id === memberId);
+    if (!member || member.role === 'owner') throw new Error('That counselor is not available to remove.');
+
+    const generation = generationRef.current;
+    const expectedRoom = current.roomId;
+    beginOperation();
+    stickyErrorRef.current = false;
+    setError('');
+    try {
+      const next = await authenticatedRequest(
+        '/api/pairing/remove-member',
+        { method: 'POST', body: JSON.stringify({ memberId }) },
+        generation,
+        expectedRoom,
+      );
+      applySession(next, generation, expectedRoom);
+    } catch (requestError) {
+      if (generationRef.current === generation) {
+        stickyErrorRef.current = true;
+        setError((requestError as Error).message || 'Unable to remove that counselor.');
       }
       throw requestError;
     } finally {
@@ -453,6 +548,8 @@ export function usePairing() {
     leave,
     end,
     rotateCode,
+    removeMember,
     command,
+    sendMessage,
   };
 }

@@ -72,6 +72,18 @@ export const commandSchema = z.discriminatedUnion("type", [
 
 export type PairingCommand = z.infer<typeof commandSchema>;
 
+export const projectorMessageInputSchema = z.object({
+  id: z.string().uuid(),
+  text: z.string()
+    .trim()
+    .min(1)
+    .max(240)
+    .refine(
+      (text) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/u.test(text),
+      "Message must be plain text",
+    ),
+}).strict();
+
 export function reducePairingState(state: PairingState, command: PairingCommand): PairingState {
   const next = structuredClone(state);
   switch (command.type) {

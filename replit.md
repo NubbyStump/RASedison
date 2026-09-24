@@ -29,6 +29,7 @@ _Populate as you build — short repo map plus pointers to the source-of-truth f
 - Pairing is trusted counselor collaboration, not individual student login. Rooms require a code and a host-created password/PIN. Counselors can edit scores and laps; only the Program Manager can administer monthly archives and scrambles. This supersedes the earlier equal-editor model at the user's request.
 - Shared edits are commands applied to the latest server state, never whole-client snapshot replacements. This avoids losing concurrent counselor edits.
 - Unpaired local data stays separate from shared rooms. Joining must not erase that data; disconnecting returns to the device's original local data.
+- Pairing rooms persist their calendar timezone and activities month. The default is `America/Los_Angeles` because Edison Language Academy's school calendar—not the deployment server timezone—defines when missions and Super Scrambles roll over.
 
 ## Product
 

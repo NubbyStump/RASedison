@@ -239,6 +239,31 @@ export interface Member {
   assignmentDate: string | null;
 }
 
+export type ProjectorMessageSenderRole = typeof ProjectorMessageSenderRole[keyof typeof ProjectorMessageSenderRole];
+
+
+export const ProjectorMessageSenderRole = {
+  owner: 'owner',
+  counselor: 'counselor',
+} as const;
+
+export interface ProjectorMessage {
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  text: string;
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  senderName: string;
+  senderRole: ProjectorMessageSenderRole;
+  createdAt: string;
+  expiresAt: string;
+}
+
 export type SessionRole = typeof SessionRole[keyof typeof SessionRole];
 
 
@@ -266,8 +291,20 @@ export interface Session {
   assignmentDate: string | null;
   /** @minimum 1 */
   version: number;
+  /** IANA timezone used for the room's school calendar month (America/Los_Angeles by default). */
+  timeZone: string;
+  /**
+     * Calendar month for which missions and Super Scrambles are current.
+     * @pattern ^\d{4}-(0[1-9]|1[0-2])$
+     */
+  activitiesMonth: string;
   state: PairingState;
   members: Member[];
+  /**
+     * Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.
+     * @maxItems 20
+     */
+  projectorMessages: ProjectorMessage[];
   /** @minLength 32 */
   token?: string;
 }
@@ -325,6 +362,20 @@ export interface PairingAssignmentInput {
   groupId: string | null;
   /** @pattern ^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$ */
   assignmentDate: string;
+}
+
+export interface PairingMemberRemovalInput {
+  memberId: string;
+}
+
+export interface PairingMessageInput {
+  id: string;
+  /**
+     * Plain text; surrounding whitespace is trimmed by the server.
+     * @minLength 1
+     * @maxLength 240
+     */
+  text: string;
 }
 
 export type AddPointsCommandType = typeof AddPointsCommandType[keyof typeof AddPointsCommandType];

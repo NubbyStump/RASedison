@@ -9,6 +9,18 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
+export const PAIRING_DEFAULT_TIME_ZONE = "America/Los_Angeles";
+
+export type ProjectorMessage = {
+  id: string;
+  text: string;
+  senderName: string;
+  senderRole: "owner" | "counselor";
+  createdAt: string;
+  expiresAt: string;
+};
 
 export const pairingRooms = pgTable(
   "pairing_rooms",
@@ -18,6 +30,17 @@ export const pairingRooms = pgTable(
     passwordHash: text("password_hash"),
     version: integer("version").notNull().default(1),
     state: jsonb("state").notNull(),
+    projectorMessages: jsonb("projector_messages")
+      .$type<ProjectorMessage[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    // Rooms use the Edison school calendar rather than the database/server's
+    // deployment timezone. The SQL default also initializes existing rows
+    // during schema push without changing their current activities.
+    timeZone: text("time_zone").notNull().default(PAIRING_DEFAULT_TIME_ZONE),
+    activitiesMonth: text("activities_month")
+      .notNull()
+      .default(sql`to_char(CURRENT_TIMESTAMP AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM')`),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

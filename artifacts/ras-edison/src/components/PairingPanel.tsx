@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { AlertCircle, Check, Clipboard, Loader2, LogIn, LogOut, Radio, Shield, Users, XCircle } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { AlertCircle, Check, Clipboard, Loader2, LogIn, LogOut, Radio, Shield, Trash2, Users, XCircle } from 'lucide-react';
 import type { PairingSession, PairingStatus } from '../hooks/usePairing';
 
 const GROUPS = [
@@ -22,6 +22,7 @@ type Props = {
   onCreate: (name: string, password: string) => Promise<boolean>;
   onJoin: (name: string, code: string, password: string, groupId: string) => Promise<boolean>;
   onUpdateAssignment: (groupId: string | null) => Promise<void>;
+  onRemoveMember: (memberId: string) => Promise<void>;
   onLeave: () => Promise<void>;
   onEnd: () => Promise<void>;
 };
@@ -35,6 +36,8 @@ export default function PairingPanel(props: Props) {
   const [group, setGroup] = useState('');
   const [assignment, setAssignment] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && mode === 'startup') setPath('home');
@@ -63,9 +66,32 @@ export default function PairingPanel(props: Props) {
     }
   };
 
+  const codeRef = useRef<HTMLElement>(null);
+  const handleCopyCode = async () => {
+    if (!session) return;
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(session.code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+        return;
+      } catch (err) {}
+    }
+    // Fallback: visible message and select code
+    setCopyError(true);
+    if (codeRef.current) {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(codeRef.current);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+    setTimeout(() => setCopyError(false), 4000);
+  };
+
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="session-title">
-      <div className="w-full max-w-2xl max-h-[94vh] overflow-y-auto rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl">
+      <div className="w-full max-w-2xl max-h-[94vh] overflow-y-auto rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl pb-[env(safe-area-inset-bottom)]">
         <div className="p-5 sm:p-7 border-b border-slate-800 bg-gradient-to-br from-emerald-500/10 to-cyan-500/5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -82,12 +108,12 @@ export default function PairingPanel(props: Props) {
 
           {mode === 'startup' && path === 'home' && (
             <div className="space-y-3">
-              {(session || status === 'connecting' || status === 'reconnecting') && (
-                <button disabled={!session || busy} onClick={props.onClose} className="w-full text-left rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 hover:bg-emerald-500/15 disabled:opacity-60">
-                  <span className="flex items-center gap-2 text-emerald-300 font-black">{status !== 'connected' && <Loader2 className="w-4 h-4 animate-spin" />} Resume Live Session</span>
-                  <span className="block text-xs text-slate-400 mt-1">{session ? `Room ${session.code} · ${session.role === 'owner' ? 'Host / Program Manager' : groupName(session.groupId)}` : 'Restoring your authenticated session…'}</span>
-                </button>
-              )}
+              {!session && (status === 'connecting' || status === 'reconnecting') ? (
+                <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5" role="status">
+                  <span className="flex items-center gap-2 text-emerald-300 font-black"><Loader2 className="w-4 h-4 animate-spin" /> Restoring live session…</span>
+                  <span className="block text-xs text-slate-400 mt-1">You’ll enter the shared dashboard automatically. No name or password is needed.</span>
+                </div>
+              ) : <>
               <button onClick={() => setPath('create')} className="w-full text-left rounded-2xl border border-purple-500/30 bg-slate-800 p-4 hover:border-purple-400">
                 <span className="flex items-center gap-2 text-white font-black"><Shield className="w-5 h-5 text-purple-400" /> Create Live Session</span>
                 <span className="block text-xs text-slate-400 mt-1">Host as Program Manager. Start with zero points and no past stats; keep your scramble library.</span>
@@ -97,6 +123,7 @@ export default function PairingPanel(props: Props) {
                 <span className="block text-xs text-slate-400 mt-1">Join as a counselor with a room code and password.</span>
               </button>
               <button onClick={props.onOffline} disabled={busy} className="w-full rounded-2xl border border-slate-700 py-3 text-slate-300 font-bold hover:bg-slate-800 disabled:opacity-50">Continue Offline</button>
+              </>}
             </div>
           )}
 
@@ -104,10 +131,10 @@ export default function PairingPanel(props: Props) {
             <form onSubmit={path === 'create' ? create : join} className="space-y-4">
               <button type="button" onClick={() => { setPath('home'); clearPassword(); }} className="text-sm text-slate-400 hover:text-white">← Back to choices</button>
               <h3 className="text-xl font-black text-white">{path === 'create' ? 'Create as Host / Program Manager' : 'Join as Counselor'}</h3>
-              <Field label="Your name"><input required maxLength={60} autoComplete="name" value={name} onChange={e => setName(e.target.value)} className="field" placeholder="Your name" /></Field>
+              <Field label="Your name"><input required maxLength={60} autoComplete="name" autoCapitalize="words" value={name} onChange={e => setName(e.target.value)} className="field" placeholder="Your name" /></Field>
               {path === 'join' && <>
                 <Field label="Your group"><select required value={group} onChange={e => setGroup(e.target.value)} className="field"><option value="">Choose today’s group</option>{GROUPS.map(g => <option key={g.id} value={g.id}>{g.icon} {g.name}</option>)}</select></Field>
-                <Field label="Room code"><input required maxLength={10} autoCapitalize="characters" autoComplete="off" value={code} onChange={e => setCode(e.target.value.toUpperCase())} className="field font-mono uppercase tracking-widest" /></Field>
+                <Field label="Room code"><input required maxLength={10} autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck="false" value={code} onChange={e => setCode(e.target.value.toUpperCase())} className="field font-mono uppercase tracking-widest" /></Field>
               </>}
               <Field label="Session password / PIN (4–128 characters)"><input required minLength={4} maxLength={128} type="password" autoComplete={path === 'create' ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} className="field" /></Field>
               <button disabled={busy || !name.trim() || password.length < 4 || (path === 'join' && (!code.trim() || !group))} className={`w-full py-3 rounded-xl font-black text-slate-950 disabled:opacity-50 ${path === 'create' ? 'bg-purple-400' : 'bg-cyan-400'}`}>{busy ? 'Connecting…' : path === 'create' ? 'Create Live Session' : 'Join Live Session'}</button>
@@ -117,7 +144,13 @@ export default function PairingPanel(props: Props) {
           {mode === 'controls' && session && (
             <div className="space-y-5">
               <div className="grid sm:grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4"><div className="text-xs uppercase font-bold text-slate-400">Room code</div><div className="mt-1 flex items-center gap-3"><strong className="font-mono text-2xl text-purple-300 tracking-wider">{session.code}</strong><button aria-label="Copy room code" onClick={async () => { await navigator.clipboard.writeText(session.code); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="p-2 bg-slate-700 rounded-lg">{copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Clipboard className="w-4 h-4" />}</button></div></div>
+                <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4"><div className="text-xs uppercase font-bold text-slate-400">Room code</div>
+                <div className="mt-1 flex items-center gap-3">
+                  <strong ref={codeRef} className="font-mono text-2xl text-purple-300 tracking-wider">{session.code}</strong>
+                  <button aria-label="Copy room code" onClick={handleCopyCode} className="p-2 bg-slate-700 rounded-lg">{copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Clipboard className="w-4 h-4" />}</button>
+                </div>
+                {copyError && <div className="mt-2 text-xs text-amber-300 font-medium bg-amber-950/40 border border-amber-500/30 px-2 py-1.5 rounded-md">Clipboard unavailable. Code selected for manual copy.</div>}
+                </div>
                 <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4"><div className="text-xs uppercase font-bold text-slate-400">Connection</div><div className="mt-2 font-bold text-white capitalize">{status}</div><div className="text-xs text-slate-400">{session.role === 'owner' ? 'Host / Program Manager' : 'Counselor'}</div></div>
               </div>
               <div>
@@ -135,11 +168,35 @@ export default function PairingPanel(props: Props) {
               <div>
                 <h3 className="font-black text-white flex items-center gap-2"><Users className="w-5 h-5 text-cyan-400" /> Session roster</h3>
                 <div className="mt-2 divide-y divide-slate-700 rounded-2xl border border-slate-700 overflow-hidden">
-                  {session.members.map(member => <div key={member.id} className="p-3 bg-slate-800 flex justify-between gap-3 text-sm"><span className="font-bold text-white">{member.name}{member.id === session.memberId ? ' (You)' : ''}</span><span className="text-slate-400 text-right">{member.role === 'owner' ? 'Host' : member.assignmentDate === today ? groupName(member.groupId) : `No group for ${today}`}</span></div>)}
+                  {session.members.map(member => {
+                    const canRemove = session.role === 'owner' && member.role !== 'owner' && member.id !== session.memberId;
+                    const removing = removingMemberId === member.id;
+                    return <div key={member.id} className="p-3 bg-slate-800 flex items-center justify-between gap-3 text-sm">
+                      <span className="font-bold text-white">{member.name}{member.id === session.memberId ? ' (You)' : ''}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-slate-400 text-right">{member.role === 'owner' ? 'Host' : member.assignmentDate === today ? groupName(member.groupId) : `No group for ${today}`}</span>
+                        {canRemove && <button
+                          type="button"
+                          disabled={busy || Boolean(removingMemberId)}
+                          onClick={async () => {
+                            if (!confirm(`Remove ${member.name} from this session? They will be signed out on their device.`)) return;
+                            setRemovingMemberId(member.id);
+                            try {
+                              await props.onRemoveMember(member.id);
+                            } finally {
+                              setRemovingMemberId(null);
+                            }
+                          }}
+                          className="p-2 rounded-lg border border-red-500/40 text-red-300 hover:bg-red-950 disabled:opacity-50"
+                          aria-label={`Remove ${member.name} from session`}
+                        >{removing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>}
+                      </div>
+                    </div>;
+                  })}
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button disabled={busy} onClick={async () => { if (confirm('Leave this live session and restore this device’s offline data?')) await props.onLeave(); }} className="flex-1 py-3 rounded-xl border border-slate-600 font-bold text-slate-200 flex justify-center gap-2"><LogOut className="w-5 h-5" /> Leave Session</button>
+                <button disabled={busy} onClick={async () => { if (confirm('Log out of this live session and return to this device’s offline data?')) await props.onLeave(); }} className="flex-1 py-3 rounded-xl border border-slate-600 font-bold text-slate-200 flex justify-center gap-2"><LogOut className="w-5 h-5" /> Log out of session</button>
                 {session.role === 'owner' && <button disabled={busy} onClick={async () => { if (confirm('End this session for everyone? All connected members will be revoked.')) await props.onEnd(); }} className="flex-1 py-3 rounded-xl bg-red-950 border border-red-500/50 font-black text-red-300">End Session for Everyone</button>}
               </div>
             </div>

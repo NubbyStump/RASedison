@@ -30,6 +30,8 @@ import type {
   PairingCommandInput,
   PairingCreateInput,
   PairingJoinInput,
+  PairingMemberRemovalInput,
+  PairingMessageInput,
   RateLimitedResponse,
   Session,
   UnauthorizedResponse
@@ -532,6 +534,88 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getSendPairingCommandMutationOptions(options));
     }
 
+export const getSendPairingMessageUrl = () => {
+
+
+
+
+  return `/api/pairing/message`
+}
+
+export const sendPairingMessage = async (pairingMessageInput: PairingMessageInput, options?: Parameters<typeof customFetch>[1]): Promise<Session> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Session>(getSendPairingMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pairingMessageInput)
+  }
+);}
+
+
+
+
+
+export const getSendPairingMessageMutationKey = () => ['sendPairingMessage'] as const;
+
+export const getSendPairingMessageMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendPairingMessage>>, TError,SendPairingMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendPairingMessage>>, TError,SendPairingMessageMutationVariables, TContext> => {
+
+const mutationKey = getSendPairingMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendPairingMessage>>, SendPairingMessageMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendPairingMessage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendPairingMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendPairingMessage>>>
+    export type SendPairingMessageMutationBody = BodyType<PairingMessageInput>
+    export type SendPairingMessageMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | RateLimitedResponse>
+    export type SendPairingMessageMutationVariables = {data: BodyType<PairingMessageInput>}
+
+    export const useSendPairingMessage = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendPairingMessage>>, TError,SendPairingMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendPairingMessage>>,
+        TError,
+        SendPairingMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendPairingMessageMutationOptions(options));
+    }
+
 export const getRotatePairingCodeUrl = () => {
 
 
@@ -598,6 +682,88 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getRotatePairingCodeMutationOptions(options));
+    }
+
+export const getRemovePairingMemberUrl = () => {
+
+
+
+
+  return `/api/pairing/remove-member`
+}
+
+export const removePairingMember = async (pairingMemberRemovalInput: PairingMemberRemovalInput, options?: Parameters<typeof customFetch>[1]): Promise<Session> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Session>(getRemovePairingMemberUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pairingMemberRemovalInput)
+  }
+);}
+
+
+
+
+
+export const getRemovePairingMemberMutationKey = () => ['removePairingMember'] as const;
+
+export const getRemovePairingMemberMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removePairingMember>>, TError,RemovePairingMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removePairingMember>>, TError,RemovePairingMemberMutationVariables, TContext> => {
+
+const mutationKey = getRemovePairingMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removePairingMember>>, RemovePairingMemberMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  removePairingMember(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemovePairingMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removePairingMember>>>
+    export type RemovePairingMemberMutationBody = BodyType<PairingMemberRemovalInput>
+    export type RemovePairingMemberMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type RemovePairingMemberMutationVariables = {data: BodyType<PairingMemberRemovalInput>}
+
+    export const useRemovePairingMember = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removePairingMember>>, TError,RemovePairingMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removePairingMember>>,
+        TError,
+        RemovePairingMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemovePairingMemberMutationOptions(options));
     }
 
 export const getLeavePairingUrl = () => {

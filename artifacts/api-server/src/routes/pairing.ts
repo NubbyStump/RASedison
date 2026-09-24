@@ -10,10 +10,12 @@ import { db, pairingCommands, pairingMembers, pairingRooms } from "@workspace/db
 import {
   CreatePairingBody,
   JoinPairingBody,
+  RemovePairingMemberBody,
   UpdatePairingAssignmentBody,
 } from "@workspace/api-zod";
 import {
   commandSchema,
+  projectorMessageInputSchema,
   reducePairingState,
   type PairingCommand,
   type PairingState,
@@ -22,6 +24,7 @@ import {
 const router: IRouter = Router();
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const attempts = new Map<string, { count: number; reset: number }>();
+const messageAttempts = new Map<string, number[]>();
 const PASSWORD_KEY_LENGTH = 32;
 const PASSWORD_SCRYPT_COST = 16_384;
 const PASSWORD_ERROR = "Invalid room code or password";
@@ -33,6 +36,27 @@ const OWNER_COMMANDS = new Set<PairingCommand["type"]>([
   "deleteActivity",
   "clearActivities",
 ]);
+type PairingTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type PairingRoom = typeof pairingRooms.$inferSelect;
+const PROJECTOR_MESSAGE_LIFETIME_MS = 20_000;
+const PROJECTOR_MESSAGE_LIMIT = 20;
+const PROJECTOR_MESSAGE_RATE_WINDOW_MS = 10_000;
+const PROJECTOR_MESSAGE_RATE_LIMIT = 5;
+
+export function calendarMonth(
+  now = new Date(),
+  timeZone = "America/Los_Angeles",
+): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  if (!year || !month) throw new Error(`Could not determine calendar month for ${timeZone}`);
+  return `${year}-${month}`;
+}
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 const makeToken = () => randomBytes(32).toString("base64url");
@@ -153,13 +177,55 @@ async function authenticate(req: Request) {
   return member ?? null;
 }
 
+async function lockRoomById(
+  tx: PairingTransaction,
+  roomId: string,
+): Promise<PairingRoom | null> {
+  await tx.execute(sql`select id from pairing_rooms where id = ${roomId} for update`);
+  const [room] = await tx.select().from(pairingRooms)
+    .where(eq(pairingRooms.id, roomId)).limit(1);
+  return room ?? null;
+}
+
+export async function rolloverActivitiesForLockedRoom(
+  tx: PairingTransaction,
+  room: PairingRoom,
+  month = calendarMonth(new Date(), room.timeZone),
+): Promise<PairingRoom> {
+  if (room.activitiesMonth === month) return room;
+  const state = structuredClone(room.state as PairingState);
+  state.activities = [];
+  const [updated] = await tx.update(pairingRooms).set({
+    state,
+    activitiesMonth: month,
+    version: room.version + 1,
+    updatedAt: new Date(),
+  }).where(eq(pairingRooms.id, room.id)).returning();
+  if (!updated) throw new Error("Room not found");
+  return updated;
+}
+
+async function activeMemberForRoom(
+  tx: PairingTransaction,
+  memberId: string,
+  roomId: string,
+) {
+  const [member] = await tx.select().from(pairingMembers).where(and(
+    eq(pairingMembers.id, memberId),
+    eq(pairingMembers.roomId, roomId),
+    isNull(pairingMembers.revokedAt),
+  )).limit(1);
+  return member ?? null;
+}
+
 async function sessionFor(
-  executor: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  executor: PairingTransaction,
   member: typeof pairingMembers.$inferSelect,
   token?: string,
+  lockedRoom?: PairingRoom,
 ) {
-  const [room] = await executor.select().from(pairingRooms)
-    .where(eq(pairingRooms.id, member.roomId)).limit(1);
+  const room = lockedRoom ?? (await executor.select().from(pairingRooms)
+    .where(eq(pairingRooms.id, member.roomId)).limit(1))[0];
   if (!room) throw new Error("Room not found");
   const members = await executor.select({
     id: pairingMembers.id,
@@ -171,6 +237,11 @@ async function sessionFor(
     eq(pairingMembers.roomId, room.id),
     isNull(pairingMembers.revokedAt),
   )).orderBy(pairingMembers.createdAt);
+  const now = Date.now();
+  const projectorMessages = room.projectorMessages
+    .filter((message) => Date.parse(message.expiresAt) > now)
+    .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+    .slice(-PROJECTOR_MESSAGE_LIMIT);
   return {
     roomId: room.id,
     code: room.code,
@@ -179,47 +250,102 @@ async function sessionFor(
     groupId: member.groupId,
     assignmentDate: member.assignmentDate,
     version: room.version,
+    timeZone: room.timeZone,
+    activitiesMonth: room.activitiesMonth,
     state: room.state,
     members,
+    projectorMessages,
     ...(token ? { token } : {}),
   };
+}
+
+function messageRateLimited(memberId: string, now: number): boolean {
+  const recent = (messageAttempts.get(memberId) ?? [])
+    .filter((sentAt) => sentAt > now - PROJECTOR_MESSAGE_RATE_WINDOW_MS);
+  if (recent.length >= PROJECTOR_MESSAGE_RATE_LIMIT) {
+    messageAttempts.set(memberId, recent);
+    return true;
+  }
+  recent.push(now);
+  messageAttempts.set(memberId, recent);
+  return false;
+}
+
+export async function sendProjectorMessage(
+  member: typeof pairingMembers.$inferSelect,
+  input: { id: string; text: string },
+) {
+  const result = await db.transaction(async (tx) => {
+    const lockedRoom = await lockRoomById(tx, member.roomId);
+    if (!lockedRoom || lockedRoom.endedAt) return { error: "unauthorized" as const };
+    let room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
+    const activeMember = await activeMemberForRoom(tx, member.id, room.id);
+    if (!activeMember) return { error: "unauthorized" as const };
+
+    if (room.projectorMessages.some((message) => message.id === input.id)) {
+      return { session: await sessionFor(tx, activeMember, undefined, room) };
+    }
+    const now = new Date();
+    if (messageRateLimited(activeMember.id, now.getTime())) {
+      return { error: "rate-limited" as const };
+    }
+    const projectorMessages = [...room.projectorMessages, {
+      id: input.id,
+      text: input.text,
+      senderName: activeMember.name,
+      senderRole: activeMember.role,
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + PROJECTOR_MESSAGE_LIFETIME_MS).toISOString(),
+    }].slice(-PROJECTOR_MESSAGE_LIMIT);
+    const [updatedRoom] = await tx.update(pairingRooms).set({
+      projectorMessages,
+      version: room.version + 1,
+      updatedAt: now,
+    }).where(eq(pairingRooms.id, room.id)).returning();
+    if (!updatedRoom) return { error: "unauthorized" as const };
+    room = updatedRoom;
+    return { session: await sessionFor(tx, activeMember, undefined, room) };
+  });
+  if ("error" in result) {
+    throw new Error(result.error === "rate-limited" ? "Too many messages" : "Unauthorized");
+  }
+  return result.session;
 }
 
 export async function executePairingCommand(
   member: typeof pairingMembers.$inferSelect,
   command: PairingCommand,
 ) {
-  return db.transaction(async (tx) => {
-    await tx.execute(sql`select id from pairing_rooms where id = ${member.roomId} for update`);
-    const [activeMember] = await tx.select({
-      id: pairingMembers.id,
-      role: pairingMembers.role,
-    }).from(pairingMembers)
-      .where(and(eq(pairingMembers.id, member.id), isNull(pairingMembers.revokedAt))).limit(1);
-    if (!activeMember) throw new Error("Unauthorized");
+  const result = await db.transaction(async (tx) => {
+    const lockedRoom = await lockRoomById(tx, member.roomId);
+    if (!lockedRoom || lockedRoom.endedAt) return { error: "Unauthorized" as const };
+    let room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
+    const activeMember = await activeMemberForRoom(tx, member.id, room.id);
+    if (!activeMember) return { error: "Unauthorized" as const };
     if (OWNER_COMMANDS.has(command.type) && activeMember.role !== "owner") {
-      throw new Error("Owner role required for this command");
+      return { error: "Owner role required for this command" as const };
     }
     const [duplicate] = await tx.select({ id: pairingCommands.id }).from(pairingCommands)
       .where(and(eq(pairingCommands.roomId, member.roomId), eq(pairingCommands.id, command.id))).limit(1);
     if (!duplicate) {
-      const [room] = await tx.select().from(pairingRooms)
-        .where(eq(pairingRooms.id, member.roomId)).limit(1);
-      if (!room) throw new Error("Room not found");
       const state = reducePairingState(room.state as PairingState, command);
-      await tx.update(pairingRooms).set({
+      const [updatedRoom] = await tx.update(pairingRooms).set({
         state,
         version: room.version + 1,
         updatedAt: new Date(),
-      }).where(eq(pairingRooms.id, room.id));
+      }).where(eq(pairingRooms.id, room.id)).returning();
+      if (!updatedRoom) throw new Error("Room not found");
+      room = updatedRoom;
       await tx.insert(pairingCommands).values({
         id: command.id,
         roomId: room.id,
         memberId: member.id,
       });
     }
-    return sessionFor(tx, member);
+    return { session: await sessionFor(tx, activeMember, undefined, room) };
   });
+  if ("error" in result) throw new Error(result.error);
+  return result.session;
 }
 
 router.post("/pairing/create", async (req, res): Promise<void> => {
@@ -250,6 +376,8 @@ router.post("/pairing/create", async (req, res): Promise<void> => {
           code: makeCode(),
           passwordHash,
           state: parsed.data.state,
+          timeZone: "America/Los_Angeles",
+          activitiesMonth: calendarMonth(),
         }).returning();
         const [member] = await tx.insert(pairingMembers).values({
           roomId: room.id,
@@ -259,7 +387,7 @@ router.post("/pairing/create", async (req, res): Promise<void> => {
           assignmentDate: parsed.data.assignmentDate,
           tokenHash: hashToken(token),
         }).returning();
-        return sessionFor(tx, member, token);
+        return sessionFor(tx, member, token, room);
       });
       res.json(result);
       return;
@@ -287,10 +415,11 @@ router.post("/pairing/join", async (req, res): Promise<void> => {
       where code = ${parsed.data.code.toUpperCase()}
       for update
     `);
-    const [room] = await tx.select().from(pairingRooms)
+    const [foundRoom] = await tx.select().from(pairingRooms)
       .where(eq(pairingRooms.code, parsed.data.code.toUpperCase())).limit(1);
-    if (!room) return null;
-    if (room.endedAt) return "ended" as const;
+    if (!foundRoom) return null;
+    if (foundRoom.endedAt) return "ended" as const;
+    const room = await rolloverActivitiesForLockedRoom(tx, foundRoom);
     if (!room.passwordHash) return "unprotected" as const;
     if (!await passwordMatches(parsed.data.password, room.passwordHash)) return "bad-password" as const;
     if (!roomHasGroup(room.state, parsed.data.groupId)) return "invalid-group" as const;
@@ -302,7 +431,7 @@ router.post("/pairing/join", async (req, res): Promise<void> => {
       assignmentDate: parsed.data.assignmentDate,
       tokenHash: hashToken(token),
     }).returning();
-    return sessionFor(tx, member, token);
+    return sessionFor(tx, member, token, room);
   });
   if (!result) {
     recordFailedJoin(req);
@@ -336,7 +465,19 @@ router.get("/pairing/session", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  res.json(await db.transaction((tx) => sessionFor(tx, member)));
+  const result = await db.transaction(async (tx) => {
+    const lockedRoom = await lockRoomById(tx, member.roomId);
+    if (!lockedRoom || lockedRoom.endedAt) return null;
+    const room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
+    const activeMember = await activeMemberForRoom(tx, member.id, room.id);
+    if (!activeMember) return null;
+    return sessionFor(tx, activeMember, undefined, room);
+  });
+  if (!result) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  res.json(result);
 });
 
 router.patch("/pairing/assignment", async (req, res): Promise<void> => {
@@ -351,11 +492,12 @@ router.patch("/pairing/assignment", async (req, res): Promise<void> => {
     return;
   }
   const result = await db.transaction(async (tx) => {
-    await tx.execute(sql`select id from pairing_rooms where id = ${member.roomId} for update`);
-    const [room] = await tx.select().from(pairingRooms)
-      .where(eq(pairingRooms.id, member.roomId)).limit(1);
-    if (!room) return null;
-    if (member.role === "counselor" && parsed.data.groupId === null) {
+    const lockedRoom = await lockRoomById(tx, member.roomId);
+    if (!lockedRoom || lockedRoom.endedAt) return null;
+    const room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
+    const activeMember = await activeMemberForRoom(tx, member.id, room.id);
+    if (!activeMember) return null;
+    if (activeMember.role === "counselor" && parsed.data.groupId === null) {
       return "invalid-group" as const;
     }
     if (parsed.data.groupId !== null && !roomHasGroup(room.state, parsed.data.groupId)) {
@@ -369,7 +511,7 @@ router.patch("/pairing/assignment", async (req, res): Promise<void> => {
       isNull(pairingMembers.revokedAt),
     )).returning();
     if (!updatedMember) return null;
-    return sessionFor(tx, updatedMember);
+    return sessionFor(tx, updatedMember, undefined, room);
   });
   if (!result) {
     res.status(401).json({ error: "Unauthorized" });
@@ -413,30 +555,138 @@ router.post("/pairing/command", async (req, res): Promise<void> => {
   }
 });
 
+router.post("/pairing/message", async (req, res): Promise<void> => {
+  const member = await authenticate(req);
+  if (!member) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const parsed = projectorMessageInputSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid message" });
+    return;
+  }
+  try {
+    res.json(await sendProjectorMessage(member, parsed.data));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (error instanceof Error && error.message === "Too many messages") {
+      res.status(429).json({ error: "Too many messages" });
+      return;
+    }
+    throw error;
+  }
+});
+
 router.post("/pairing/rotate-code", async (req, res): Promise<void> => {
   const member = await authenticate(req);
   if (!member) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  if (member.role !== "owner") {
-    res.status(403).json({ error: "Owner role required" });
-    return;
-  }
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
       const result = await db.transaction(async (tx) => {
-        await tx.execute(sql`select id from pairing_rooms where id = ${member.roomId} for update`);
-        await tx.update(pairingRooms).set({ code: makeCode(), updatedAt: new Date() })
-          .where(eq(pairingRooms.id, member.roomId));
-        return sessionFor(tx, member);
+        const lockedRoom = await lockRoomById(tx, member.roomId);
+        if (!lockedRoom || lockedRoom.endedAt) return "unauthorized" as const;
+        let room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
+        const activeMember = await activeMemberForRoom(tx, member.id, room.id);
+        if (!activeMember) return "unauthorized" as const;
+        if (activeMember.role !== "owner") return "forbidden" as const;
+        const [updatedRoom] = await tx.update(pairingRooms)
+          .set({ code: makeCode(), updatedAt: new Date() })
+          .where(eq(pairingRooms.id, room.id)).returning();
+        if (!updatedRoom) return "unauthorized" as const;
+        room = updatedRoom;
+        return sessionFor(tx, activeMember, undefined, room);
       });
+      if (result === "unauthorized") {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      if (result === "forbidden") {
+        res.status(403).json({ error: "Owner role required" });
+        return;
+      }
       res.json(result);
       return;
     } catch (error) {
       if ((error as { code?: string }).code !== "23505" || attempt === 4) throw error;
     }
   }
+});
+
+export async function removePairingMember(
+  actor: typeof pairingMembers.$inferSelect,
+  targetMemberId: string,
+) {
+  return db.transaction(async (tx) => {
+    const lockedRoom = await lockRoomById(tx, actor.roomId);
+    if (!lockedRoom || lockedRoom.endedAt) return { error: "unauthorized" as const };
+    let room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
+    const activeOwner = await activeMemberForRoom(tx, actor.id, room.id);
+    if (!activeOwner) return { error: "unauthorized" as const };
+    if (activeOwner.role !== "owner") return { error: "forbidden" as const };
+    if (targetMemberId === activeOwner.id) return { error: "self" as const };
+
+    const target = await activeMemberForRoom(tx, targetMemberId, room.id);
+    if (!target) return { error: "not-found" as const };
+    if (target.role === "owner") return { error: "owner" as const };
+
+    const revokedAt = new Date();
+    const [revoked] = await tx.update(pairingMembers).set({ revokedAt }).where(and(
+      eq(pairingMembers.id, target.id),
+      eq(pairingMembers.roomId, room.id),
+      isNull(pairingMembers.revokedAt),
+    )).returning();
+    if (!revoked) return { error: "not-found" as const };
+
+    const [updatedRoom] = await tx.update(pairingRooms).set({
+      version: room.version + 1,
+      updatedAt: revokedAt,
+    }).where(eq(pairingRooms.id, room.id)).returning();
+    if (!updatedRoom) return { error: "unauthorized" as const };
+    room = updatedRoom;
+    return { session: await sessionFor(tx, activeOwner, undefined, room) };
+  });
+}
+
+router.post("/pairing/remove-member", async (req, res): Promise<void> => {
+  const member = await authenticate(req);
+  if (!member) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const parsed = RemovePairingMemberBody.strict().safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+  const result = await removePairingMember(member, parsed.data.memberId);
+  if ("session" in result) {
+    res.json(result.session);
+    return;
+  }
+  if (result.error === "unauthorized") {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (result.error === "forbidden") {
+    res.status(403).json({ error: "Owner role required" });
+    return;
+  }
+  if (result.error === "self" || result.error === "owner") {
+    res.status(400).json({
+      error: result.error === "self"
+        ? "The room owner cannot remove themself"
+        : "The room owner cannot be removed",
+    });
+    return;
+  }
+  res.status(404).json({ error: "Member not found in this room" });
 });
 
 router.post("/pairing/leave", async (req, res): Promise<void> => {

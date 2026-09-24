@@ -116,6 +116,25 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /pairing/message:
+    post:
+      operationId: sendPairingMessage
+      tags: [pairing]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PairingMessageInput" }
+      responses:
+        "200":
+          description: Message broadcast or idempotently replayed session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
   /pairing/rotate-code:
     post:
       operationId: rotatePairingCode
@@ -129,6 +148,26 @@ paths:
               schema: { $ref: "#/components/schemas/Session" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /pairing/remove-member:
+    post:
+      operationId: removePairingMember
+      tags: [pairing]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PairingMemberRemovalInput" }
+      responses:
+        "200":
+          description: Counselor membership revoked and updated session returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /pairing/leave:
     post:
       operationId: leavePairing
@@ -301,10 +340,21 @@ components:
         role: { type: string, enum: [owner, counselor] }
         groupId: { type: ["string", "null"], minLength: 1, maxLength: 80 }
         assignmentDate: { type: ["string", "null"], pattern: "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$" }
+    ProjectorMessage:
+      type: object
+      additionalProperties: false
+      required: [id, text, senderName, senderRole, createdAt, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string, minLength: 1, maxLength: 240 }
+        senderName: { type: string, minLength: 1, maxLength: 60 }
+        senderRole: { type: string, enum: [owner, counselor] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
     Session:
       type: object
       additionalProperties: false
-      required: [roomId, code, role, memberId, groupId, assignmentDate, version, state, members]
+      required: [roomId, code, role, memberId, groupId, assignmentDate, version, timeZone, activitiesMonth, state, members, projectorMessages]
       properties:
         roomId: { type: string, format: uuid }
         code: { type: string, pattern: "^[A-Za-z0-9]{10}$" }
@@ -313,10 +363,22 @@ components:
         groupId: { type: ["string", "null"], minLength: 1, maxLength: 80 }
         assignmentDate: { type: ["string", "null"], pattern: "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$" }
         version: { type: integer, minimum: 1 }
+        timeZone:
+          type: string
+          description: IANA timezone used for the room's school calendar month (America/Los_Angeles by default).
+        activitiesMonth:
+          type: string
+          pattern: "^\\d{4}-(0[1-9]|1[0-2])$"
+          description: Calendar month for which missions and Super Scrambles are current.
         state: { $ref: "#/components/schemas/PairingState" }
         members:
           type: array
           items: { $ref: "#/components/schemas/Member" }
+        projectorMessages:
+          type: array
+          maxItems: 20
+          description: Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.
+          items: { $ref: "#/components/schemas/ProjectorMessage" }
         token: { type: string, minLength: 32 }
     PairingCreateInput:
       type: object
@@ -345,6 +407,23 @@ components:
       properties:
         groupId: { type: ["string", "null"], minLength: 1, maxLength: 80 }
         assignmentDate: { type: string, pattern: "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$" }
+    PairingMemberRemovalInput:
+      type: object
+      additionalProperties: false
+      required: [memberId]
+      properties:
+        memberId: { type: string, format: uuid }
+    PairingMessageInput:
+      type: object
+      additionalProperties: false
+      required: [id, text]
+      properties:
+        id: { type: string, format: uuid }
+        text:
+          type: string
+          minLength: 1
+          maxLength: 240
+          description: Plain text; surrounding whitespace is trimmed by the server.
     PairingCommandInput:
       oneOf:
         - $ref: "#/components/schemas/AddPointsCommand"

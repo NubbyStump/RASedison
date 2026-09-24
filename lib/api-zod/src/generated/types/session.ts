@@ -7,6 +7,7 @@
  */
 import type { Member } from './member';
 import type { PairingState } from './pairingState';
+import type { ProjectorMessage } from './projectorMessage';
 import type { SessionRole } from './sessionRole';
 
 export interface Session {
@@ -28,8 +29,20 @@ export interface Session {
   assignmentDate: string | null;
   /** @minimum 1 */
   version: number;
+  /** IANA timezone used for the room's school calendar month (America/Los_Angeles by default). */
+  timeZone: string;
+  /**
+     * Calendar month for which missions and Super Scrambles are current.
+     * @pattern ^\d{4}-(0[1-9]|1[0-2])$
+     */
+  activitiesMonth: string;
   state: PairingState;
   members: Member[];
+  /**
+     * Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.
+     * @maxItems 20
+     */
+  projectorMessages: ProjectorMessage[];
   /** @minLength 32 */
   token?: string;
 }
