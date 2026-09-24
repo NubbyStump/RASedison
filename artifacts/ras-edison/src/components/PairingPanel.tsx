@@ -90,7 +90,7 @@ export default function PairingPanel(props: Props) {
               )}
               <button onClick={() => setPath('create')} className="w-full text-left rounded-2xl border border-purple-500/30 bg-slate-800 p-4 hover:border-purple-400">
                 <span className="flex items-center gap-2 text-white font-black"><Shield className="w-5 h-5 text-purple-400" /> Create Live Session</span>
-                <span className="block text-xs text-slate-400 mt-1">Host as Program Manager and share your current dashboard.</span>
+                <span className="block text-xs text-slate-400 mt-1">Host as Program Manager. Start with zero points and no past stats; keep your scramble library.</span>
               </button>
               <button onClick={() => setPath('join')} className="w-full text-left rounded-2xl border border-cyan-500/30 bg-slate-800 p-4 hover:border-cyan-400">
                 <span className="flex items-center gap-2 text-white font-black"><LogIn className="w-5 h-5 text-cyan-400" /> Join Live Session</span>

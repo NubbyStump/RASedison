@@ -162,7 +162,13 @@ export default function App() {
   const handleCreatePairing = async (name, password) => {
     saveLocalBackup();
     try {
-      await pairing.create(name, password, localSnapshot());
+      await pairing.create(name, password, {
+        ...localSnapshot(),
+        groups: localGroups.map(group => ({ ...group, score: 0 })),
+        history: [],
+        lapRecords: [],
+        monthlyRecords: [],
+      });
       setSessionModal(null);
       return true;
     } catch {
