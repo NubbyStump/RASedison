@@ -294,6 +294,12 @@ export const createPairingResponseProjectorMessagesItemSenderNameMax = 60;
 
 export const createPairingResponseProjectorMessagesMax = 20;
 
+export const createPairingResponseChatMessagesItemTextMax = 240;
+
+export const createPairingResponseChatMessagesItemSenderNameMax = 60;
+
+export const createPairingResponseChatMessagesMax = 100;
+
 export const createPairingResponseTokenMin = 32;
 
 
@@ -371,11 +377,21 @@ export const CreatePairingResponse = zod.object({
   "projectorMessages": zod.array(zod.object({
   "id": zod.string().uuid(),
   "text": zod.string().min(1).max(createPairingResponseProjectorMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
   "senderName": zod.string().min(1).max(createPairingResponseProjectorMessagesItemSenderNameMax),
   "senderRole": zod.enum(['owner', 'counselor']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
-})).max(createPairingResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+})).max(createPairingResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.'),
+  "chatMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(createPairingResponseChatMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
+  "senderName": zod.string().min(1).max(createPairingResponseChatMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(createPairingResponseChatMessagesMax).describe('Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.'),
   "token": zod.string().min(createPairingResponseTokenMin).optional()
 })
 
@@ -513,6 +529,12 @@ export const joinPairingResponseProjectorMessagesItemSenderNameMax = 60;
 
 export const joinPairingResponseProjectorMessagesMax = 20;
 
+export const joinPairingResponseChatMessagesItemTextMax = 240;
+
+export const joinPairingResponseChatMessagesItemSenderNameMax = 60;
+
+export const joinPairingResponseChatMessagesMax = 100;
+
 export const joinPairingResponseTokenMin = 32;
 
 
@@ -590,11 +612,21 @@ export const JoinPairingResponse = zod.object({
   "projectorMessages": zod.array(zod.object({
   "id": zod.string().uuid(),
   "text": zod.string().min(1).max(joinPairingResponseProjectorMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
   "senderName": zod.string().min(1).max(joinPairingResponseProjectorMessagesItemSenderNameMax),
   "senderRole": zod.enum(['owner', 'counselor']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
-})).max(joinPairingResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+})).max(joinPairingResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.'),
+  "chatMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(joinPairingResponseChatMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
+  "senderName": zod.string().min(1).max(joinPairingResponseChatMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(joinPairingResponseChatMessagesMax).describe('Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.'),
   "token": zod.string().min(joinPairingResponseTokenMin).optional()
 })
 
@@ -713,6 +745,12 @@ export const getPairingSessionResponseProjectorMessagesItemSenderNameMax = 60;
 
 export const getPairingSessionResponseProjectorMessagesMax = 20;
 
+export const getPairingSessionResponseChatMessagesItemTextMax = 240;
+
+export const getPairingSessionResponseChatMessagesItemSenderNameMax = 60;
+
+export const getPairingSessionResponseChatMessagesMax = 100;
+
 export const getPairingSessionResponseTokenMin = 32;
 
 
@@ -790,11 +828,21 @@ export const GetPairingSessionResponse = zod.object({
   "projectorMessages": zod.array(zod.object({
   "id": zod.string().uuid(),
   "text": zod.string().min(1).max(getPairingSessionResponseProjectorMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
   "senderName": zod.string().min(1).max(getPairingSessionResponseProjectorMessagesItemSenderNameMax),
   "senderRole": zod.enum(['owner', 'counselor']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
-})).max(getPairingSessionResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+})).max(getPairingSessionResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.'),
+  "chatMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(getPairingSessionResponseChatMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
+  "senderName": zod.string().min(1).max(getPairingSessionResponseChatMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(getPairingSessionResponseChatMessagesMax).describe('Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.'),
   "token": zod.string().min(getPairingSessionResponseTokenMin).optional()
 })
 
@@ -923,6 +971,12 @@ export const updatePairingAssignmentResponseProjectorMessagesItemSenderNameMax =
 
 export const updatePairingAssignmentResponseProjectorMessagesMax = 20;
 
+export const updatePairingAssignmentResponseChatMessagesItemTextMax = 240;
+
+export const updatePairingAssignmentResponseChatMessagesItemSenderNameMax = 60;
+
+export const updatePairingAssignmentResponseChatMessagesMax = 100;
+
 export const updatePairingAssignmentResponseTokenMin = 32;
 
 
@@ -1000,11 +1054,21 @@ export const UpdatePairingAssignmentResponse = zod.object({
   "projectorMessages": zod.array(zod.object({
   "id": zod.string().uuid(),
   "text": zod.string().min(1).max(updatePairingAssignmentResponseProjectorMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
   "senderName": zod.string().min(1).max(updatePairingAssignmentResponseProjectorMessagesItemSenderNameMax),
   "senderRole": zod.enum(['owner', 'counselor']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
-})).max(updatePairingAssignmentResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+})).max(updatePairingAssignmentResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.'),
+  "chatMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(updatePairingAssignmentResponseChatMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
+  "senderName": zod.string().min(1).max(updatePairingAssignmentResponseChatMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(updatePairingAssignmentResponseChatMessagesMax).describe('Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.'),
   "token": zod.string().min(updatePairingAssignmentResponseTokenMin).optional()
 })
 
@@ -1279,6 +1343,12 @@ export const sendPairingCommandResponseProjectorMessagesItemSenderNameMax = 60;
 
 export const sendPairingCommandResponseProjectorMessagesMax = 20;
 
+export const sendPairingCommandResponseChatMessagesItemTextMax = 240;
+
+export const sendPairingCommandResponseChatMessagesItemSenderNameMax = 60;
+
+export const sendPairingCommandResponseChatMessagesMax = 100;
+
 export const sendPairingCommandResponseTokenMin = 32;
 
 
@@ -1356,11 +1426,21 @@ export const SendPairingCommandResponse = zod.object({
   "projectorMessages": zod.array(zod.object({
   "id": zod.string().uuid(),
   "text": zod.string().min(1).max(sendPairingCommandResponseProjectorMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
   "senderName": zod.string().min(1).max(sendPairingCommandResponseProjectorMessagesItemSenderNameMax),
   "senderRole": zod.enum(['owner', 'counselor']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
-})).max(sendPairingCommandResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+})).max(sendPairingCommandResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.'),
+  "chatMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(sendPairingCommandResponseChatMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
+  "senderName": zod.string().min(1).max(sendPairingCommandResponseChatMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(sendPairingCommandResponseChatMessagesMax).describe('Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.'),
   "token": zod.string().min(sendPairingCommandResponseTokenMin).optional()
 })
 
@@ -1488,6 +1568,12 @@ export const sendPairingMessageResponseProjectorMessagesItemSenderNameMax = 60;
 
 export const sendPairingMessageResponseProjectorMessagesMax = 20;
 
+export const sendPairingMessageResponseChatMessagesItemTextMax = 240;
+
+export const sendPairingMessageResponseChatMessagesItemSenderNameMax = 60;
+
+export const sendPairingMessageResponseChatMessagesMax = 100;
+
 export const sendPairingMessageResponseTokenMin = 32;
 
 
@@ -1565,11 +1651,21 @@ export const SendPairingMessageResponse = zod.object({
   "projectorMessages": zod.array(zod.object({
   "id": zod.string().uuid(),
   "text": zod.string().min(1).max(sendPairingMessageResponseProjectorMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
   "senderName": zod.string().min(1).max(sendPairingMessageResponseProjectorMessagesItemSenderNameMax),
   "senderRole": zod.enum(['owner', 'counselor']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
-})).max(sendPairingMessageResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+})).max(sendPairingMessageResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.'),
+  "chatMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(sendPairingMessageResponseChatMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
+  "senderName": zod.string().min(1).max(sendPairingMessageResponseChatMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(sendPairingMessageResponseChatMessagesMax).describe('Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.'),
   "token": zod.string().min(sendPairingMessageResponseTokenMin).optional()
 })
 
@@ -1688,6 +1784,12 @@ export const rotatePairingCodeResponseProjectorMessagesItemSenderNameMax = 60;
 
 export const rotatePairingCodeResponseProjectorMessagesMax = 20;
 
+export const rotatePairingCodeResponseChatMessagesItemTextMax = 240;
+
+export const rotatePairingCodeResponseChatMessagesItemSenderNameMax = 60;
+
+export const rotatePairingCodeResponseChatMessagesMax = 100;
+
 export const rotatePairingCodeResponseTokenMin = 32;
 
 
@@ -1765,11 +1867,21 @@ export const RotatePairingCodeResponse = zod.object({
   "projectorMessages": zod.array(zod.object({
   "id": zod.string().uuid(),
   "text": zod.string().min(1).max(rotatePairingCodeResponseProjectorMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
   "senderName": zod.string().min(1).max(rotatePairingCodeResponseProjectorMessagesItemSenderNameMax),
   "senderRole": zod.enum(['owner', 'counselor']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
-})).max(rotatePairingCodeResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+})).max(rotatePairingCodeResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.'),
+  "chatMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(rotatePairingCodeResponseChatMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
+  "senderName": zod.string().min(1).max(rotatePairingCodeResponseChatMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(rotatePairingCodeResponseChatMessagesMax).describe('Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.'),
   "token": zod.string().min(rotatePairingCodeResponseTokenMin).optional()
 })
 
@@ -1892,6 +2004,12 @@ export const removePairingMemberResponseProjectorMessagesItemSenderNameMax = 60;
 
 export const removePairingMemberResponseProjectorMessagesMax = 20;
 
+export const removePairingMemberResponseChatMessagesItemTextMax = 240;
+
+export const removePairingMemberResponseChatMessagesItemSenderNameMax = 60;
+
+export const removePairingMemberResponseChatMessagesMax = 100;
+
 export const removePairingMemberResponseTokenMin = 32;
 
 
@@ -1969,11 +2087,21 @@ export const RemovePairingMemberResponse = zod.object({
   "projectorMessages": zod.array(zod.object({
   "id": zod.string().uuid(),
   "text": zod.string().min(1).max(removePairingMemberResponseProjectorMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
   "senderName": zod.string().min(1).max(removePairingMemberResponseProjectorMessagesItemSenderNameMax),
   "senderRole": zod.enum(['owner', 'counselor']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
-})).max(removePairingMemberResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+})).max(removePairingMemberResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.'),
+  "chatMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(removePairingMemberResponseChatMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
+  "senderName": zod.string().min(1).max(removePairingMemberResponseChatMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(removePairingMemberResponseChatMessagesMax).describe('Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.'),
   "token": zod.string().min(removePairingMemberResponseTokenMin).optional()
 })
 

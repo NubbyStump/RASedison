@@ -347,6 +347,10 @@ components:
       properties:
         id: { type: string, format: uuid }
         text: { type: string, minLength: 1, maxLength: 240 }
+        senderId:
+          type: string
+          format: uuid
+          description: Server-owned sender member ID. Absent on messages created before sender identity tracking.
         senderName: { type: string, minLength: 1, maxLength: 60 }
         senderRole: { type: string, enum: [owner, counselor] }
         createdAt: { type: string, format: date-time }
@@ -354,7 +358,7 @@ components:
     Session:
       type: object
       additionalProperties: false
-      required: [roomId, code, role, memberId, groupId, assignmentDate, version, timeZone, activitiesMonth, state, members, projectorMessages]
+      required: [roomId, code, role, memberId, groupId, assignmentDate, version, timeZone, activitiesMonth, state, members, projectorMessages, chatMessages]
       properties:
         roomId: { type: string, format: uuid }
         code: { type: string, pattern: "^[A-Za-z0-9]{10}$" }
@@ -377,7 +381,12 @@ components:
         projectorMessages:
           type: array
           maxItems: 20
-          description: Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.
+          description: Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.
+          items: { $ref: "#/components/schemas/ProjectorMessage" }
+        chatMessages:
+          type: array
+          maxItems: 100
+          description: Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.
           items: { $ref: "#/components/schemas/ProjectorMessage" }
         token: { type: string, minLength: 32 }
     PairingCreateInput:

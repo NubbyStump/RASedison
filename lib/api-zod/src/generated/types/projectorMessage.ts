@@ -14,6 +14,8 @@ export interface ProjectorMessage {
      * @maxLength 240
      */
   text: string;
+  /** Server-owned sender member ID. Absent on messages created before sender identity tracking. */
+  senderId?: string;
   /**
      * @minLength 1
      * @maxLength 60

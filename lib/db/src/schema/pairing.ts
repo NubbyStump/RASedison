@@ -16,6 +16,7 @@ export const PAIRING_DEFAULT_TIME_ZONE = "America/Los_Angeles";
 export type ProjectorMessage = {
   id: string;
   text: string;
+  senderId?: string;
   senderName: string;
   senderRole: "owner" | "counselor";
   createdAt: string;

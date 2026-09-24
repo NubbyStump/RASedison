@@ -254,6 +254,8 @@ export interface ProjectorMessage {
      * @maxLength 240
      */
   text: string;
+  /** Server-owned sender member ID. Absent on messages created before sender identity tracking. */
+  senderId?: string;
   /**
      * @minLength 1
      * @maxLength 60
@@ -301,10 +303,15 @@ export interface Session {
   state: PairingState;
   members: Member[];
   /**
-     * Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.
+     * Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.
      * @maxItems 20
      */
   projectorMessages: ProjectorMessage[];
+  /**
+     * Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.
+     * @maxItems 100
+     */
+  chatMessages: ProjectorMessage[];
   /** @minLength 32 */
   token?: string;
 }

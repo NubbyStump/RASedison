@@ -69,7 +69,7 @@ export default function MessageComposer({ open, connected, onClose, onSend }: Pr
               <MessageSquare className="w-5 h-5 text-cyan-400" /> Message the projector
             </h2>
             <p id="projector-message-description" className="mt-1 text-sm leading-relaxed text-slate-400">
-              Messages stay visible for about 20 seconds. The latest message replaces the previous one.
+              Messages stay visible for about 8 seconds. The latest message replaces the previous one.
             </p>
           </div>
           <button type="button" onClick={onClose} disabled={pending} aria-label="Close message composer" className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-50">

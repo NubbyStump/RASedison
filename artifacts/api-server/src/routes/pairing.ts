@@ -38,8 +38,9 @@ const OWNER_COMMANDS = new Set<PairingCommand["type"]>([
 ]);
 type PairingTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type PairingRoom = typeof pairingRooms.$inferSelect;
-const PROJECTOR_MESSAGE_LIFETIME_MS = 20_000;
+const PROJECTOR_MESSAGE_LIFETIME_MS = 8_000;
 const PROJECTOR_MESSAGE_LIMIT = 20;
+const CHAT_MESSAGE_LIMIT = 100;
 const PROJECTOR_MESSAGE_RATE_WINDOW_MS = 10_000;
 const PROJECTOR_MESSAGE_RATE_LIMIT = 5;
 
@@ -242,6 +243,9 @@ async function sessionFor(
     .filter((message) => Date.parse(message.expiresAt) > now)
     .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
     .slice(-PROJECTOR_MESSAGE_LIMIT);
+  const chatMessages = [...room.projectorMessages]
+    .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+    .slice(-CHAT_MESSAGE_LIMIT);
   return {
     roomId: room.id,
     code: room.code,
@@ -255,6 +259,7 @@ async function sessionFor(
     state: room.state,
     members,
     projectorMessages,
+    chatMessages,
     ...(token ? { token } : {}),
   };
 }
@@ -292,11 +297,14 @@ export async function sendProjectorMessage(
     const projectorMessages = [...room.projectorMessages, {
       id: input.id,
       text: input.text,
+      senderId: activeMember.id,
       senderName: activeMember.name,
       senderRole: activeMember.role,
       createdAt: now.toISOString(),
       expiresAt: new Date(now.getTime() + PROJECTOR_MESSAGE_LIFETIME_MS).toISOString(),
-    }].slice(-PROJECTOR_MESSAGE_LIMIT);
+    }]
+      .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+      .slice(-CHAT_MESSAGE_LIMIT);
     const [updatedRoom] = await tx.update(pairingRooms).set({
       projectorMessages,
       version: room.version + 1,

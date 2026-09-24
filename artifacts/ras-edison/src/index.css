@@ -176,6 +176,15 @@
   }
 }
 
+@keyframes projector-message-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 .projector-message-region {
   position: fixed;
   top: 6.25rem;
@@ -196,7 +205,9 @@
   color: white;
   padding: 1.25rem 1.5rem 1.4rem;
   box-shadow: 0 22px 70px rgba(0, 0, 0, .65), 0 0 40px rgba(34, 211, 238, .22);
-  animation: projector-message-in 260ms cubic-bezier(.2, .8, .2, 1) both;
+  animation:
+    projector-message-in 260ms cubic-bezier(.2, .8, .2, 1) both,
+    projector-message-out 1s linear var(--projector-fade-delay, 7s) forwards;
 }
 
 .projector-message-card p {
@@ -235,6 +246,12 @@
   .projector-message-card {
     padding: 1rem;
     border-radius: 1.15rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .projector-message-card {
+    animation: none;
   }
 }
 

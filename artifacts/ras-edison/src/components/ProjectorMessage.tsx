@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { MessageSquare } from 'lucide-react';
 import type { ProjectorMessage as ProjectorMessageData } from '../hooks/usePairing';
 
@@ -6,6 +7,27 @@ type Props = {
   roomId: string | null;
   messages: ProjectorMessageData[];
 };
+
+type MessageCardProps = {
+  message: ProjectorMessageData;
+};
+
+function MessageCard({ message }: MessageCardProps) {
+  const [firstShownAt] = useState(Date.now);
+  const fadeDelay = Math.max(0, Date.parse(message.expiresAt) - firstShownAt - 1_000);
+  const style = { '--projector-fade-delay': `${fadeDelay}ms` } as CSSProperties;
+
+  return (
+    <aside className="projector-message-card" style={style}>
+      <div className="projector-message-sender">
+        <MessageSquare className="h-5 w-5" aria-hidden="true" />
+        <span>{message.senderName}</span>
+        <span className="projector-message-role">{message.senderRole === 'owner' ? 'Program Manager' : 'Counselor'}</span>
+      </div>
+      <p>{message.text}</p>
+    </aside>
+  );
+}
 
 export default function ProjectorMessage({ roomId, messages }: Props) {
   const [now, setNow] = useState(Date.now());
@@ -31,14 +53,7 @@ export default function ProjectorMessage({ roomId, messages }: Props) {
   return (
     <div className="projector-message-region" aria-live="polite" aria-atomic="true">
       {latest && (
-        <aside key={`${roomId}-${latest.id}`} className="projector-message-card">
-          <div className="projector-message-sender">
-            <MessageSquare className="h-5 w-5" aria-hidden="true" />
-            <span>{latest.senderName}</span>
-            <span className="projector-message-role">{latest.senderRole === 'owner' ? 'Program Manager' : 'Counselor'}</span>
-          </div>
-          <p>{latest.text}</p>
-        </aside>
+        <MessageCard key={`${roomId}-${latest.id}`} message={latest} />
       )}
     </div>
   );

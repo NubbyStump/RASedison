@@ -293,26 +293,122 @@ test("projector messages attribute sender and idempotently increment room versio
   assert.equal(first.version, 2);
   assert.equal(replay.version, 2);
   assert.equal(replay.projectorMessages.length, 1);
+  assert.deepEqual(replay.chatMessages, replay.projectorMessages);
   assert.deepEqual(
     {
       id: replay.projectorMessages[0].id,
       text: replay.projectorMessages[0].text,
+      senderId: replay.projectorMessages[0].senderId,
       senderName: replay.projectorMessages[0].senderName,
       senderRole: replay.projectorMessages[0].senderRole,
     },
-    { ...input, senderName: "Ms. Edison", senderRole: "counselor" },
+    {
+      ...input,
+      senderId: counselor.id,
+      senderName: "Ms. Edison",
+      senderRole: "counselor",
+    },
   );
   assert.equal(
     Date.parse(replay.projectorMessages[0].expiresAt)
       - Date.parse(replay.projectorMessages[0].createdAt),
-    20_000,
+    8_000,
+  );
+});
+
+test("chat history retains expired messages in order while projector messages stay transient", async () => {
+  const expiredAt = new Date(Date.now() - 60_000);
+  const retained = [{
+    id: randomUUID(),
+    text: "Earlier announcement",
+    senderName: "Owner",
+    senderRole: "owner" as const,
+    createdAt: new Date(expiredAt.getTime() - 8_000).toISOString(),
+    expiresAt: expiredAt.toISOString(),
+  }];
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state: baseState(),
+    projectorMessages: retained,
+  }).returning();
+  roomIds.push(room.id);
+  const [member] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Current sender",
+    role: "counselor",
+    tokenHash: randomUUID(),
+  }).returning();
+
+  const current = await sendProjectorMessage(member, {
+    id: randomUUID(),
+    text: "Current announcement",
+  });
+
+  assert.deepEqual(current.projectorMessages.map((message) => message.text), [
+    "Current announcement",
+  ]);
+  assert.deepEqual(current.chatMessages.map((message) => message.text), [
+    "Earlier announcement",
+    "Current announcement",
+  ]);
+  assert.equal(current.chatMessages[0].senderId, undefined);
+  assert.equal(current.chatMessages[1].senderId, member.id);
+  assert.ok(Date.parse(current.chatMessages[0].expiresAt) < Date.now());
+});
+
+test("chat history is oldest-to-newest and bounded to the latest 100 messages", async () => {
+  const baseTime = Date.now() - 200_000;
+  const retained = Array.from({ length: 100 }, (_, index) => ({
+    id: randomUUID(),
+    text: `Message ${index}`,
+    senderName: "Owner",
+    senderRole: "owner" as const,
+    createdAt: new Date(baseTime + index * 1_000).toISOString(),
+    expiresAt: new Date(baseTime + index * 1_000 + 8_000).toISOString(),
+  })).reverse();
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state: baseState(),
+    projectorMessages: retained,
+  }).returning();
+  roomIds.push(room.id);
+  const [member] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Latest sender",
+    role: "owner",
+    tokenHash: randomUUID(),
+  }).returning();
+
+  const latest = await sendProjectorMessage(member, {
+    id: randomUUID(),
+    text: "Message 100",
+  });
+
+  assert.equal(latest.chatMessages.length, 100);
+  assert.equal(latest.chatMessages[0].text, "Message 1");
+  assert.equal(latest.chatMessages[99].text, "Message 100");
+  assert.equal(latest.chatMessages[99].senderId, member.id);
+  assert.deepEqual(
+    latest.chatMessages.map((message) => Date.parse(message.createdAt)),
+    [...latest.chatMessages]
+      .map((message) => Date.parse(message.createdAt))
+      .sort((left, right) => left - right),
   );
 });
 
 test("revoked member cannot send a projector message", async () => {
+  const retained = [{
+    id: randomUUID(),
+    text: "Already retained",
+    senderName: "Owner",
+    senderRole: "owner" as const,
+    createdAt: new Date(Date.now() - 16_000).toISOString(),
+    expiresAt: new Date(Date.now() - 8_000).toISOString(),
+  }];
   const [room] = await db.insert(pairingRooms).values({
     code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
     state: baseState(),
+    projectorMessages: retained,
   }).returning();
   roomIds.push(room.id);
   const [member] = await db.insert(pairingMembers).values({
@@ -328,7 +424,7 @@ test("revoked member cannot send a projector message", async () => {
   );
   const [unchanged] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
   assert.equal(unchanged.version, 1);
-  assert.deepEqual(unchanged.projectorMessages, []);
+  assert.deepEqual(unchanged.projectorMessages, retained);
 });
 
 test("concurrent commands serialize after one monthly activities rollover", async () => {

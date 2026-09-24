@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import PairingPanel from './components/PairingPanel';
 import MessageComposer from './components/MessageComposer';
 import ProjectorMessage from './components/ProjectorMessage';
+import ChatPanel from './components/ChatPanel';
 import { localCalendarDate, usePairing } from './hooks/usePairing';
 import { 
   Trophy, 
@@ -645,7 +646,7 @@ export default function App() {
                 onClick={() => setMessageComposerOpen(true)}
                 className="flex items-center gap-2 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 px-4 py-3 rounded-2xl font-bold transition border border-cyan-400/40 shadow-xl text-sm"
               >
-                <MessageSquare className="w-5 h-5 shrink-0" /> <span className="hidden sm:inline">Messages</span>
+                <MessageSquare className="w-5 h-5 shrink-0" /> <span className="hidden sm:inline">Chat / Send</span><span className="sm:hidden">Send</span>
               </button>
             )}
             <div className="hidden md:flex items-center gap-3 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 px-6 py-3 rounded-2xl font-semibold shadow-inner text-base md:text-lg">
@@ -797,16 +798,18 @@ export default function App() {
             >
               <Tv className="w-4 h-4" /> Projector
             </button>
-            {pairing.isPaired && (
-              <button
-                type="button"
-                onClick={() => setMessageComposerOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-950/50"
-                aria-label="Compose projector message"
-              >
-                <MessageSquare className="w-4 h-4" /> Messages
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('chat')}
+              className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 border ${
+                activeTab === 'chat'
+                  ? 'border-cyan-400 bg-cyan-400 text-slate-950 shadow-md'
+                  : 'border-cyan-500/30 text-cyan-300 hover:bg-cyan-950/50'
+              }`}
+              aria-label="Open room chat"
+            >
+              <MessageSquare className="w-4 h-4" /> Chat
+            </button>
           </div>
         </div>
       </header>
@@ -817,6 +820,14 @@ export default function App() {
           <div className="mb-5 bg-red-950/80 border border-red-500/50 text-red-100 px-4 py-3 rounded-2xl text-sm font-bold shadow-lg">
             Pairing error: {pairing.error}
           </div>
+        )}
+        {activeTab === 'chat' && (
+          <ChatPanel
+            session={pairing.session}
+            status={pairing.status}
+            onOpenLobby={() => setSessionModal('startup')}
+            onSend={pairing.sendMessage}
+          />
         )}
         {/* TAB 1: POINTS TRACKER */}
         {activeTab === 'scoreboard' && (

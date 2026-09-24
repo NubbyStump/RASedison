@@ -40,6 +40,15 @@ export type ProjectorMessage = {
   expiresAt: string;
 };
 
+export type ChatMessage = {
+  id: string;
+  text: string;
+  senderId?: string;
+  senderName: string;
+  senderRole: 'owner' | 'counselor';
+  createdAt: string;
+};
+
 export type PairingSession = {
   roomId: string;
   code: string;
@@ -57,6 +66,7 @@ export type PairingSession = {
     assignmentDate: string | null;
   }>;
   projectorMessages: ProjectorMessage[];
+  chatMessages: ChatMessage[];
   token?: string;
 };
 
