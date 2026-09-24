@@ -38,6 +38,7 @@ export default function PairingPanel(props: Props) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const codeRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (open && mode === 'startup') setPath('home');
@@ -66,7 +67,6 @@ export default function PairingPanel(props: Props) {
     }
   };
 
-  const codeRef = useRef<HTMLElement>(null);
   const handleCopyCode = async () => {
     if (!session) return;
     if (navigator.clipboard && window.isSecureContext) {
