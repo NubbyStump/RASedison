@@ -1,5 +1,7 @@
 // @ts-nocheck
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import PairingPanel from './components/PairingPanel';
+import { localCalendarDate, usePairing } from './hooks/usePairing';
 import { 
   Trophy, 
   Sparkles, 
@@ -18,13 +20,11 @@ import {
   ShieldAlert,
   Medal,
   CheckCircle2,
-  Share2,
-  Copy,
-  Download,
-  Upload,
   FileText,
   School,
-  ChevronRight
+  ChevronRight,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 
 const formatLapTime = (minutes, seconds, ms) => {
@@ -54,10 +54,11 @@ const scramblePhrase = (phrase) => {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('scoreboard'); // 'scoreboard', 'generator', 'fastest_lap', 'projector', 'sync'
+  const [activeTab, setActiveTab] = useState('scoreboard');
+  const [sessionModal, setSessionModal] = useState('startup');
 
   // Persistent Group Scores State
-  const [groups, setGroups] = useState(() => {
+  const [localGroups, setLocalGroups] = useState(() => {
     const saved = localStorage.getItem('ras_edison_groups_v5');
     return saved ? JSON.parse(saved) : [
       { id: 'ladybugs', name: 'Ladybugs', score: 0, color: 'from-rose-500 to-red-600', badgeColor: 'bg-rose-500', icon: '🐞' },
@@ -67,19 +68,20 @@ export default function App() {
   });
 
   const [reasonInput, setReasonInput] = useState({ ladybugs: '', jellyfish: '', tigers: '' });
+  const [reasonErrors, setReasonErrors] = useState({});
   
   // Persistent Logs & Records State
-  const [history, setHistory] = useState(() => {
+  const [localHistory, setLocalHistory] = useState(() => {
     const saved = localStorage.getItem('ras_edison_history_v5');
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [monthlyRecords, setMonthlyRecords] = useState(() => {
+  const [localMonthlyRecords, setLocalMonthlyRecords] = useState(() => {
     const saved = localStorage.getItem('ras_edison_monthly_v5');
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [lapRecords, setLapRecords] = useState(() => {
+  const [localLapRecords, setLocalLapRecords] = useState(() => {
     const saved = localStorage.getItem('ras_edison_lap_v5');
     return saved ? JSON.parse(saved) : [];
   });
@@ -91,10 +93,12 @@ export default function App() {
     seconds: '',
     ms: '00',
     courseName: 'Edison Gym Lap',
-    date: new Date().toISOString().split('T')[0]
+    date: localCalendarDate()
   });
+  const lapSubmittingRef = useRef(false);
+  const [lapSubmitting, setLapSubmitting] = useState(false);
 
-  const [activities, setActivities] = useState(() => {
+  const [localActivities, setLocalActivities] = useState(() => {
     const saved = localStorage.getItem('ras_edison_activities_v5');
     if (!saved) return [];
 
@@ -118,12 +122,7 @@ export default function App() {
 
   const [filterType, setFilterType] = useState('Either');
   const [filterLocation, setFilterLocation] = useState('Either');
-  const [currentActivity, setCurrentActivity] = useState(null);
-
-  // Sync state
-  const [syncCode, setSyncCode] = useState('');
-  const [importCodeInput, setImportCodeInput] = useState('');
-  const [syncStatus, setSyncStatus] = useState('');
+  const [currentActivity, setCurrentActivity] = useState(() => localActivities[0] || null);
 
   // Custom Activity Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -131,25 +130,154 @@ export default function App() {
     phrase: '',
     points: 600
   });
+  const activitySubmittingRef = useRef(false);
+  const [activitySubmitting, setActivitySubmitting] = useState(false);
+
+  const pairing = usePairing();
+  const isLiveOwner = pairing.session?.role === 'owner';
+  const canManageActivities = !pairing.isPaired || isLiveOwner;
+  const groups = pairing.session?.state.groups ?? localGroups;
+  const ledGroup = pairing.currentGroupId
+    ? groups.find((group) => group.id === pairing.currentGroupId) || null
+    : null;
+  const pointsGroups = ledGroup
+    ? [ledGroup, ...groups.filter((group) => group.id !== ledGroup.id)]
+    : groups;
+  const history = pairing.session?.state.history ?? localHistory;
+  const monthlyRecords = pairing.session?.state.monthlyRecords ?? localMonthlyRecords;
+  const lapRecords = pairing.session?.state.lapRecords ?? localLapRecords;
+  const activities = pairing.session?.state.activities ?? localActivities;
+  const localSnapshot = () => ({
+    groups: localGroups,
+    history: localHistory,
+    lapRecords: localLapRecords,
+    monthlyRecords: localMonthlyRecords,
+    activities: localActivities
+  });
+
+  const saveLocalBackup = () => {
+    localStorage.setItem('ras_edison_pairing_backup_v1', JSON.stringify(localSnapshot()));
+  };
+
+  const handleCreatePairing = async (name, password) => {
+    saveLocalBackup();
+    try {
+      await pairing.create(name, password, localSnapshot());
+      setSessionModal(null);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleJoinPairing = async (name, code, password, groupId) => {
+    saveLocalBackup();
+    try {
+      await pairing.join(name, code, password, groupId);
+      setSessionModal(null);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const restoreLocalBackup = () => {
+    const rawBackup = localStorage.getItem('ras_edison_pairing_backup_v1');
+    if (rawBackup) {
+      try {
+        const backup = JSON.parse(rawBackup);
+        if (Array.isArray(backup.groups)) setLocalGroups(backup.groups);
+        if (Array.isArray(backup.history)) setLocalHistory(backup.history);
+        if (Array.isArray(backup.lapRecords)) setLocalLapRecords(backup.lapRecords);
+        if (Array.isArray(backup.monthlyRecords)) setLocalMonthlyRecords(backup.monthlyRecords);
+        if (Array.isArray(backup.activities)) setLocalActivities(backup.activities);
+      } finally {
+        localStorage.removeItem('ras_edison_pairing_backup_v1');
+      }
+    }
+  };
+
+  const handleLeavePairing = async () => {
+    try {
+      await pairing.leave();
+    } catch {
+      return;
+    }
+    restoreLocalBackup();
+    setSessionModal(null);
+  };
+
+  const handleEndPairing = async () => {
+    try {
+      await pairing.end();
+    } catch {
+      return;
+    }
+    restoreLocalBackup();
+    setSessionModal('startup');
+  };
+
+  const handleContinueOffline = async () => {
+    if (pairing.isPaired) {
+      if (!window.confirm('Leave the live session and continue with this device’s restored offline data?')) return;
+      await handleLeavePairing();
+      return;
+    }
+    setSessionModal(null);
+  };
+
+  const handleUpdateAssignment = async (groupId) => {
+    try {
+      await pairing.updateAssignment(groupId);
+    } catch {}
+  };
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_groups_v5', JSON.stringify(groups));
-  }, [groups]);
+    if (pairing.needsDailyAssignment) setSessionModal('controls');
+  }, [pairing.needsDailyAssignment]);
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_history_v5', JSON.stringify(history));
-  }, [history]);
+    if (!pairing.isPaired && pairing.error) setSessionModal('startup');
+  }, [pairing.isPaired, pairing.error]);
+
+  const lapDefaultGroupRef = useRef('Ladybugs');
+  useEffect(() => {
+    const nextDefault = ledGroup?.name || 'Ladybugs';
+    const previousDefault = lapDefaultGroupRef.current;
+    setNewLap((current) => (
+      current.group === previousDefault
+        ? { ...current, group: nextDefault }
+        : current
+    ));
+    lapDefaultGroupRef.current = nextDefault;
+  }, [ledGroup?.id, ledGroup?.name]);
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_monthly_v5', JSON.stringify(monthlyRecords));
-  }, [monthlyRecords]);
+    localStorage.setItem('ras_edison_groups_v5', JSON.stringify(localGroups));
+  }, [localGroups]);
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_lap_v5', JSON.stringify(lapRecords));
-  }, [lapRecords]);
+    localStorage.setItem('ras_edison_history_v5', JSON.stringify(localHistory));
+  }, [localHistory]);
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_activities_v5', JSON.stringify(activities));
+    localStorage.setItem('ras_edison_monthly_v5', JSON.stringify(localMonthlyRecords));
+  }, [localMonthlyRecords]);
+
+  useEffect(() => {
+    localStorage.setItem('ras_edison_lap_v5', JSON.stringify(localLapRecords));
+  }, [localLapRecords]);
+
+  useEffect(() => {
+    localStorage.setItem('ras_edison_activities_v5', JSON.stringify(localActivities));
+  }, [localActivities]);
+
+  useEffect(() => {
+    setCurrentActivity((current) => {
+      if (activities.length === 0) return null;
+      if (!current) return activities[0];
+      return activities.find((activity) => activity.id === current.id) || activities[0];
+    });
   }, [activities]);
 
   // Calculation Helpers
@@ -172,11 +300,26 @@ export default function App() {
   const leaders = groups.filter(g => g.score === maxScore && maxScore > 0);
   const leadingNames = leaders.map(l => l.name);
 
-  const handleAddPoints = (groupId, amount) => {
-    const reason = reasonInput[groupId]?.trim() || (amount > 0 ? 'Behavior / Task Reward' : 'Adjustment');
+  const handleAddPoints = async (groupId, amount) => {
+    const enteredReason = reasonInput[groupId]?.trim();
+    if (pairing.session?.role === 'counselor' && amount > 0 && !enteredReason) {
+      setReasonErrors(prev => ({ ...prev, [groupId]: 'Enter a reason before adding points.' }));
+      document.getElementById(`points-reason-${groupId}`)?.focus();
+      return;
+    }
+    setReasonErrors(prev => ({ ...prev, [groupId]: '' }));
+    const reason = enteredReason || (amount > 0 ? 'Behavior / Task Reward' : 'Adjustment');
     const targetGroup = groups.find(g => g.id === groupId);
 
-    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, score: Math.max(0, g.score + amount) } : g));
+    if (pairing.isPaired) {
+      try {
+        await pairing.command({ type: 'addPoints', payload: { groupId, amount, reason } });
+        setReasonInput(prev => ({ ...prev, [groupId]: '' }));
+      } catch {}
+      return;
+    }
+
+    setLocalGroups(prev => prev.map(g => g.id === groupId ? { ...g, score: Math.max(0, g.score + amount) } : g));
 
     const newLog = {
       id: Date.now().toString(),
@@ -187,25 +330,38 @@ export default function App() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setHistory(prev => [newLog, ...prev.slice(0, 35)]);
+    setLocalHistory(prev => [newLog, ...prev.slice(0, 35)]);
     setReasonInput(prev => ({ ...prev, [groupId]: '' }));
   };
 
-  const handleUndo = (logId) => {
+  const handleUndo = async (logId) => {
     const itemToUndo = history.find(h => h.id === logId);
     if (!itemToUndo) return;
 
-    setGroups(prev => prev.map(g => {
+    if (pairing.isPaired) {
+      try {
+        await pairing.command({ type: 'undo', payload: { logId } });
+      } catch {}
+      return;
+    }
+
+    setLocalGroups(prev => prev.map(g => {
       if (g.id === itemToUndo.groupId) {
         return { ...g, score: Math.max(0, g.score - itemToUndo.amount) };
       }
       return g;
     }));
 
-    setHistory(prev => prev.filter(h => h.id !== logId));
+    setLocalHistory(prev => prev.filter(h => h.id !== logId));
   };
 
-  const handleResetMonth = () => {
+  const handleResetMonth = async () => {
+    if (pairing.isPaired) {
+      try {
+        await pairing.command({ type: 'resetMonth', payload: { month: currentMonthName } });
+      } catch {}
+      return;
+    }
     const winners = groups.filter(g => g.score === maxScore && maxScore > 0).map(g => g.name);
     
     const newRecord = {
@@ -216,14 +372,15 @@ export default function App() {
       rewardClaimed: false
     };
 
-    setMonthlyRecords(prev => [newRecord, ...prev]);
-    setGroups(prev => prev.map(g => ({ ...g, score: 0 })));
-    setHistory([]);
+    setLocalMonthlyRecords(prev => [newRecord, ...prev]);
+    setLocalGroups(prev => prev.map(g => ({ ...g, score: 0 })));
+    setLocalHistory([]);
   };
 
-  const handleSaveLap = (e) => {
+  const handleSaveLap = async (e) => {
     e.preventDefault();
     if (!newLap.runnerName || !newLap.seconds) return;
+    if (pairing.isPaired && lapSubmittingRef.current) return;
 
     const m = parseInt(newLap.minutes) || 0;
     const s = parseInt(newLap.seconds) || 0;
@@ -242,24 +399,43 @@ export default function App() {
       timeFormatted: formatted,
       totalSeconds: totalSecs,
       courseName: newLap.courseName.trim() || 'Edison Gym Lap',
-      date: newLap.date || new Date().toISOString().split('T')[0],
+      date: newLap.date || localCalendarDate(),
       monthYear: currentMonthName
     };
 
-    setLapRecords(prev => [record, ...prev]);
+    if (pairing.isPaired) {
+      lapSubmittingRef.current = true;
+      setLapSubmitting(true);
+      try {
+        await pairing.command({ type: 'saveLap', payload: { record } });
+      } catch {
+        return;
+      } finally {
+        lapSubmittingRef.current = false;
+        setLapSubmitting(false);
+      }
+    } else {
+      setLocalLapRecords(prev => [record, ...prev]);
+    }
     setNewLap({
       runnerName: '',
-      group: 'Ladybugs',
+      group: ledGroup?.name || 'Ladybugs',
       minutes: '0',
       seconds: '',
       ms: '00',
       courseName: 'Edison Gym Lap',
-      date: new Date().toISOString().split('T')[0]
+      date: localCalendarDate()
     });
   };
 
-  const handleDeleteLap = (id) => {
-    setLapRecords(prev => prev.filter(r => r.id !== id));
+  const handleDeleteLap = async (id) => {
+    if (pairing.isPaired) {
+      try {
+        await pairing.command({ type: 'deleteLap', payload: { id } });
+      } catch {}
+      return;
+    }
+    setLocalLapRecords(prev => prev.filter(r => r.id !== id));
   };
 
   const getRandomActivity = () => {
@@ -277,30 +453,38 @@ export default function App() {
     setCurrentActivity(filtered[randomIndex]);
   };
 
-  const handleDeleteActivity = (activityId) => {
+  const handleDeleteActivity = async (activityId) => {
     const activityToDelete = activities.find(activity => activity.id === activityId);
     if (!activityToDelete) return;
     if (!window.confirm(`Delete "${activityToDelete.title}"?`)) return;
 
-    const remainingActivities = activities.filter(activity => activity.id !== activityId);
-    setActivities(remainingActivities);
-    setCurrentActivity((current) =>
-      current?.id === activityId ? remainingActivities[0] || null : current
-    );
+    if (pairing.isPaired) {
+      try {
+        await pairing.command({ type: 'deleteActivity', payload: { id: activityId } });
+      } catch {}
+      return;
+    }
+    setLocalActivities(prev => prev.filter(activity => activity.id !== activityId));
   };
 
-  const handleClearActivities = () => {
+  const handleClearActivities = async () => {
     if (activities.length === 0) return;
     if (!window.confirm('Clear all missions and super scrambles? This cannot be undone.')) return;
 
-    setActivities([]);
-    setCurrentActivity(null);
+    if (pairing.isPaired) {
+      try {
+        await pairing.command({ type: 'clearActivities', payload: {} });
+      } catch {}
+      return;
+    }
+    setLocalActivities([]);
   };
 
-  const handleSaveCustomActivity = (e) => {
+  const handleSaveCustomActivity = async (e) => {
     e.preventDefault();
     const phrase = newActivity.phrase?.trim();
     if (!phrase) return;
+    if (pairing.isPaired && activitySubmittingRef.current) return;
 
     const created = {
       id: Date.now().toString(),
@@ -318,53 +502,57 @@ export default function App() {
       safety: ''
     };
 
-    setActivities(prev => [created, ...prev]);
-    setCurrentActivity(created);
+    if (pairing.isPaired) {
+      activitySubmittingRef.current = true;
+      setActivitySubmitting(true);
+      try {
+        const nextSession = await pairing.command({ type: 'addActivity', payload: { activity: created } });
+        const savedActivity = nextSession.state.activities.find((activity) =>
+          activity.title === created.title &&
+          activity.solvedPhrase === created.solvedPhrase &&
+          activity.scrambledPhrase === created.scrambledPhrase
+        ) || nextSession.state.activities[0];
+        setCurrentActivity(savedActivity || null);
+      } catch {
+        return;
+      } finally {
+        activitySubmittingRef.current = false;
+        setActivitySubmitting(false);
+      }
+    } else {
+      setLocalActivities(prev => [created, ...prev]);
+      setCurrentActivity(created);
+    }
     setShowAddModal(false);
     setNewActivity({ phrase: '', points: 600 });
   };
 
-  const generateExportCode = () => {
-    const bundle = {
-      groups,
-      history,
-      lapRecords,
-      monthlyRecords,
-      activities,
-      exportedAt: new Date().toISOString()
-    };
-    try {
-      const jsonString = JSON.stringify(bundle);
-      const encoded = btoa(unescape(encodeURIComponent(jsonString)));
-      setSyncCode(encoded);
-      setSyncStatus('Sync Code Generated! Copy and text this to counselors.');
-    } catch (err) {
-      setSyncStatus('Error generating sync code.');
-    }
-  };
-
-  const handleImportSyncCode = () => {
-    if (!importCodeInput.trim()) return;
-    try {
-      const decodedString = decodeURIComponent(escape(atob(importCodeInput.trim())));
-      const parsed = JSON.parse(decodedString);
-
-      if (parsed.groups) setGroups(parsed.groups);
-      if (parsed.history) setHistory(parsed.history);
-      if (parsed.lapRecords) setLapRecords(parsed.lapRecords);
-      if (parsed.monthlyRecords) setMonthlyRecords(parsed.monthlyRecords);
-      if (parsed.activities) setActivities(parsed.activities);
-
-      setSyncStatus('✅ Edison App State Imported Successfully!');
-      setImportCodeInput('');
-    } catch (err) {
-      setSyncStatus('❌ Invalid sync code. Please verify the code.');
-    }
-  };
 
   if (activeTab === 'projector') {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-6 md:p-10 font-sans relative overflow-hidden select-none">
+        <PairingPanel
+          open={Boolean(sessionModal)}
+          mode={sessionModal === 'controls' ? 'controls' : 'startup'}
+          session={pairing.session}
+          status={pairing.status}
+          error={pairing.error}
+          busy={pairing.busy}
+          today={pairing.today}
+          needsDailyAssignment={pairing.needsDailyAssignment}
+          onClose={() => setSessionModal(null)}
+          onOffline={handleContinueOffline}
+          onCreate={handleCreatePairing}
+          onJoin={handleJoinPairing}
+          onUpdateAssignment={handleUpdateAssignment}
+          onLeave={handleLeavePairing}
+          onEnd={handleEndPairing}
+        />
+        {pairing.error && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-xl bg-red-950 border border-red-500/60 text-red-100 px-4 py-3 rounded-xl text-sm font-bold shadow-2xl">
+            Pairing error: {pairing.error}
+          </div>
+        )}
         {/* Slime Ambient Glow Backgrounds */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-emerald-500/10 blur-[200px] rounded-full pointer-events-none" />
         <div className="absolute bottom-10 right-10 w-[600px] h-[600px] bg-amber-500/10 blur-[180px] rounded-full pointer-events-none" />
@@ -472,8 +660,8 @@ export default function App() {
       <header className="bg-slate-800/90 backdrop-blur border-b border-slate-700/80 sticky top-0 z-30 px-4 py-3">
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-green-400 flex items-center justify-center shadow-lg text-slate-950 font-black text-2xl shrink-0">
-              🧪
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-green-400 flex items-center justify-center shadow-lg text-slate-950 shrink-0">
+              <svg viewBox="0 0 64 64" role="img" aria-label="Edison eagle" className="w-8 h-8 fill-current"><path d="M57 14c-9 1-16 5-21 11-4-7-11-12-22-14 3 5 7 9 12 12-6-1-12-1-19 1 7 6 14 10 22 11-4 5-8 10-10 17l13-9 13 9c-2-7-5-12-9-17 9-2 16-7 21-14-6 0-12 1-17 3 6-3 12-6 17-10Z"/><circle cx="38" cy="25" r="2.5" className="fill-slate-900"/></svg>
             </div>
             <div>
               {/* Explicit School Title Header */}
@@ -513,12 +701,12 @@ export default function App() {
               <Timer className="w-4 h-4" /> Laps
             </button>
             <button
-              onClick={() => setActiveTab('sync')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
-                activeTab === 'sync' ? 'bg-purple-500 text-white shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={() => setSessionModal(pairing.isPaired ? 'controls' : 'startup')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs md:text-sm transition shrink-0 border ${pairing.isPaired ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40' : 'text-slate-400 border-slate-700 hover:text-white'}`}
+              aria-label="Open live session controls"
             >
-              <Share2 className="w-4 h-4" /> Sync
+              {pairing.isPaired ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+              {pairing.isPaired ? (pairing.status === 'connected' ? 'Live' : pairing.status === 'connecting' ? 'Connecting' : 'Reconnecting') : 'Offline'}
             </button>
             <button
               onClick={() => setActiveTab('projector')}
@@ -532,9 +720,23 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="max-w-6xl mx-auto w-full px-4 pt-6 flex-1">
+        {pairing.error && (
+          <div className="mb-5 bg-red-950/80 border border-red-500/50 text-red-100 px-4 py-3 rounded-2xl text-sm font-bold shadow-lg">
+            Pairing error: {pairing.error}
+          </div>
+        )}
         {/* TAB 1: POINTS TRACKER */}
         {activeTab === 'scoreboard' && (
           <div className="space-y-6">
+            {ledGroup && (
+              <div data-testid="banner-my-group" className="bg-cyan-500/10 border border-cyan-400/40 rounded-2xl px-5 py-3 flex items-center gap-3">
+                <span className="text-2xl">{ledGroup.icon}</span>
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-widest text-cyan-300">Your Assigned Group</div>
+                  <div className="font-black text-white">{ledGroup.name} — personalized view</div>
+                </div>
+              </div>
+            )}
             {/* Status Leader Banner */}
             <div className="bg-gradient-to-r from-slate-800 via-slate-800 to-slate-800/90 border border-slate-700/80 rounded-3xl p-5 shadow-xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -567,15 +769,23 @@ export default function App() {
 
             {/* Score Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {groups.map((group) => {
+              {pointsGroups.map((group) => {
                 const isLeading = group.score === maxScore && maxScore > 0;
+                const isMyGroup = group.id === ledGroup?.id;
                 return (
                   <div 
                     key={group.id} 
                     className={`bg-slate-800/90 rounded-3xl p-5 border transition-all duration-300 relative flex flex-col justify-between shadow-lg ${
-                      isLeading ? 'border-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.2)] ring-2 ring-emerald-400/20' : 'border-slate-700/70'
+                      isMyGroup
+                        ? 'border-cyan-400/90 shadow-[0_0_35px_rgba(34,211,238,0.22)] ring-2 ring-cyan-400/30'
+                        : isLeading ? 'border-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.2)] ring-2 ring-emerald-400/20' : 'border-slate-700/70'
                     }`}
                   >
+                    {isMyGroup && (
+                      <div className="absolute -top-3.5 left-4 bg-cyan-400 text-slate-950 font-black text-xs px-3 py-1 rounded-full shadow-md uppercase tracking-wider">
+                        Your Assigned Group
+                      </div>
+                    )}
                     {isLeading && (
                       <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-emerald-400 text-slate-950 font-black text-xs px-4 py-1 rounded-full shadow-md flex items-center gap-1.5 uppercase tracking-wider">
                         <Flame className="w-3.5 h-3.5 fill-current" /> Slime Leader
@@ -600,15 +810,30 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Optional Reason Input */}
+                      {/* Point reason */}
                       <div className="mb-4">
+                        <label htmlFor={`points-reason-${group.id}`} className="block text-xs text-slate-300 mb-1">
+                          {pairing.session?.role === 'counselor' ? 'Reason (required to add points)' : 'Reason (optional)'}
+                        </label>
                         <input
+                          id={`points-reason-${group.id}`}
                           type="text"
+                          maxLength={500}
+                          aria-invalid={Boolean(reasonErrors[group.id])}
+                          aria-describedby={reasonErrors[group.id] ? `points-reason-error-${group.id}` : undefined}
                           placeholder="Reason (e.g. Quietest line)..."
                           value={reasonInput[group.id]}
-                          onChange={(e) => setReasonInput({ ...reasonInput, [group.id]: e.target.value })}
+                          onChange={(e) => {
+                            setReasonInput({ ...reasonInput, [group.id]: e.target.value });
+                            setReasonErrors(prev => ({ ...prev, [group.id]: '' }));
+                          }}
                           className="w-full bg-slate-900/80 border border-slate-700 text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
                         />
+                        {reasonErrors[group.id] && (
+                          <p id={`points-reason-error-${group.id}`} role="alert" className="text-xs text-red-300 mt-1">
+                            {reasonErrors[group.id]}
+                          </p>
+                        )}
                       </div>
 
                       {/* Point Action Buttons in Hundreds Range */}
@@ -737,12 +962,19 @@ export default function App() {
                             <span className="text-emerald-400">Winner: {rec.winner}</span>
                           </div>
                           <div className="text-slate-400 text-[11px] mb-2">{rec.scores}</div>
-                          <label className="flex items-center gap-2 text-slate-300 font-semibold cursor-pointer">
+                            <label className={`flex items-center gap-2 text-slate-300 font-semibold ${pairing.isPaired && !isLiveOwner ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                             <input
                               type="checkbox"
                               checked={rec.rewardClaimed}
-                              onChange={() => {
-                                setMonthlyRecords(prev => prev.map(r => r.id === rec.id ? { ...r, rewardClaimed: !r.rewardClaimed } : r));
+                                disabled={pairing.isPaired && !isLiveOwner}
+                              onChange={async () => {
+                                if (pairing.isPaired) {
+                                  try {
+                                    await pairing.command({ type: 'toggleReward', payload: { id: rec.id } });
+                                  } catch {}
+                                } else {
+                                  setLocalMonthlyRecords(prev => prev.map(r => r.id === rec.id ? { ...r, rewardClaimed: !r.rewardClaimed } : r));
+                                }
                               }}
                               className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500"
                             />
@@ -754,12 +986,14 @@ export default function App() {
                   </div>
                 </div>
 
-                <button
-                  onClick={handleResetMonth}
-                  className="w-full bg-slate-900 hover:bg-red-950/40 text-red-400 hover:text-red-300 border border-slate-700 hover:border-red-500/40 rounded-2xl py-3 text-xs font-extrabold transition flex items-center justify-center gap-2"
-                >
-                  <RotateCcw className="w-4 h-4" /> Reset Scores For New Month
-                </button>
+                {(!pairing.isPaired || isLiveOwner) && (
+                  <button
+                    onClick={handleResetMonth}
+                    className="w-full bg-slate-900 hover:bg-red-950/40 text-red-400 hover:text-red-300 border border-slate-700 hover:border-red-500/40 rounded-2xl py-3 text-xs font-extrabold transition flex items-center justify-center gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" /> Reset Scores For New Month
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -794,7 +1028,7 @@ export default function App() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                {canManageActivities && <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition flex items-center gap-2 shadow-md"
@@ -808,7 +1042,7 @@ export default function App() {
                   >
                     <Trash2 className="w-4 h-4" /> Clear All
                   </button>
-                </div>
+                </div>}
               </div>
 
               {/* Filters */}
@@ -866,13 +1100,13 @@ export default function App() {
                       <div className="bg-emerald-500 text-slate-950 font-black px-4 py-1.5 rounded-xl text-sm shadow-md">
                         🏆 Worth {currentActivity.points || 600} Points
                       </div>
-                      <button
+                      {canManageActivities && <button
                         type="button"
                         onClick={() => handleDeleteActivity(currentActivity.id)}
                         className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 px-3 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Delete
-                      </button>
+                      </button>}
                     </div>
                   </div>
 
@@ -930,13 +1164,13 @@ export default function App() {
                   <Trash2 className="w-8 h-8 text-slate-500 mx-auto mb-3" />
                   <h3 className="text-lg font-black text-white">No missions or super scrambles yet</h3>
                   <p className="text-sm text-slate-400 mt-1 mb-5">Add a custom activity to start building your library again.</p>
-                  <button
+                  {canManageActivities && <button
                     type="button"
                     onClick={() => setShowAddModal(true)}
                     className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition inline-flex items-center gap-2"
                   >
                     <PlusCircle className="w-4 h-4" /> Add Activity
-                  </button>
+                  </button>}
                 </div>
               )}
             </div>
@@ -1050,7 +1284,8 @@ export default function App() {
 
                   <button
                     type="submit"
-                    className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black py-3 rounded-xl text-sm transition shadow-lg active:scale-95"
+                    disabled={pairing.isPaired && lapSubmitting}
+                    className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black py-3 rounded-xl text-sm transition shadow-lg active:scale-95"
                   >
                     Save Lap Record
                   </button>
@@ -1124,90 +1359,25 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: COUNSELOR SYNC & SHARE */}
-        {activeTab === 'sync' && (
-          <div className="space-y-6 max-w-3xl mx-auto">
-            <div className="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/80 shadow-lg space-y-6">
-              <div>
-                <h2 className="text-2xl font-black text-white flex items-center gap-2">
-                  <Share2 className="w-6 h-6 text-purple-400" /> Share Data with Counselors
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Sync points, custom scrambles, and lap times across Edison Language Academy counselor iPhones.
-                </p>
-              </div>
-
-              {/* Export Section */}
-              <div className="bg-slate-900 p-5 rounded-2xl border border-slate-700/60 space-y-3">
-                <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                  <Download className="w-4 h-4 text-purple-400" /> 1. Export Data from Lead Phone
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Generate a Sync Code containing current scores, logs, and custom scrambles to send to another counselor.
-                </p>
-
-                <button
-                  onClick={generateExportCode}
-                  className="bg-purple-600 hover:bg-purple-500 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-2 shadow-md"
-                >
-                  Generate Edison Sync Code
-                </button>
-
-                {syncCode && (
-                  <div className="mt-3 space-y-2">
-                    <textarea
-                      readOnly
-                      rows={3}
-                      value={syncCode}
-                      className="w-full bg-slate-950 border border-slate-800 text-[10px] text-purple-300 font-mono p-3 rounded-xl focus:outline-none select-all"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(syncCode);
-                        setSyncStatus('Copied to clipboard!');
-                      }}
-                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-                    >
-                      <Copy className="w-3.5 h-3.5" /> Copy Sync Code
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Import Section */}
-              <div className="bg-slate-900 p-5 rounded-2xl border border-slate-700/60 space-y-3">
-                <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                  <Upload className="w-4 h-4 text-emerald-400" /> 2. Import Data onto Counselor Phone
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Paste the Sync Code generated from the lead phone to update scores.
-                </p>
-
-                <textarea
-                  rows={3}
-                  placeholder="Paste Sync Code here..."
-                  value={importCodeInput}
-                  onChange={(e) => setImportCodeInput(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 text-[10px] text-emerald-300 font-mono p-3 rounded-xl focus:outline-none"
-                />
-
-                <button
-                  onClick={handleImportSyncCode}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs transition shadow-md"
-                >
-                  Import Sync Data
-                </button>
-              </div>
-
-              {syncStatus && (
-                <div className="bg-purple-950/40 border border-purple-500/40 text-purple-200 text-xs p-3 rounded-xl font-bold text-center">
-                  {syncStatus}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </main>
+
+      <PairingPanel
+        open={Boolean(sessionModal)}
+        mode={sessionModal === 'controls' ? 'controls' : 'startup'}
+        session={pairing.session}
+        status={pairing.status}
+        error={pairing.error}
+        busy={pairing.busy}
+        today={pairing.today}
+        needsDailyAssignment={pairing.needsDailyAssignment}
+        onClose={() => setSessionModal(null)}
+        onOffline={handleContinueOffline}
+        onCreate={handleCreatePairing}
+        onJoin={handleJoinPairing}
+        onUpdateAssignment={handleUpdateAssignment}
+        onLeave={handleLeavePairing}
+        onEnd={handleEndPairing}
+      />
 
       {/* Modal: Add Custom Scramble or Mission */}
       {showAddModal && (
@@ -1229,7 +1399,7 @@ export default function App() {
                   autoFocus
                   placeholder="e.g. Teamwork makes us stronger"
                   value={newActivity.phrase}
-                  onChange={(e) => setNewActivity({ phrase: e.target.value })}
+                  onChange={(e) => setNewActivity({ ...newActivity, phrase: e.target.value })}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
                 />
               </div>
@@ -1263,7 +1433,8 @@ export default function App() {
                 </button>
                 <button
                   type="submit"
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition"
+                  disabled={pairing.isPaired && activitySubmitting}
+                  className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition"
                 >
                   Create Scramble
                 </button>

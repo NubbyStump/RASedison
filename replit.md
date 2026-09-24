@@ -1,6 +1,6 @@
-# [Project name]
+# RAS-Edison
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An after-school group scoreboard, scramble library, and lap tracker for Edison Language Academy counselors.
 
 ## Run & Operate
 
@@ -26,7 +26,9 @@ _Populate as you build — short repo map plus pointers to the source-of-truth f
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Pairing is trusted counselor collaboration, not individual student login. Rooms require a code and a host-created password/PIN. Counselors can edit scores and laps; only the Program Manager can administer monthly archives and scrambles. This supersedes the earlier equal-editor model at the user's request.
+- Shared edits are commands applied to the latest server state, never whole-client snapshot replacements. This avoids losing concurrent counselor edits.
+- Unpaired local data stays separate from shared rooms. Joining must not erase that data; disconnecting returns to the device's original local data.
 
 ## Product
 

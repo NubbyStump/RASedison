@@ -121,6 +121,10 @@
   button {
     cursor: pointer;
   }
+
+  .field {
+    @apply w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-3 text-sm text-white focus:outline-none focus:border-emerald-400 disabled:opacity-50;
+  }
 }
 
 @keyframes rise-in {

@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+export type ToggleRewardCommandPayload = {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  id: string;
+};

@@ -5,7 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LapRecord } from './lapRecord';
 
-export interface HealthStatus {
-  status: string;
-}
+export type SaveLapCommandPayload = {
+  record: LapRecord;
+};
