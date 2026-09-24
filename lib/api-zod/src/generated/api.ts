@@ -115,6 +115,14 @@ export const createPairingBodyStateActivitiesItemSafetyMax = 5000;
 
 export const createPairingBodyStateActivitiesMax = 10000;
 
+export const createPairingBodyStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const createPairingBodyStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const createPairingBodyStatePendingPointApprovalsItemReasonMax = 500;
+
+export const createPairingBodyStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const createPairingBodyGroupIdMax = 80;
 
 export const createPairingBodyAssignmentDateRegExp = new RegExp('^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$');
@@ -174,7 +182,20 @@ export const CreatePairingBody = zod.object({
   "steps": zod.string().max(createPairingBodyStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(createPairingBodyStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(createPairingBodyStateActivitiesItemSafetyMax).optional()
-})).max(createPairingBodyStateActivitiesMax)
+})).max(createPairingBodyStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(createPairingBodyStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(createPairingBodyStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(createPairingBodyStatePendingPointApprovalsItemReasonMax),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(createPairingBodyStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "groupId": zod.string().min(1).max(createPairingBodyGroupIdMax).nullable(),
   "assignmentDate": zod.string().regex(createPairingBodyAssignmentDateRegExp)
@@ -283,6 +304,14 @@ export const createPairingResponseStateActivitiesItemSafetyMax = 5000;
 
 export const createPairingResponseStateActivitiesMax = 10000;
 
+export const createPairingResponseStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const createPairingResponseStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const createPairingResponseStatePendingPointApprovalsItemReasonMax = 500;
+
+export const createPairingResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const createPairingResponseMembersItemNameMax = 60;
 
 export const createPairingResponseMembersItemGroupIdMax = 80;
@@ -365,7 +394,20 @@ export const CreatePairingResponse = zod.object({
   "steps": zod.string().max(createPairingResponseStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(createPairingResponseStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(createPairingResponseStateActivitiesItemSafetyMax).optional()
-})).max(createPairingResponseStateActivitiesMax)
+})).max(createPairingResponseStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(createPairingResponseStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(createPairingResponseStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(createPairingResponseStatePendingPointApprovalsItemReasonMax),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(createPairingResponseStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "members": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -518,6 +560,14 @@ export const joinPairingResponseStateActivitiesItemSafetyMax = 5000;
 
 export const joinPairingResponseStateActivitiesMax = 10000;
 
+export const joinPairingResponseStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const joinPairingResponseStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const joinPairingResponseStatePendingPointApprovalsItemReasonMax = 500;
+
+export const joinPairingResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const joinPairingResponseMembersItemNameMax = 60;
 
 export const joinPairingResponseMembersItemGroupIdMax = 80;
@@ -600,7 +650,20 @@ export const JoinPairingResponse = zod.object({
   "steps": zod.string().max(joinPairingResponseStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(joinPairingResponseStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(joinPairingResponseStateActivitiesItemSafetyMax).optional()
-})).max(joinPairingResponseStateActivitiesMax)
+})).max(joinPairingResponseStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(joinPairingResponseStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(joinPairingResponseStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(joinPairingResponseStatePendingPointApprovalsItemReasonMax),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(joinPairingResponseStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "members": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -734,6 +797,14 @@ export const getPairingSessionResponseStateActivitiesItemSafetyMax = 5000;
 
 export const getPairingSessionResponseStateActivitiesMax = 10000;
 
+export const getPairingSessionResponseStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const getPairingSessionResponseStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const getPairingSessionResponseStatePendingPointApprovalsItemReasonMax = 500;
+
+export const getPairingSessionResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const getPairingSessionResponseMembersItemNameMax = 60;
 
 export const getPairingSessionResponseMembersItemGroupIdMax = 80;
@@ -816,7 +887,20 @@ export const GetPairingSessionResponse = zod.object({
   "steps": zod.string().max(getPairingSessionResponseStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(getPairingSessionResponseStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(getPairingSessionResponseStateActivitiesItemSafetyMax).optional()
-})).max(getPairingSessionResponseStateActivitiesMax)
+})).max(getPairingSessionResponseStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(getPairingSessionResponseStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(getPairingSessionResponseStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(getPairingSessionResponseStatePendingPointApprovalsItemReasonMax),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(getPairingSessionResponseStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "members": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -960,6 +1044,14 @@ export const updatePairingAssignmentResponseStateActivitiesItemSafetyMax = 5000;
 
 export const updatePairingAssignmentResponseStateActivitiesMax = 10000;
 
+export const updatePairingAssignmentResponseStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const updatePairingAssignmentResponseStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const updatePairingAssignmentResponseStatePendingPointApprovalsItemReasonMax = 500;
+
+export const updatePairingAssignmentResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const updatePairingAssignmentResponseMembersItemNameMax = 60;
 
 export const updatePairingAssignmentResponseMembersItemGroupIdMax = 80;
@@ -1042,7 +1134,20 @@ export const UpdatePairingAssignmentResponse = zod.object({
   "steps": zod.string().max(updatePairingAssignmentResponseStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(updatePairingAssignmentResponseStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(updatePairingAssignmentResponseStateActivitiesItemSafetyMax).optional()
-})).max(updatePairingAssignmentResponseStateActivitiesMax)
+})).max(updatePairingAssignmentResponseStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(updatePairingAssignmentResponseStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(updatePairingAssignmentResponseStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(updatePairingAssignmentResponseStatePendingPointApprovalsItemReasonMax),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(updatePairingAssignmentResponseStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "members": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -1080,68 +1185,68 @@ export const sendPairingCommandBodyOnePayloadAmountMax = 1000000;
 
 export const sendPairingCommandBodyOnePayloadReasonMax = 500;
 
-export const sendPairingCommandBodyTwoPayloadLogIdMax = 80;
+export const sendPairingCommandBodyFourPayloadLogIdMax = 80;
 
-export const sendPairingCommandBodyThreePayloadMonthMax = 100;
+export const sendPairingCommandBodyFivePayloadMonthMax = 100;
 
-export const sendPairingCommandBodyFourPayloadRecordIdMax = 80;
+export const sendPairingCommandBodySixPayloadRecordIdMax = 80;
 
-export const sendPairingCommandBodyFourPayloadRecordRunnerNameMax = 100;
+export const sendPairingCommandBodySixPayloadRecordRunnerNameMax = 100;
 
-export const sendPairingCommandBodyFourPayloadRecordGroupMax = 100;
+export const sendPairingCommandBodySixPayloadRecordGroupMax = 100;
 
-export const sendPairingCommandBodyFourPayloadRecordMinutesMin = 0;
-export const sendPairingCommandBodyFourPayloadRecordMinutesMax = 999;
+export const sendPairingCommandBodySixPayloadRecordMinutesMin = 0;
+export const sendPairingCommandBodySixPayloadRecordMinutesMax = 999;
 
-export const sendPairingCommandBodyFourPayloadRecordSecondsMin = 0;
-export const sendPairingCommandBodyFourPayloadRecordSecondsMax = 59;
+export const sendPairingCommandBodySixPayloadRecordSecondsMin = 0;
+export const sendPairingCommandBodySixPayloadRecordSecondsMax = 59;
 
-export const sendPairingCommandBodyFourPayloadRecordMsMin = 0;
-export const sendPairingCommandBodyFourPayloadRecordMsMax = 99;
+export const sendPairingCommandBodySixPayloadRecordMsMin = 0;
+export const sendPairingCommandBodySixPayloadRecordMsMax = 99;
 
-export const sendPairingCommandBodyFourPayloadRecordTimeFormattedMax = 30;
+export const sendPairingCommandBodySixPayloadRecordTimeFormattedMax = 30;
 
-export const sendPairingCommandBodyFourPayloadRecordTotalSecondsMin = 0;
-export const sendPairingCommandBodyFourPayloadRecordTotalSecondsMax = 100000;
+export const sendPairingCommandBodySixPayloadRecordTotalSecondsMin = 0;
+export const sendPairingCommandBodySixPayloadRecordTotalSecondsMax = 100000;
 
-export const sendPairingCommandBodyFourPayloadRecordCourseNameMax = 200;
+export const sendPairingCommandBodySixPayloadRecordCourseNameMax = 200;
 
-export const sendPairingCommandBodyFourPayloadRecordDateMax = 30;
+export const sendPairingCommandBodySixPayloadRecordDateMax = 30;
 
-export const sendPairingCommandBodyFourPayloadRecordMonthYearMax = 100;
-
-export const sendPairingCommandBodyFivePayloadIdMax = 80;
-
-export const sendPairingCommandBodySixPayloadActivityIdMax = 80;
-
-export const sendPairingCommandBodySixPayloadActivityTitleMax = 300;
-
-export const sendPairingCommandBodySixPayloadActivityTypeMax = 100;
-
-export const sendPairingCommandBodySixPayloadActivityPointsMin = -1000000;
-export const sendPairingCommandBodySixPayloadActivityPointsMax = 1000000;
-
-export const sendPairingCommandBodySixPayloadActivityLocationMax = 100;
-
-export const sendPairingCommandBodySixPayloadActivityScrambledPhraseMax = 2000;
-
-export const sendPairingCommandBodySixPayloadActivitySolvedPhraseMax = 2000;
-
-export const sendPairingCommandBodySixPayloadActivityHintMax = 2000;
-
-export const sendPairingCommandBodySixPayloadActivityLessonMax = 5000;
-
-export const sendPairingCommandBodySixPayloadActivityMaterialsMax = 5000;
-
-export const sendPairingCommandBodySixPayloadActivityStepsMax = 10000;
-
-export const sendPairingCommandBodySixPayloadActivityHarderMax = 5000;
-
-export const sendPairingCommandBodySixPayloadActivitySafetyMax = 5000;
+export const sendPairingCommandBodySixPayloadRecordMonthYearMax = 100;
 
 export const sendPairingCommandBodySevenPayloadIdMax = 80;
 
+export const sendPairingCommandBodyEightPayloadActivityIdMax = 80;
+
+export const sendPairingCommandBodyEightPayloadActivityTitleMax = 300;
+
+export const sendPairingCommandBodyEightPayloadActivityTypeMax = 100;
+
+export const sendPairingCommandBodyEightPayloadActivityPointsMin = -1000000;
+export const sendPairingCommandBodyEightPayloadActivityPointsMax = 1000000;
+
+export const sendPairingCommandBodyEightPayloadActivityLocationMax = 100;
+
+export const sendPairingCommandBodyEightPayloadActivityScrambledPhraseMax = 2000;
+
+export const sendPairingCommandBodyEightPayloadActivitySolvedPhraseMax = 2000;
+
+export const sendPairingCommandBodyEightPayloadActivityHintMax = 2000;
+
+export const sendPairingCommandBodyEightPayloadActivityLessonMax = 5000;
+
+export const sendPairingCommandBodyEightPayloadActivityMaterialsMax = 5000;
+
+export const sendPairingCommandBodyEightPayloadActivityStepsMax = 10000;
+
+export const sendPairingCommandBodyEightPayloadActivityHarderMax = 5000;
+
+export const sendPairingCommandBodyEightPayloadActivitySafetyMax = 5000;
+
 export const sendPairingCommandBodyNinePayloadIdMax = 80;
+
+export const sendPairingCommandBodyOneonePayloadIdMax = 80;
 
 
 
@@ -1155,65 +1260,77 @@ export const SendPairingCommandBody = zod.union([zod.object({
 })
 }),zod.object({
   "id": zod.string().uuid(),
+  "type": zod.enum(['approvePoints']),
+  "payload": zod.object({
+  "requestId": zod.string().uuid()
+})
+}),zod.object({
+  "id": zod.string().uuid(),
+  "type": zod.enum(['rejectPoints']),
+  "payload": zod.object({
+  "requestId": zod.string().uuid()
+})
+}),zod.object({
+  "id": zod.string().uuid(),
   "type": zod.enum(['undo']),
   "payload": zod.object({
-  "logId": zod.string().min(1).max(sendPairingCommandBodyTwoPayloadLogIdMax)
+  "logId": zod.string().min(1).max(sendPairingCommandBodyFourPayloadLogIdMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['resetMonth']),
   "payload": zod.object({
-  "month": zod.string().min(1).max(sendPairingCommandBodyThreePayloadMonthMax)
+  "month": zod.string().min(1).max(sendPairingCommandBodyFivePayloadMonthMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['saveLap']),
   "payload": zod.object({
   "record": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyFourPayloadRecordIdMax),
-  "runnerName": zod.string().min(1).max(sendPairingCommandBodyFourPayloadRecordRunnerNameMax),
-  "group": zod.string().min(1).max(sendPairingCommandBodyFourPayloadRecordGroupMax),
-  "minutes": zod.number().int().min(sendPairingCommandBodyFourPayloadRecordMinutesMin).max(sendPairingCommandBodyFourPayloadRecordMinutesMax),
-  "seconds": zod.number().int().min(sendPairingCommandBodyFourPayloadRecordSecondsMin).max(sendPairingCommandBodyFourPayloadRecordSecondsMax),
-  "ms": zod.number().int().min(sendPairingCommandBodyFourPayloadRecordMsMin).max(sendPairingCommandBodyFourPayloadRecordMsMax),
-  "timeFormatted": zod.string().min(1).max(sendPairingCommandBodyFourPayloadRecordTimeFormattedMax),
-  "totalSeconds": zod.number().min(sendPairingCommandBodyFourPayloadRecordTotalSecondsMin).max(sendPairingCommandBodyFourPayloadRecordTotalSecondsMax),
-  "courseName": zod.string().min(1).max(sendPairingCommandBodyFourPayloadRecordCourseNameMax),
-  "date": zod.string().min(1).max(sendPairingCommandBodyFourPayloadRecordDateMax),
-  "monthYear": zod.string().min(1).max(sendPairingCommandBodyFourPayloadRecordMonthYearMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordIdMax),
+  "runnerName": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordRunnerNameMax),
+  "group": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordGroupMax),
+  "minutes": zod.number().int().min(sendPairingCommandBodySixPayloadRecordMinutesMin).max(sendPairingCommandBodySixPayloadRecordMinutesMax),
+  "seconds": zod.number().int().min(sendPairingCommandBodySixPayloadRecordSecondsMin).max(sendPairingCommandBodySixPayloadRecordSecondsMax),
+  "ms": zod.number().int().min(sendPairingCommandBodySixPayloadRecordMsMin).max(sendPairingCommandBodySixPayloadRecordMsMax),
+  "timeFormatted": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordTimeFormattedMax),
+  "totalSeconds": zod.number().min(sendPairingCommandBodySixPayloadRecordTotalSecondsMin).max(sendPairingCommandBodySixPayloadRecordTotalSecondsMax),
+  "courseName": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordCourseNameMax),
+  "date": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordDateMax),
+  "monthYear": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordMonthYearMax)
 })
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['deleteLap']),
   "payload": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyFivePayloadIdMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodySevenPayloadIdMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['addActivity']),
   "payload": zod.object({
   "activity": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodySixPayloadActivityIdMax),
-  "title": zod.string().min(1).max(sendPairingCommandBodySixPayloadActivityTitleMax),
-  "type": zod.string().min(1).max(sendPairingCommandBodySixPayloadActivityTypeMax),
-  "points": zod.number().min(sendPairingCommandBodySixPayloadActivityPointsMin).max(sendPairingCommandBodySixPayloadActivityPointsMax),
-  "location": zod.string().min(1).max(sendPairingCommandBodySixPayloadActivityLocationMax),
-  "scrambledPhrase": zod.string().max(sendPairingCommandBodySixPayloadActivityScrambledPhraseMax).optional(),
-  "solvedPhrase": zod.string().max(sendPairingCommandBodySixPayloadActivitySolvedPhraseMax).optional(),
-  "hint": zod.string().max(sendPairingCommandBodySixPayloadActivityHintMax).optional(),
-  "lesson": zod.string().max(sendPairingCommandBodySixPayloadActivityLessonMax).optional(),
-  "materials": zod.string().max(sendPairingCommandBodySixPayloadActivityMaterialsMax).optional(),
-  "steps": zod.string().max(sendPairingCommandBodySixPayloadActivityStepsMax).optional(),
-  "harder": zod.string().max(sendPairingCommandBodySixPayloadActivityHarderMax).optional(),
-  "safety": zod.string().max(sendPairingCommandBodySixPayloadActivitySafetyMax).optional()
+  "id": zod.string().min(1).max(sendPairingCommandBodyEightPayloadActivityIdMax),
+  "title": zod.string().min(1).max(sendPairingCommandBodyEightPayloadActivityTitleMax),
+  "type": zod.string().min(1).max(sendPairingCommandBodyEightPayloadActivityTypeMax),
+  "points": zod.number().min(sendPairingCommandBodyEightPayloadActivityPointsMin).max(sendPairingCommandBodyEightPayloadActivityPointsMax),
+  "location": zod.string().min(1).max(sendPairingCommandBodyEightPayloadActivityLocationMax),
+  "scrambledPhrase": zod.string().max(sendPairingCommandBodyEightPayloadActivityScrambledPhraseMax).optional(),
+  "solvedPhrase": zod.string().max(sendPairingCommandBodyEightPayloadActivitySolvedPhraseMax).optional(),
+  "hint": zod.string().max(sendPairingCommandBodyEightPayloadActivityHintMax).optional(),
+  "lesson": zod.string().max(sendPairingCommandBodyEightPayloadActivityLessonMax).optional(),
+  "materials": zod.string().max(sendPairingCommandBodyEightPayloadActivityMaterialsMax).optional(),
+  "steps": zod.string().max(sendPairingCommandBodyEightPayloadActivityStepsMax).optional(),
+  "harder": zod.string().max(sendPairingCommandBodyEightPayloadActivityHarderMax).optional(),
+  "safety": zod.string().max(sendPairingCommandBodyEightPayloadActivitySafetyMax).optional()
 })
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['deleteActivity']),
   "payload": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodySevenPayloadIdMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodyNinePayloadIdMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
@@ -1225,7 +1342,7 @@ export const SendPairingCommandBody = zod.union([zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['toggleReward']),
   "payload": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyNinePayloadIdMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodyOneonePayloadIdMax)
 })
 })])
 
@@ -1332,6 +1449,14 @@ export const sendPairingCommandResponseStateActivitiesItemSafetyMax = 5000;
 
 export const sendPairingCommandResponseStateActivitiesMax = 10000;
 
+export const sendPairingCommandResponseStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const sendPairingCommandResponseStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const sendPairingCommandResponseStatePendingPointApprovalsItemReasonMax = 500;
+
+export const sendPairingCommandResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const sendPairingCommandResponseMembersItemNameMax = 60;
 
 export const sendPairingCommandResponseMembersItemGroupIdMax = 80;
@@ -1414,7 +1539,20 @@ export const SendPairingCommandResponse = zod.object({
   "steps": zod.string().max(sendPairingCommandResponseStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(sendPairingCommandResponseStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(sendPairingCommandResponseStateActivitiesItemSafetyMax).optional()
-})).max(sendPairingCommandResponseStateActivitiesMax)
+})).max(sendPairingCommandResponseStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(sendPairingCommandResponseStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(sendPairingCommandResponseStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(sendPairingCommandResponseStatePendingPointApprovalsItemReasonMax),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(sendPairingCommandResponseStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "members": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -1557,6 +1695,14 @@ export const sendPairingMessageResponseStateActivitiesItemSafetyMax = 5000;
 
 export const sendPairingMessageResponseStateActivitiesMax = 10000;
 
+export const sendPairingMessageResponseStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const sendPairingMessageResponseStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const sendPairingMessageResponseStatePendingPointApprovalsItemReasonMax = 500;
+
+export const sendPairingMessageResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const sendPairingMessageResponseMembersItemNameMax = 60;
 
 export const sendPairingMessageResponseMembersItemGroupIdMax = 80;
@@ -1639,7 +1785,20 @@ export const SendPairingMessageResponse = zod.object({
   "steps": zod.string().max(sendPairingMessageResponseStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(sendPairingMessageResponseStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(sendPairingMessageResponseStateActivitiesItemSafetyMax).optional()
-})).max(sendPairingMessageResponseStateActivitiesMax)
+})).max(sendPairingMessageResponseStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(sendPairingMessageResponseStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(sendPairingMessageResponseStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(sendPairingMessageResponseStatePendingPointApprovalsItemReasonMax),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(sendPairingMessageResponseStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "members": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -1773,6 +1932,14 @@ export const rotatePairingCodeResponseStateActivitiesItemSafetyMax = 5000;
 
 export const rotatePairingCodeResponseStateActivitiesMax = 10000;
 
+export const rotatePairingCodeResponseStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const rotatePairingCodeResponseStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const rotatePairingCodeResponseStatePendingPointApprovalsItemReasonMax = 500;
+
+export const rotatePairingCodeResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const rotatePairingCodeResponseMembersItemNameMax = 60;
 
 export const rotatePairingCodeResponseMembersItemGroupIdMax = 80;
@@ -1855,7 +2022,20 @@ export const RotatePairingCodeResponse = zod.object({
   "steps": zod.string().max(rotatePairingCodeResponseStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(rotatePairingCodeResponseStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(rotatePairingCodeResponseStateActivitiesItemSafetyMax).optional()
-})).max(rotatePairingCodeResponseStateActivitiesMax)
+})).max(rotatePairingCodeResponseStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(rotatePairingCodeResponseStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(rotatePairingCodeResponseStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(rotatePairingCodeResponseStatePendingPointApprovalsItemReasonMax),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(rotatePairingCodeResponseStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "members": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -1993,6 +2173,14 @@ export const removePairingMemberResponseStateActivitiesItemSafetyMax = 5000;
 
 export const removePairingMemberResponseStateActivitiesMax = 10000;
 
+export const removePairingMemberResponseStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const removePairingMemberResponseStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const removePairingMemberResponseStatePendingPointApprovalsItemReasonMax = 500;
+
+export const removePairingMemberResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const removePairingMemberResponseMembersItemNameMax = 60;
 
 export const removePairingMemberResponseMembersItemGroupIdMax = 80;
@@ -2075,7 +2263,20 @@ export const RemovePairingMemberResponse = zod.object({
   "steps": zod.string().max(removePairingMemberResponseStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(removePairingMemberResponseStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(removePairingMemberResponseStateActivitiesItemSafetyMax).optional()
-})).max(removePairingMemberResponseStateActivitiesMax)
+})).max(removePairingMemberResponseStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(removePairingMemberResponseStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(removePairingMemberResponseStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(removePairingMemberResponseStatePendingPointApprovalsItemReasonMax),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(removePairingMemberResponseStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "members": zod.array(zod.object({
   "id": zod.string().uuid(),

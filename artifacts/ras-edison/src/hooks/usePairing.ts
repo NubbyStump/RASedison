@@ -29,6 +29,17 @@ export type PairingState = {
   lapRecords: any[];
   monthlyRecords: any[];
   activities: any[];
+  pendingPointApprovals: Array<{
+    id: string;
+    groupId: string;
+    groupName: string;
+    amount: number;
+    reason: string;
+    submittedById: string;
+    submittedByName: string;
+    submittedAt: string;
+    dueAt: string;
+  }>;
 };
 
 export type ProjectorMessage = {
@@ -74,6 +85,8 @@ export type PairingStatus = 'local' | 'connecting' | 'connected' | 'reconnecting
 
 type PairingCommand =
   | { type: 'addPoints'; payload: { groupId: string; amount: number; reason: string } }
+  | { type: 'approvePoints'; payload: { requestId: string } }
+  | { type: 'rejectPoints'; payload: { requestId: string } }
   | { type: 'undo'; payload: { logId: string } }
   | { type: 'resetMonth'; payload: { month: string } }
   | { type: 'saveLap'; payload: { record: any } }

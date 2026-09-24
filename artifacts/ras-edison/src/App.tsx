@@ -81,6 +81,8 @@ export default function App() {
 
   const [reasonInput, setReasonInput] = useState({ ladybugs: '', jellyfish: '', tigers: '' });
   const [reasonErrors, setReasonErrors] = useState({});
+  const [pointActionError, setPointActionError] = useState('');
+  const [approvalClock, setApprovalClock] = useState(() => Date.now());
   
   // Persistent Logs & Records State
   const [localHistory, setLocalHistory] = useState(() => {
@@ -155,6 +157,12 @@ export default function App() {
   const [activitySubmitting, setActivitySubmitting] = useState(false);
 
   const pairing = usePairing();
+  // Keep this hook above every render return (including projector mode) so
+  // approval timers remain accurate whenever the user returns to Points.
+  useEffect(() => {
+    const timer = window.setInterval(() => setApprovalClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const isLiveOwner = pairing.session?.role === 'owner';
   const canManageActivities = !pairing.isPaired || isLiveOwner;
   const groups = pairing.session?.state.groups ?? localGroups;
@@ -169,6 +177,8 @@ export default function App() {
   const lapRecords = pairing.session?.state.lapRecords ?? localLapRecords;
   const activities = pairing.session?.state.activities ?? localActivities;
   const projectorMessages = pairing.session?.projectorMessages ?? [];
+  const pendingPointApprovals = (pairing.session?.state.pendingPointApprovals ?? [])
+    .filter((request) => (request.status ?? 'pending') === 'pending');
   const localSnapshot = () => ({
     groups: localGroups,
     history: localHistory,
@@ -367,20 +377,23 @@ export default function App() {
 
   const handleAddPoints = async (groupId, amount) => {
     const enteredReason = reasonInput[groupId]?.trim();
-    if (pairing.session?.role === 'counselor' && amount > 0 && !enteredReason) {
-      setReasonErrors(prev => ({ ...prev, [groupId]: 'Enter a reason before adding points.' }));
+    if (!enteredReason) {
+      setReasonErrors(prev => ({ ...prev, [groupId]: 'Enter a reason before changing points.' }));
       document.getElementById(`points-reason-${groupId}`)?.focus();
       return;
     }
     setReasonErrors(prev => ({ ...prev, [groupId]: '' }));
-    const reason = enteredReason || (amount > 0 ? 'Behavior / Task Reward' : 'Adjustment');
+    const reason = enteredReason;
+    setPointActionError('');
     const targetGroup = groups.find(g => g.id === groupId);
 
     if (pairing.isPaired) {
       try {
         await pairing.command({ type: 'addPoints', payload: { groupId, amount, reason } });
         setReasonInput(prev => ({ ...prev, [groupId]: '' }));
-      } catch {}
+      } catch (error) {
+        setPointActionError(error?.message || 'Unable to submit this points change.');
+      }
       return;
     }
 
@@ -397,6 +410,15 @@ export default function App() {
 
     setLocalHistory(prev => [newLog, ...prev.slice(0, 35)]);
     setReasonInput(prev => ({ ...prev, [groupId]: '' }));
+  };
+
+  const handlePointApproval = async (type, requestId) => {
+    setPointActionError('');
+    try {
+      await pairing.command({ type, payload: { requestId } });
+    } catch (error) {
+      setPointActionError(error?.message || `Unable to ${type === 'approvePoints' ? 'approve' : 'reject'} this points request.`);
+    }
   };
 
   const handleUndo = async (logId) => {
@@ -745,7 +767,13 @@ export default function App() {
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-green-400 flex items-center justify-center shadow-lg text-slate-950 shrink-0">
-              <svg viewBox="0 0 64 64" role="img" aria-label="Edison eagle" className="w-8 h-8 fill-current"><path d="M57 14c-9 1-16 5-21 11-4-7-11-12-22-14 3 5 7 9 12 12-6-1-12-1-19 1 7 6 14 10 22 11-4 5-8 10-10 17l13-9 13 9c-2-7-5-12-9-17 9-2 16-7 21-14-6 0-12 1-17 3 6-3 12-6 17-10Z"/><circle cx="38" cy="25" r="2.5" className="fill-slate-900"/></svg>
+              <svg viewBox="0 0 64 64" role="img" aria-label="Edison eagle" className="w-8 h-8" fill="none">
+                <path d="M8 25c9-1 16 1 23 6 6-7 14-11 25-12-5 5-9 9-15 12 6 0 11 2 16 5-9 4-17 5-25 3l5 12-6-4-6 6-2-11c-6 1-11 0-16-2l9-5c-4-2-6-5-8-10Z" fill="#083344"/>
+                <path d="M31 31c6-7 13-11 25-12-4 5-9 9-15 12l-7 5-8-4c1 7 1 12-1 17l-5-10 5-8Z" fill="#0f766e"/>
+                <path d="m42 25 8-3-5 6" stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="46" cy="23" r="1.6" fill="#f8fafc"/>
+                <path d="m46 27 5 1-5 2" fill="#f59e0b"/>
+              </svg>
             </div>
             <div>
               {/* Explicit School Title Header */}
@@ -871,6 +899,56 @@ export default function App() {
               </div>
             </div>
 
+            {pointActionError && (
+              <div role="alert" className="bg-red-950/80 border border-red-500/50 text-red-100 px-4 py-3 rounded-2xl text-sm font-bold">
+                {pointActionError}
+              </div>
+            )}
+
+            {pendingPointApprovals.length > 0 && (
+              <section className="bg-amber-950/30 border border-amber-500/40 rounded-3xl p-5 shadow-lg">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h3 className="font-extrabold text-lg text-white">Points Awaiting Approval</h3>
+                    <p className="text-xs text-amber-200/70 mt-1">
+                      Counselor changes stay out of the score until approved by the Program Manager.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-200 px-3 py-1 text-xs font-black">
+                    {pendingPointApprovals.length} pending
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {pendingPointApprovals.map((request) => {
+                    const remaining = Math.max(0, new Date(request.dueAt).getTime() - approvalClock);
+                    const minutes = Math.floor(remaining / 60_000);
+                    const seconds = Math.floor((remaining % 60_000) / 1_000);
+                    return (
+                      <div key={request.id} className="bg-slate-900/75 border border-slate-700/70 rounded-2xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`font-black px-2 py-1 rounded-lg text-xs ${request.amount >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
+                              {request.amount >= 0 ? `+${request.amount}` : request.amount}
+                            </span>
+                            <span className="font-bold text-white">{request.groupName}</span>
+                            <span className="text-xs text-amber-200">Auto-approves in {minutes}:{String(seconds).padStart(2, '0')}</span>
+                          </div>
+                          <p className="text-sm text-slate-300 mt-1 italic">“{request.reason}”</p>
+                          <p className="text-xs text-slate-400 mt-1">Requested by {request.submittedByName}</p>
+                        </div>
+                        {isLiveOwner && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button type="button" onClick={() => handlePointApproval('approvePoints', request.id)} className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl px-3 py-2 text-xs font-black min-h-[44px]">Approve</button>
+                            <button type="button" onClick={() => handlePointApproval('rejectPoints', request.id)} className="bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/40 rounded-xl px-3 py-2 text-xs font-black min-h-[44px]">Reject</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             {/* Score Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {pointsGroups.map((group) => {
@@ -917,7 +995,7 @@ export default function App() {
                       {/* Point reason */}
                       <div className="mb-4">
                         <label htmlFor={`points-reason-${group.id}`} className="block text-xs text-slate-300 mb-1">
-                          {pairing.session?.role === 'counselor' ? 'Reason (required to add points)' : 'Reason (optional)'}
+                          Reason (required for every points change)
                         </label>
                         <input
                           id={`points-reason-${group.id}`}

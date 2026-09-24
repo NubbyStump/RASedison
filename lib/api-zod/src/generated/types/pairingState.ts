@@ -10,6 +10,7 @@ import type { Group } from './group';
 import type { HistoryEntry } from './historyEntry';
 import type { LapRecord } from './lapRecord';
 import type { MonthlyRecord } from './monthlyRecord';
+import type { PointApproval } from './pointApproval';
 
 export interface PairingState {
   /** @maxItems 100 */
@@ -22,4 +23,6 @@ export interface PairingState {
   monthlyRecords: MonthlyRecord[];
   /** @maxItems 10000 */
   activities: Activity[];
+  /** Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced. */
+  pendingPointApprovals?: PointApproval[];
 }

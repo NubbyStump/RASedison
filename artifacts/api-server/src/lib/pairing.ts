@@ -17,6 +17,21 @@ export type PairingState = {
     rewardClaimed: boolean;
   }>;
   activities: Array<Record<string, unknown> & { id: string }>;
+  pendingPointApprovals?: PointApproval[];
+};
+
+export type PointApproval = {
+  id: string;
+  groupId: string;
+  groupName: string;
+  amount: number;
+  reason: string;
+  submittedById: string;
+  submittedByName: string;
+  submittedAt: string;
+  dueAt: string;
+  status?: "pending" | "approved" | "rejected" | "autoApproved";
+  resolvedAt?: string;
 };
 
 const shortId = z.string().min(1).max(80);
@@ -60,6 +75,8 @@ export const commandSchema = z.discriminatedUnion("type", [
       reason: z.string().trim().min(1).max(500),
     }).strict(),
   }).strict(),
+  z.object({ id: z.string().uuid(), type: z.literal("approvePoints"), payload: z.object({ requestId: shortId }).strict() }).strict(),
+  z.object({ id: z.string().uuid(), type: z.literal("rejectPoints"), payload: z.object({ requestId: shortId }).strict() }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("undo"), payload: z.object({ logId: shortId }).strict() }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("resetMonth"), payload: z.object({ month: z.string().trim().min(1).max(100) }).strict() }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("saveLap"), payload: z.object({ record: lapRecord }).strict() }).strict(),
@@ -126,6 +143,7 @@ export function reducePairingState(state: PairingState, command: PairingCommand)
       });
       next.groups.forEach((group) => { group.score = 0; });
       next.history = [];
+      next.pendingPointApprovals = [];
       break;
     }
     case "saveLap":

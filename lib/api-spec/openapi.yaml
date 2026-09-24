@@ -330,6 +330,26 @@ components:
           type: array
           maxItems: 10000
           items: { $ref: "#/components/schemas/Activity" }
+        pendingPointApprovals:
+          type: array
+          description: Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.
+          items: { $ref: "#/components/schemas/PointApproval" }
+    PointApproval:
+      type: object
+      additionalProperties: false
+      required: [id, groupId, groupName, amount, reason, submittedById, submittedByName, submittedAt, dueAt, status]
+      properties:
+        id: { type: string, format: uuid }
+        groupId: { type: string, minLength: 1, maxLength: 80 }
+        groupName: { type: string, minLength: 1, maxLength: 100 }
+        amount: { type: number }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+        submittedById: { type: string, format: uuid }
+        submittedByName: { type: string, minLength: 1, maxLength: 60 }
+        submittedAt: { type: string, format: date-time }
+        dueAt: { type: string, format: date-time }
+        status: { type: string, enum: [pending, approved, rejected, autoApproved] }
+        resolvedAt: { type: string, format: date-time }
     Member:
       type: object
       additionalProperties: false
@@ -436,6 +456,8 @@ components:
     PairingCommandInput:
       oneOf:
         - $ref: "#/components/schemas/AddPointsCommand"
+        - $ref: "#/components/schemas/ApprovePointsCommand"
+        - $ref: "#/components/schemas/RejectPointsCommand"
         - $ref: "#/components/schemas/UndoCommand"
         - $ref: "#/components/schemas/ResetMonthCommand"
         - $ref: "#/components/schemas/SaveLapCommand"
@@ -459,6 +481,32 @@ components:
             groupId: { type: string, minLength: 1, maxLength: 80 }
             amount: { type: number, minimum: -1000000, maximum: 1000000 }
             reason: { type: string, minLength: 1, maxLength: 500 }
+    ApprovePointsCommand:
+      type: object
+      additionalProperties: false
+      required: [id, type, payload]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [approvePoints] }
+        payload:
+          type: object
+          additionalProperties: false
+          required: [requestId]
+          properties:
+            requestId: { type: string, format: uuid }
+    RejectPointsCommand:
+      type: object
+      additionalProperties: false
+      required: [id, type, payload]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [rejectPoints] }
+        payload:
+          type: object
+          additionalProperties: false
+          required: [requestId]
+          properties:
+            requestId: { type: string, format: uuid }
     UndoCommand:
       type: object
       additionalProperties: false

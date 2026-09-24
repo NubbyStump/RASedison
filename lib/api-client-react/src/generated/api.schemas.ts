@@ -197,6 +197,46 @@ export interface Activity {
   safety?: string;
 }
 
+export type PointApprovalStatus = typeof PointApprovalStatus[keyof typeof PointApprovalStatus];
+
+
+export const PointApprovalStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  autoApproved: 'autoApproved',
+} as const;
+
+export interface PointApproval {
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  groupId: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  groupName: string;
+  amount: number;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  reason: string;
+  submittedById: string;
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  submittedByName: string;
+  submittedAt: string;
+  dueAt: string;
+  status: PointApprovalStatus;
+  resolvedAt?: string;
+}
+
 export interface PairingState {
   /** @maxItems 100 */
   groups: Group[];
@@ -208,6 +248,8 @@ export interface PairingState {
   monthlyRecords: MonthlyRecord[];
   /** @maxItems 10000 */
   activities: Activity[];
+  /** Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced. */
+  pendingPointApprovals?: PointApproval[];
 }
 
 export type MemberRole = typeof MemberRole[keyof typeof MemberRole];
@@ -416,6 +458,40 @@ export interface AddPointsCommand {
   payload: AddPointsCommandPayload;
 }
 
+export type ApprovePointsCommandType = typeof ApprovePointsCommandType[keyof typeof ApprovePointsCommandType];
+
+
+export const ApprovePointsCommandType = {
+  approvePoints: 'approvePoints',
+} as const;
+
+export type ApprovePointsCommandPayload = {
+  requestId: string;
+};
+
+export interface ApprovePointsCommand {
+  id: string;
+  type: ApprovePointsCommandType;
+  payload: ApprovePointsCommandPayload;
+}
+
+export type RejectPointsCommandType = typeof RejectPointsCommandType[keyof typeof RejectPointsCommandType];
+
+
+export const RejectPointsCommandType = {
+  rejectPoints: 'rejectPoints',
+} as const;
+
+export type RejectPointsCommandPayload = {
+  requestId: string;
+};
+
+export interface RejectPointsCommand {
+  id: string;
+  type: RejectPointsCommandType;
+  payload: RejectPointsCommandPayload;
+}
+
 export type UndoCommandType = typeof UndoCommandType[keyof typeof UndoCommandType];
 
 
@@ -570,7 +646,7 @@ export interface ToggleRewardCommand {
   payload: ToggleRewardCommandPayload;
 }
 
-export type PairingCommandInput = AddPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;
+export type PairingCommandInput = AddPointsCommand | ApprovePointsCommand | RejectPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;
 
 /**
  * Malformed input

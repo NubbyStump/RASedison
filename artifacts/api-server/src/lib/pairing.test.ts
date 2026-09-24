@@ -185,12 +185,18 @@ test("revoked member cannot execute a command", async () => {
   );
 });
 
-test("counselors can score but owner-only commands are rejected before mutation", async () => {
+test("counselors can submit points for approval but owner-only commands remain blocked", async () => {
   const [room] = await db.insert(pairingRooms).values({
     code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
     state: baseState(),
   }).returning();
   roomIds.push(room.id);
+  await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Manager",
+    role: "owner",
+    tokenHash: randomUUID(),
+  });
   const [member] = await db.insert(pairingMembers).values({
     roomId: room.id,
     name: "Counselor",
@@ -205,7 +211,19 @@ test("counselors can score but owner-only commands are rejected before mutation"
     type: "addPoints",
     payload: { groupId: "ladybugs", amount: 5, reason: "Good work" },
   });
-  assert.equal((scored.state as PairingState).groups[0].score, 5);
+  assert.equal((scored.state as PairingState).groups[0].score, 0);
+  assert.equal((scored.state as PairingState).pendingPointApprovals?.length, 1);
+
+  const [owner] = await db.select().from(pairingMembers).where(eq(pairingMembers.roomId, room.id));
+  const requestId = (scored.state as PairingState).pendingPointApprovals![0].id;
+  const approved = await executePairingCommand(owner, {
+    id: randomUUID(),
+    type: "approvePoints",
+    payload: { requestId },
+  });
+  assert.equal((approved.state as PairingState).groups[0].score, 5);
+  assert.equal((approved.state as PairingState).history[0].reason, "Good work");
+  assert.equal((approved.state as PairingState).pendingPointApprovals?.[0].status, "approved");
 
   await assert.rejects(
     executePairingCommand(member, {
@@ -216,8 +234,67 @@ test("counselors can score but owner-only commands are rejected before mutation"
     /Owner role required/,
   );
   const [unchanged] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
-  assert.equal(unchanged.version, 2);
+  assert.equal(unchanged.version, 3);
   assert.equal((unchanged.state as PairingState).groups[0].score, 5);
+});
+
+test("owners can reject requests and expired requests auto-approve", async () => {
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state: baseState(),
+  }).returning();
+  roomIds.push(room.id);
+  const [owner] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Manager",
+    role: "owner",
+    tokenHash: randomUUID(),
+  }).returning();
+  const [counselor] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Counselor",
+    role: "counselor",
+    groupId: "ladybugs",
+    tokenHash: randomUUID(),
+  }).returning();
+
+  const rejectedRequestId = randomUUID();
+  await executePairingCommand(counselor, {
+    id: rejectedRequestId,
+    type: "addPoints",
+    payload: { groupId: "ladybugs", amount: 10, reason: "Helpful cleanup" },
+  });
+  const rejected = await executePairingCommand(owner, {
+    id: randomUUID(),
+    type: "rejectPoints",
+    payload: { requestId: rejectedRequestId },
+  });
+  assert.equal((rejected.state as PairingState).groups[0].score, 0);
+  assert.equal((rejected.state as PairingState).pendingPointApprovals?.find(
+    (item) => item.id === rejectedRequestId,
+  )?.status, "rejected");
+
+  const expiredRequestId = randomUUID();
+  await executePairingCommand(counselor, {
+    id: expiredRequestId,
+    type: "addPoints",
+    payload: { groupId: "ladybugs", amount: 25, reason: "Old but valid" },
+  });
+  const current = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+  const staleState = structuredClone(current[0].state as PairingState);
+  const request = staleState.pendingPointApprovals!.find((item) => item.id === expiredRequestId)!;
+  request.dueAt = new Date(Date.now() - 1_000).toISOString();
+  await db.update(pairingRooms).set({ state: staleState }).where(eq(pairingRooms.id, room.id));
+  const { resolveDuePointApprovals } = await import("../routes/pairing");
+  await resolveDuePointApprovals();
+  const [resolved] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+  const resolvedState = resolved.state as PairingState;
+  assert.equal(resolvedState.groups[0].score, 25);
+  assert.equal(resolvedState.history[0].reason, "Old but valid");
+  assert.equal(
+    resolvedState.pendingPointApprovals?.find((item) => item.id === expiredRequestId)?.status,
+    "autoApproved",
+  );
 });
 
 test("calendar rollover clears only activities and is idempotent in the same month", async () => {

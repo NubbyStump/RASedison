@@ -18,6 +18,7 @@ import {
   projectorMessageInputSchema,
   reducePairingState,
   type PairingCommand,
+  type PointApproval,
   type PairingState,
 } from "../lib/pairing";
 
@@ -35,6 +36,8 @@ const OWNER_COMMANDS = new Set<PairingCommand["type"]>([
   "addActivity",
   "deleteActivity",
   "clearActivities",
+  "approvePoints",
+  "rejectPoints",
 ]);
 type PairingTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type PairingRoom = typeof pairingRooms.$inferSelect;
@@ -43,6 +46,7 @@ const PROJECTOR_MESSAGE_LIMIT = 20;
 const CHAT_MESSAGE_LIMIT = 100;
 const PROJECTOR_MESSAGE_RATE_WINDOW_MS = 10_000;
 const PROJECTOR_MESSAGE_RATE_LIMIT = 5;
+const APPROVAL_HISTORY_LIMIT = 100;
 
 export function calendarMonth(
   now = new Date(),
@@ -206,6 +210,53 @@ export async function rolloverActivitiesForLockedRoom(
   return updated;
 }
 
+function resolveDueApprovals(state: PairingState, now = new Date()): boolean {
+  const requests = state.pendingPointApprovals;
+  if (!requests?.length) return false;
+  let changed = false;
+  for (const request of requests) {
+    if ((request.status ?? "pending") !== "pending" || Date.parse(request.dueAt) > now.getTime()) continue;
+    const group = state.groups.find((item) => item.id === request.groupId);
+    if (!group) {
+      request.status = "autoApproved";
+      request.resolvedAt = now.toISOString();
+      changed = true;
+      continue;
+    }
+    const oldScore = group.score;
+    group.score = Math.max(0, Math.min(1_000_000_000, oldScore + request.amount));
+    state.history = [{
+      id: request.id,
+      groupId: group.id,
+      groupName: group.name,
+      amount: group.score - oldScore,
+      reason: request.reason,
+      timestamp: request.submittedAt,
+    }, ...state.history].slice(0, 36);
+    request.status = "autoApproved";
+    request.resolvedAt = now.toISOString();
+    changed = true;
+  }
+  return changed;
+}
+
+export async function resolveDuePointApprovals(): Promise<void> {
+  await db.transaction(async (tx) => {
+    const rooms = await tx.select().from(pairingRooms);
+    for (const candidate of rooms) {
+      const room = await lockRoomById(tx, candidate.id);
+      if (!room || room.endedAt) continue;
+      const state = structuredClone(room.state as PairingState);
+      if (!resolveDueApprovals(state)) continue;
+      await tx.update(pairingRooms).set({
+        state,
+        version: room.version + 1,
+        updatedAt: new Date(),
+      }).where(eq(pairingRooms.id, room.id));
+    }
+  });
+}
+
 async function activeMemberForRoom(
   tx: PairingTransaction,
   memberId: string,
@@ -225,9 +276,18 @@ async function sessionFor(
   token?: string,
   lockedRoom?: PairingRoom,
 ) {
-  const room = lockedRoom ?? (await executor.select().from(pairingRooms)
+  let room = lockedRoom ?? (await executor.select().from(pairingRooms)
     .where(eq(pairingRooms.id, member.roomId)).limit(1))[0];
   if (!room) throw new Error("Room not found");
+  const resolvedState = structuredClone(room.state as PairingState);
+  if (resolveDueApprovals(resolvedState)) {
+    const [updated] = await executor.update(pairingRooms).set({
+      state: resolvedState,
+      version: room.version + 1,
+      updatedAt: new Date(),
+    }).where(eq(pairingRooms.id, room.id)).returning();
+    if (updated) room = updated;
+  }
   const members = await executor.select({
     id: pairingMembers.id,
     name: pairingMembers.name,
@@ -336,7 +396,70 @@ export async function executePairingCommand(
     const [duplicate] = await tx.select({ id: pairingCommands.id }).from(pairingCommands)
       .where(and(eq(pairingCommands.roomId, member.roomId), eq(pairingCommands.id, command.id))).limit(1);
     if (!duplicate) {
-      const state = reducePairingState(room.state as PairingState, command);
+      const state = structuredClone(room.state as PairingState);
+      resolveDueApprovals(state);
+      if (command.type === "addPoints" && activeMember.role === "counselor") {
+        const [owner] = await tx.select({ id: pairingMembers.id }).from(pairingMembers).where(and(
+          eq(pairingMembers.roomId, room.id),
+          eq(pairingMembers.role, "owner"),
+          isNull(pairingMembers.revokedAt),
+        )).limit(1);
+        if (owner) {
+          const group = state.groups.find((item) => item.id === command.payload.groupId);
+          if (!group) throw new Error("Group not found");
+          const submittedAt = new Date();
+          const pending = state.pendingPointApprovals ?? [];
+          pending.push({
+            id: command.id,
+            groupId: group.id,
+            groupName: group.name,
+            amount: command.payload.amount,
+            reason: command.payload.reason,
+            submittedById: activeMember.id,
+            submittedByName: activeMember.name,
+            submittedAt: submittedAt.toISOString(),
+            dueAt: new Date(submittedAt.getTime() + 60 * 60 * 1000).toISOString(),
+            status: "pending",
+          });
+          state.pendingPointApprovals = pending;
+        } else {
+          return { error: "Program Manager approval is unavailable" as const };
+        }
+      } else if (command.type === "approvePoints" || command.type === "rejectPoints") {
+        const requests = state.pendingPointApprovals ?? [];
+        const request = requests.find((item) => item.id === command.payload.requestId);
+        if (!request) throw new Error("Point approval request not found");
+        if ((request.status ?? "pending") === "pending") {
+          const now = new Date();
+          if (Date.parse(request.dueAt) <= now.getTime()) {
+            resolveDueApprovals(state, now);
+          } else if (command.type === "approvePoints") {
+            const group = state.groups.find((item) => item.id === request.groupId);
+            if (!group) throw new Error("Group not found");
+            const oldScore = group.score;
+            group.score = Math.max(0, Math.min(1_000_000_000, oldScore + request.amount));
+            state.history = [{
+              id: request.id,
+              groupId: group.id,
+              groupName: group.name,
+              amount: group.score - oldScore,
+              reason: request.reason,
+              timestamp: request.submittedAt,
+            }, ...state.history].slice(0, 36);
+            request.status = "approved";
+            request.resolvedAt = now.toISOString();
+          } else {
+            request.status = "rejected";
+            request.resolvedAt = now.toISOString();
+          }
+        }
+        // Keep all unresolved requests, while bounding resolved audit outcomes.
+        state.pendingPointApprovals = requests.filter((item) => (
+          (item.status ?? "pending") === "pending" || requests.indexOf(item) >= requests.length - APPROVAL_HISTORY_LIMIT
+        ));
+      } else {
+        Object.assign(state, reducePairingState(state, command));
+      }
       const [updatedRoom] = await tx.update(pairingRooms).set({
         state,
         version: room.version + 1,
