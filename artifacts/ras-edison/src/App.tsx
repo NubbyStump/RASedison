@@ -319,6 +319,8 @@ export default function App() {
   };
 
   const getRandomActivity = () => {
+    if (activities.length === 0) return;
+
     let filtered = activities.filter(act => {
       const matchType = filterType === 'Either' || act.type === filterType;
       const matchLoc = filterLocation === 'Either' || act.location === filterLocation;
@@ -329,6 +331,26 @@ export default function App() {
 
     const randomIndex = Math.floor(Math.random() * filtered.length);
     setCurrentActivity(filtered[randomIndex]);
+  };
+
+  const handleDeleteActivity = (activityId) => {
+    const activityToDelete = activities.find(activity => activity.id === activityId);
+    if (!activityToDelete) return;
+    if (!window.confirm(`Delete "${activityToDelete.title}"?`)) return;
+
+    const remainingActivities = activities.filter(activity => activity.id !== activityId);
+    setActivities(remainingActivities);
+    setCurrentActivity((current) =>
+      current?.id === activityId ? remainingActivities[0] || null : current
+    );
+  };
+
+  const handleClearActivities = () => {
+    if (activities.length === 0) return;
+    if (!window.confirm('Clear all missions and super scrambles? This cannot be undone.')) return;
+
+    setActivities([]);
+    setCurrentActivity(null);
   };
 
   const handleSaveCustomActivity = (e) => {
@@ -815,12 +837,21 @@ export default function App() {
                   </p>
                 </div>
 
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition flex items-center gap-2 shadow-md"
-                >
-                  <PlusCircle className="w-4 h-4" /> Add Custom Scramble
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition flex items-center gap-2 shadow-md"
+                  >
+                    <PlusCircle className="w-4 h-4" /> Add Custom Scramble
+                  </button>
+                  <button
+                    onClick={handleClearActivities}
+                    disabled={activities.length === 0}
+                    className="bg-red-500/10 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40 text-red-300 border border-red-500/30 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" /> Clear All
+                  </button>
+                </div>
               </div>
 
               {/* Filters */}
@@ -874,8 +905,17 @@ export default function App() {
                       </span>
                     </div>
 
-                    <div className="bg-emerald-500 text-slate-950 font-black px-4 py-1.5 rounded-xl text-sm shadow-md">
-                      🏆 Worth {currentActivity.points || 600} Points
+                    <div className="flex items-center gap-2">
+                      <div className="bg-emerald-500 text-slate-950 font-black px-4 py-1.5 rounded-xl text-sm shadow-md">
+                        🏆 Worth {currentActivity.points || 600} Points
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteActivity(currentActivity.id)}
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 px-3 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
                     </div>
                   </div>
 
@@ -925,6 +965,21 @@ export default function App() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {!currentActivity && (
+                <div className="bg-slate-900/70 border-2 border-dashed border-slate-700 rounded-3xl p-10 text-center">
+                  <Trash2 className="w-8 h-8 text-slate-500 mx-auto mb-3" />
+                  <h3 className="text-lg font-black text-white">No missions or super scrambles yet</h3>
+                  <p className="text-sm text-slate-400 mt-1 mb-5">Add a custom activity to start building your library again.</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition inline-flex items-center gap-2"
+                  >
+                    <PlusCircle className="w-4 h-4" /> Add Activity
+                  </button>
                 </div>
               )}
             </div>
