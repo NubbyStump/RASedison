@@ -27,84 +27,6 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-const INITIAL_ACTIVITIES = [
-  {
-    id: 'scramble-600-1',
-    title: 'Cooperation Master Key',
-    type: 'Super Scramble',
-    points: 600,
-    scrambledPhrase: 'C O O E P R T A I N O   I S   Y E K',
-    solvedPhrase: 'COOPERATION IS KEY',
-    hint: 'Working together as a team unlocks the Slime Box!',
-    lesson: 'When Edison Academy students combine efforts, big goals become easy to reach.',
-    location: 'Indoor',
-    materials: 'Whiteboard & Marker',
-    steps: 'Write the scrambled phrase big on the whiteboard. The first group to decipher it on paper and raise hands silently claims 600 points!',
-    harder: 'To claim the full 600 points, the winning group must name 2 ways they showed cooperation today.',
-    safety: 'Keep quiet voices while working so other groups do not hear your answers.'
-  },
-  {
-    id: 'scramble-600-2',
-    title: 'Respect Rules The Room',
-    type: 'Super Scramble',
-    points: 600,
-    scrambledPhrase: 'R E S P E C T   C R E A T E S   C O M M U N I T Y',
-    solvedPhrase: 'RESPECT CREATES COMMUNITY',
-    hint: 'How Edison scholars treat counselors, friends, and gym equipment.',
-    lesson: 'Treating everyone with respect makes our after-school room safe and fun.',
-    location: 'Indoor',
-    materials: 'Whiteboard & Marker',
-    steps: 'Post the scramble on the board before transition. Groups work together silently to decode the phrase.',
-    harder: 'Must be decoded within 2 minutes without speaking out loud.',
-    safety: 'Remain seated at group tables while solving.'
-  },
-  {
-    id: 'scramble-400-1',
-    title: 'Kindness Superpower',
-    type: 'Super Scramble',
-    points: 400,
-    scrambledPhrase: 'K I N D E N S S   I S   A   S U P E R P O W E R',
-    solvedPhrase: 'KINDNESS IS A SUPERPOWER',
-    hint: 'A positive action you can give away for free every day.',
-    lesson: 'Small acts of kindness make Edison Language Academy a place where everyone belongs.',
-    location: 'Indoor',
-    materials: 'Whiteboard & Marker',
-    steps: 'Post the scramble on the board before group snack time. Groups work as a team to decode the sentence.',
-    harder: 'Give every group member 60 seconds to name one kind thing a classmate did today.',
-    safety: 'Remain seated while writing responses.'
-  },
-  {
-    id: 'scramble-200-1',
-    title: 'Focus & Listening',
-    type: 'Super Scramble',
-    points: 200,
-    scrambledPhrase: 'L I S T E N   A N D   L E A D',
-    solvedPhrase: 'LISTEN AND LEAD',
-    hint: 'Good leaders are great listeners first.',
-    lesson: 'Paying attention to counselor signals earns instant group points.',
-    location: 'Indoor',
-    materials: 'Whiteboard & Marker',
-    steps: 'Quick 2-minute scramble written on the board during transition from outdoor to indoor play.',
-    harder: 'Complete the scramble in under 90 seconds.',
-    safety: 'No calling out answers out loud!'
-  },
-  {
-    id: 'mission-500-1',
-    title: 'Edison Relay Bridge',
-    type: 'Mission',
-    points: 500,
-    scrambledPhrase: 'N/A',
-    solvedPhrase: 'TEAMWORK BRIDGE',
-    hint: 'Cross the gym without touching the floor!',
-    lesson: 'Trusting your group members and following strategy.',
-    location: 'Indoor',
-    materials: 'Poly spots or carpet squares (3 per team)',
-    steps: 'Line up team columns. Use 3 spots to transport the entire group across the gym floor without touching wood.',
-    harder: 'Remove 1 spot midway through or add a 3-minute timer.',
-    safety: 'No pushing or jumping over teammates.'
-  }
-];
-
 const formatLapTime = (minutes, seconds, ms) => {
   const m = String(minutes || 0).padStart(1, '0');
   const s = String(seconds || 0).padStart(2, '0');
@@ -114,6 +36,21 @@ const formatLapTime = (minutes, seconds, ms) => {
 
 const totalSecondsFromLap = (minutes, seconds, ms) => {
   return (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0) + (parseInt(ms) || 0) / 100;
+};
+
+const scramblePhrase = (phrase) => {
+  return phrase
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      const letters = word.split('');
+      for (let i = letters.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [letters[i], letters[j]] = [letters[j], letters[i]];
+      }
+      return letters.join(' ');
+    })
+    .join('   ');
 };
 
 export default function App() {
@@ -158,13 +95,13 @@ export default function App() {
   });
 
   const [activities, setActivities] = useState(() => {
-    const saved = localStorage.getItem('ras_edison_activities_v4');
-    return saved ? JSON.parse(saved) : INITIAL_ACTIVITIES;
+    const saved = localStorage.getItem('ras_edison_activities_v5');
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [filterType, setFilterType] = useState('Either');
   const [filterLocation, setFilterLocation] = useState('Either');
-  const [currentActivity, setCurrentActivity] = useState(INITIAL_ACTIVITIES[0]);
+  const [currentActivity, setCurrentActivity] = useState(null);
 
   // Sync state
   const [syncCode, setSyncCode] = useState('');
@@ -174,18 +111,7 @@ export default function App() {
   // Custom Activity Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [newActivity, setNewActivity] = useState({
-    title: '',
-    type: 'Super Scramble',
-    points: 600,
-    scrambledPhrase: '',
-    solvedPhrase: '',
-    hint: '',
-    lesson: '',
-    location: 'Indoor',
-    materials: 'Whiteboard & Marker',
-    steps: '',
-    harder: '',
-    safety: ''
+    phrase: ''
   });
 
   useEffect(() => {
@@ -205,7 +131,7 @@ export default function App() {
   }, [lapRecords]);
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_activities_v4', JSON.stringify(activities));
+    localStorage.setItem('ras_edison_activities_v5', JSON.stringify(activities));
   }, [activities]);
 
   // Calculation Helpers
@@ -355,16 +281,29 @@ export default function App() {
 
   const handleSaveCustomActivity = (e) => {
     e.preventDefault();
-    if (!newActivity.title) return;
+    const phrase = newActivity.phrase?.trim();
+    if (!phrase) return;
 
     const created = {
-      ...newActivity,
-      id: Date.now().toString()
+      id: Date.now().toString(),
+      title: phrase,
+      type: 'Super Scramble',
+      points: 600,
+      scrambledPhrase: scramblePhrase(phrase),
+      solvedPhrase: phrase.toUpperCase(),
+      hint: 'Rearrange the letters to reveal the phrase.',
+      lesson: '',
+      location: 'Indoor',
+      materials: 'Whiteboard & Marker',
+      steps: 'Write the scrambled phrase on the whiteboard. The first group to solve it wins the points!',
+      harder: '',
+      safety: ''
     };
 
     setActivities(prev => [created, ...prev]);
     setCurrentActivity(created);
     setShowAddModal(false);
+    setNewActivity({ phrase: '' });
   };
 
   const generateExportCode = () => {
@@ -1257,100 +1196,33 @@ export default function App() {
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-black text-white flex items-center gap-2">
-              <PlusCircle className="w-5 h-5 text-amber-400" /> Add Custom Scramble or Mission
+              <PlusCircle className="w-5 h-5 text-amber-400" /> Add a Phrase to Scramble
             </h3>
+            <p className="text-sm text-slate-400">
+              Type the answer phrase. The app will scramble the letters for you.
+            </p>
 
-            <form onSubmit={handleSaveCustomActivity} className="space-y-3">
+            <form onSubmit={handleSaveCustomActivity} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Title *</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Phrase *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Respect Scramble"
-                  value={newActivity.title}
-                  onChange={(e) => setNewActivity({ ...newActivity, title: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                  autoFocus
+                  placeholder="e.g. Teamwork makes us stronger"
+                  value={newActivity.phrase}
+                  onChange={(e) => setNewActivity({ phrase: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-1">Type</label>
-                  <select
-                    value={newActivity.type}
-                    onChange={(e) => setNewActivity({ ...newActivity, type: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-                  >
-                    <option value="Super Scramble">Super Scramble</option>
-                    <option value="Mission">Mission</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-1">Points Value</label>
-                  <select
-                    value={newActivity.points}
-                    onChange={(e) => setNewActivity({ ...newActivity, points: parseInt(e.target.value) })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-                  >
-                    <option value={200}>200 PTS (Easy)</option>
-                    <option value={400}>400 PTS (Medium)</option>
-                    <option value={600}>600 PTS (High)</option>
-                  </select>
-                </div>
-              </div>
-
-              {newActivity.type === 'Super Scramble' && (
-                <>
-                  <div>
-                    <label className="text-xs font-bold text-amber-400 block mb-1">Scrambled Phrase (For Whiteboard)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. C O O E P R T A I N O"
-                      value={newActivity.scrambledPhrase}
-                      onChange={(e) => setNewActivity({ ...newActivity, scrambledPhrase: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 block mb-1">Solved Answer Phrase</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. COOPERATION IS KEY"
-                      value={newActivity.solvedPhrase}
-                      onChange={(e) => setNewActivity({ ...newActivity, solvedPhrase: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 block mb-1">Lesson Takeaway</label>
-                    <input
-                      type="text"
-                      placeholder="Character lesson..."
-                      value={newActivity.lesson}
-                      onChange={(e) => setNewActivity({ ...newActivity, lesson: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Counselor Steps</label>
-                <textarea
-                  rows={2}
-                  placeholder="Steps to run..."
-                  value={newActivity.steps}
-                  onChange={(e) => setNewActivity({ ...newActivity, steps: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3">
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setNewActivity({ phrase: '' });
+                  }}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
                 >
                   Cancel
@@ -1359,7 +1231,7 @@ export default function App() {
                   type="submit"
                   className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition"
                 >
-                  Save Idea
+                  Create Scramble
                 </button>
               </div>
             </form>
