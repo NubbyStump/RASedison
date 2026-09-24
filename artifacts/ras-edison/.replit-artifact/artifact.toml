@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "RAS-Edison"
+description = "A React and Vite starter app named RAS-Edison."
+version = "1.0.0"
+id = "artifacts/ras-edison"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22049
+
+[services.development]
+run = "pnpm --filter @workspace/ras-edison run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ras-edison", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ras-edison/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22049"
+BASE_PATH = "/"
