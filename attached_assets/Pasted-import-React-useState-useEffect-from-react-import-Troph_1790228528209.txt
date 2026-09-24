@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Trophy, 
   Sparkles, 
@@ -121,11 +120,11 @@ export default function App() {
 
   // Persistent Group Scores State
   const [groups, setGroups] = useState(() => {
-    const saved = localStorage.getItem('ras_edison_groups_v5');
+    const saved = localStorage.getItem('ras_edison_groups_v4');
     return saved ? JSON.parse(saved) : [
-      { id: 'ladybugs', name: 'Ladybugs', score: 0, color: 'from-rose-500 to-red-600', badgeColor: 'bg-rose-500', icon: '🐞' },
-      { id: 'jellyfish', name: 'Jellyfish', score: 0, color: 'from-cyan-500 to-blue-600', badgeColor: 'bg-cyan-500', icon: '🪼' },
-      { id: 'tigers', name: 'Tigers', score: 0, color: 'from-amber-500 to-orange-600', badgeColor: 'bg-amber-500', icon: '🐯' }
+      { id: 'ladybugs', name: 'Ladybugs', score: 450, color: 'from-rose-500 to-red-600', badgeColor: 'bg-rose-500', icon: '🐞' },
+      { id: 'jellyfish', name: 'Jellyfish', score: 620, color: 'from-cyan-500 to-blue-600', badgeColor: 'bg-cyan-500', icon: '🪼' },
+      { id: 'tigers', name: 'Tigers', score: 580, color: 'from-amber-500 to-orange-600', badgeColor: 'bg-amber-500', icon: '🐯' }
     ];
   });
 
@@ -133,18 +132,32 @@ export default function App() {
   
   // Persistent Logs & Records State
   const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem('ras_edison_history_v5');
+    const saved = localStorage.getItem('ras_edison_history_v4');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [monthlyRecords, setMonthlyRecords] = useState(() => {
-    const saved = localStorage.getItem('ras_edison_monthly_v5');
+    const saved = localStorage.getItem('ras_edison_monthly_v4');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [lapRecords, setLapRecords] = useState(() => {
-    const saved = localStorage.getItem('ras_edison_lap_v5');
-    return saved ? JSON.parse(saved) : [];
+    const saved = localStorage.getItem('ras_edison_lap_v4');
+    return saved ? JSON.parse(saved) : [
+      {
+        id: '1',
+        runnerName: 'Leo (Tigers)',
+        group: 'Tigers',
+        minutes: 0,
+        seconds: 38,
+        ms: 45,
+        timeFormatted: '0:38.45',
+        totalSeconds: 38.45,
+        courseName: 'Edison Gym Obstacle Sprint',
+        date: new Date().toISOString().split('T')[0],
+        monthYear: new Date().toLocaleString('default', { month: 'long', year: 'numeric' })
+      }
+    ];
   });
 
   const [newLap, setNewLap] = useState({
@@ -189,19 +202,19 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_groups_v5', JSON.stringify(groups));
+    localStorage.setItem('ras_edison_groups_v4', JSON.stringify(groups));
   }, [groups]);
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_history_v5', JSON.stringify(history));
+    localStorage.setItem('ras_edison_history_v4', JSON.stringify(history));
   }, [history]);
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_monthly_v5', JSON.stringify(monthlyRecords));
+    localStorage.setItem('ras_edison_monthly_v4', JSON.stringify(monthlyRecords));
   }, [monthlyRecords]);
 
   useEffect(() => {
-    localStorage.setItem('ras_edison_lap_v5', JSON.stringify(lapRecords));
+    localStorage.setItem('ras_edison_lap_v4', JSON.stringify(lapRecords));
   }, [lapRecords]);
 
   useEffect(() => {
