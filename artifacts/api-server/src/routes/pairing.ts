@@ -380,6 +380,25 @@ export async function sendProjectorMessage(
   return result.session;
 }
 
+export async function clearProjectorMessage(member: typeof pairingMembers.$inferSelect) {
+  return db.transaction(async (tx) => {
+    const room = await lockRoomById(tx, member.roomId);
+    if (!room || room.endedAt) throw new Error("Unauthorized");
+    const activeMember = await activeMemberForRoom(tx, member.id, room.id);
+    if (!activeMember) throw new Error("Unauthorized");
+    if (activeMember.role !== "owner") throw new Error("Owner role required");
+    // Clear the whole buffer so a previously replaced message cannot reappear.
+    // Do not roll over activities: dismissal must only affect announcements.
+    if (!room.projectorMessages.length) return sessionFor(tx, activeMember, undefined, room);
+    const [updated] = await tx.update(pairingRooms).set({
+      projectorMessages: [],
+      version: room.version + 1,
+      updatedAt: new Date(),
+    }).where(eq(pairingRooms.id, room.id)).returning();
+    return sessionFor(tx, activeMember, undefined, updated);
+  });
+}
+
 export async function executePairingCommand(
   member: typeof pairingMembers.$inferSelect,
   command: PairingCommand,
@@ -680,6 +699,27 @@ router.post("/pairing/command", async (req, res): Promise<void> => {
     }
     if (error instanceof Error && /not found/i.test(error.message)) {
       res.status(400).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.delete("/pairing/message", async (req, res): Promise<void> => {
+  const member = await authenticate(req);
+  if (!member) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  try {
+    res.json(await clearProjectorMessage(member));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      res.status(401).json({ error: error.message });
+      return;
+    }
+    if (error instanceof Error && error.message === "Owner role required") {
+      res.status(403).json({ error: error.message });
       return;
     }
     throw error;

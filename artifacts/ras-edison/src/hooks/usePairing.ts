@@ -553,6 +553,24 @@ export function usePairing() {
     }
   }, [authenticatedRequest, beginOperation, endOperation]);
 
+  const clearMessage = useCallback(async () => {
+    const current = sessionRef.current;
+    if (!tokenRef.current || current?.role !== 'owner') {
+      throw new Error('Only the Program Manager can clear projector messages.');
+    }
+    if (status !== 'connected') throw new Error('Wait for the live session to reconnect before clearing messages.');
+    const generation = generationRef.current;
+    beginOperation();
+    try {
+      const next = await authenticatedRequest(
+        '/api/pairing/message', { method: 'DELETE' }, generation, current.roomId,
+      );
+      applySession(next, generation, current.roomId);
+    } finally {
+      endOperation();
+    }
+  }, [applySession, authenticatedRequest, beginOperation, endOperation, status]);
+
   const currentGroupId = session?.assignmentDate === today ? session.groupId : null;
   const needsDailyAssignment = Boolean(session && session.assignmentDate !== today);
 
@@ -574,5 +592,6 @@ export function usePairing() {
     removeMember,
     command,
     sendMessage,
+    clearMessage,
   };
 }

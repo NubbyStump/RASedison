@@ -6,11 +6,14 @@ type Props = {
   connected: boolean;
   onClose: () => void;
   onSend: (text: string) => Promise<unknown>;
+  onClear?: () => Promise<unknown>;
+  hasMessage?: boolean;
 };
 
-export default function MessageComposer({ open, connected, onClose, onSend }: Props) {
+export default function MessageComposer({ open, connected, onClose, onSend, onClear, hasMessage }: Props) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -33,6 +36,21 @@ export default function MessageComposer({ open, connected, onClose, onSend }: Pr
   if (!open) return null;
 
   const trimmedDraft = draft.trim();
+  const clear = async () => {
+    if (!onClear || pending || !connected || !hasMessage) return;
+    setPending(true);
+    setClearing(true);
+    setFeedback(null);
+    try {
+      await onClear();
+      setFeedback({ kind: 'success', text: 'Projector message cleared.' });
+    } catch (error) {
+      setFeedback({ kind: 'error', text: (error as Error).message || 'Unable to clear the projector message.' });
+    } finally {
+      setPending(false);
+      setClearing(false);
+    }
+  };
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!trimmedDraft || pending || !connected) return;
@@ -105,7 +123,7 @@ export default function MessageComposer({ open, connected, onClose, onSend }: Pr
           {!connected && (
             <div className="flex gap-2 rounded-xl border border-amber-500/35 bg-amber-950/35 p-3 text-sm text-amber-100">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-              Reconnecting to the live session. Sending will be available when the connection returns.
+              Reconnecting to the live session. Message controls will be available when the connection returns.
             </div>
           )}
 
@@ -118,6 +136,12 @@ export default function MessageComposer({ open, connected, onClose, onSend }: Pr
             )}
           </div>
 
+          {onClear && (
+            <button type="button" onClick={clear} disabled={pending || !connected || !hasMessage}
+              className="w-full rounded-xl border border-slate-600 px-4 py-2.5 text-sm font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-45 disabled:cursor-not-allowed">
+              {clearing ? 'Clearing…' : 'Clear projector message'}
+            </button>
+          )}
           <div className="flex items-center justify-end gap-3">
             <button type="button" onClick={onClose} disabled={pending} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-400 hover:text-white disabled:opacity-50">
               Cancel
@@ -128,7 +152,7 @@ export default function MessageComposer({ open, connected, onClose, onSend }: Pr
               className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-lg transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {pending ? 'Sending…' : 'Send to projector'}
+              {pending && !clearing ? 'Sending…' : 'Send to projector'}
             </button>
           </div>
         </form>

@@ -117,6 +117,19 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
   /pairing/message:
+    delete:
+      operationId: clearPairingMessage
+      tags: [pairing]
+      security: [{ bearerAuth: [] }]
+      description: Owner-only dismissal of all current projector messages, without changing session activity or scoreboard data.
+      responses:
+        "200":
+          description: Updated session with no projector messages
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       operationId: sendPairingMessage
       tags: [pairing]

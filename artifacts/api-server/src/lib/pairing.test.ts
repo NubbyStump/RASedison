@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import app from "../app";
+import type { Session } from "@workspace/api-zod";
 import { after, test } from "node:test";
 import { eq, sql } from "drizzle-orm";
 import { db, pairingMembers, pairingRooms } from "@workspace/db";
@@ -11,6 +13,7 @@ import {
 } from "./pairing";
 import {
   calendarMonth,
+  clearProjectorMessage,
   executePairingCommand,
   hashPassword,
   passwordMatches,
@@ -28,9 +31,120 @@ const baseState = (): PairingState => ({
   activities: [],
 });
 
+test("owner dismissal reaches every polling session, preserves data, and enforces permissions", async () => {
+  const state = baseState();
+  state.groups[0].score = 42;
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state,
+    activitiesMonth: calendarMonth(),
+  }).returning();
+  roomIds.push(room.id);
+  const tokens = [randomUUID(), randomUUID(), randomUUID()];
+  const members = await db.insert(pairingMembers).values(tokens.map((token, index) => ({
+    roomId: room.id,
+    name: `Dismissal test ${index}`,
+    role: index === 0 ? "owner" as const : "counselor" as const,
+    tokenHash: createHash("sha256").update(token).digest("hex"),
+  }))).returning();
+  await sendProjectorMessage(members[1], { id: randomUUID(), text: "Older announcement" });
+  await sendProjectorMessage(members[0], { id: randomUUID(), text: "Latest announcement" });
+  const [before] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+  const server = app.listen(0);
+  await new Promise<void>(resolve => server.once("listening", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const url = `http://127.0.0.1:${address.port}/api/pairing`;
+  const request = (path: string, method: string, token?: string) => fetch(url + path, {
+    method, headers: token ? { authorization: `Bearer ${token}` } : {},
+  });
+  try {
+    assert.equal((await request("/message", "DELETE")).status, 401);
+    assert.equal((await request("/message", "DELETE", tokens[1])).status, 403);
+    const [unchanged] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+    assert.deepEqual(unchanged, before);
+    const cleared = await request("/message", "DELETE", tokens[0]);
+    assert.equal(cleared.status, 200);
+    assert.deepEqual(((await cleared.json()) as Session).projectorMessages, []);
+    for (const token of tokens) {
+      const response = await request("/session", "GET", token);
+      assert.equal(response.status, 200);
+      const session = await response.json() as Session;
+      assert.equal(session.roomId, room.id);
+      assert.deepEqual(session.projectorMessages, []);
+      assert.deepEqual(session.state, before.state);
+      assert.equal(session.version, before.version + 1);
+    }
+    const replay = await clearProjectorMessage(members[0]);
+    assert.equal(replay.version, before.version + 1);
+    await sendProjectorMessage(members[1], { id: randomUUID(), text: "New after clear" });
+    await db.update(pairingMembers).set({ revokedAt: new Date() }).where(eq(pairingMembers.id, members[0].id));
+    await assert.rejects(clearProjectorMessage(members[0]), /Unauthorized/);
+    assert.equal((await request("/message", "DELETE", tokens[0])).status, 401);
+    await db.update(pairingRooms).set({ endedAt: new Date() }).where(eq(pairingRooms.id, room.id));
+    await assert.rejects(clearProjectorMessage(members[1]), /Unauthorized/);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+});
+
 after(async () => {
   for (const id of roomIds) {
     await db.delete(pairingRooms).where(eq(pairingRooms.id, id));
+  }
+});
+
+test("pairing HTTP lifecycle remains functional alongside message dismissal", async () => {
+  const server = app.listen(0);
+  await new Promise<void>(resolve => server.once("listening", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const url = `http://127.0.0.1:${address.port}/api/pairing`;
+  const request = async (path: string, body?: unknown, token?: string, method = "POST") => {
+    const response = await fetch(url + path, {
+      method,
+      headers: { "Content-Type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    assert.equal(response.status, 200, `${method} ${path}: ${response.status}`);
+    return await response.json() as Session;
+  };
+  try {
+    const password = "test-room-password";
+    const assignmentDate = "2026-09-24";
+    const owner = await request("/create", {
+      name: "Manager", password, assignmentDate, groupId: null, state: baseState(),
+    });
+    roomIds.push(owner.roomId);
+    assert.ok(owner.token);
+    const counselor = await request("/join", {
+      name: "Counselor", password, code: owner.code, assignmentDate, groupId: "ladybugs",
+    });
+    assert.ok(counselor.token);
+    await request("/assignment", { groupId: "ladybugs", assignmentDate }, counselor.token, "PATCH");
+    const scored = await request("/command", {
+      id: randomUUID(), type: "addPoints", payload: { groupId: "ladybugs", amount: 5, reason: "Teamwork" },
+    }, counselor.token);
+    assert.equal(scored.state.groups[0].score, 5);
+    await request("/message", { id: randomUUID(), text: "Ready to go" }, counselor.token);
+    const visible = await request("/session", undefined, owner.token, "GET");
+    assert.equal(visible.projectorMessages.length, 1);
+    await request("/message", undefined, owner.token, "DELETE");
+    const polled = await request("/session", undefined, counselor.token, "GET");
+    assert.deepEqual(polled.projectorMessages, []);
+    assert.equal(polled.state.groups[0].score, 5);
+    const rotated = await request("/rotate-code", undefined, owner.token);
+    assert.notEqual(rotated.code, owner.code);
+    const removable = await request("/join", {
+      name: "Other counselor", password, code: rotated.code, assignmentDate, groupId: "ladybugs",
+    });
+    await request("/remove-member", { memberId: removable.memberId }, owner.token);
+    await request("/session", undefined, counselor.token, "GET");
+    await request("/leave", undefined, counselor.token);
+    await request("/session", undefined, owner.token, "GET");
+    await request("/end", undefined, owner.token);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 });
 

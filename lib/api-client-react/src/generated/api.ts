@@ -534,6 +534,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getSendPairingCommandMutationOptions(options));
     }
 
+export const getClearPairingMessageUrl = () => {
+
+
+
+
+  return `/api/pairing/message`
+}
+
+/**
+ * Owner-only dismissal of all current projector messages, without changing session activity or scoreboard data.
+ */
+export const clearPairingMessage = async ( options?: Parameters<typeof customFetch>[1]): Promise<Session> => {
+
+  return customFetch<Session>(getClearPairingMessageUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getClearPairingMessageMutationKey = () => ['clearPairingMessage'] as const;
+
+export const getClearPairingMessageMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearPairingMessage>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof clearPairingMessage>>, TError,void, TContext> => {
+
+const mutationKey = getClearPairingMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearPairingMessage>>, void> = () => {
+
+
+          return  clearPairingMessage(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClearPairingMessageMutationResult = NonNullable<Awaited<ReturnType<typeof clearPairingMessage>>>
+
+    export type ClearPairingMessageMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+    export const useClearPairingMessage = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearPairingMessage>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof clearPairingMessage>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getClearPairingMessageMutationOptions(options));
+    }
+
 export const getSendPairingMessageUrl = () => {
 
 

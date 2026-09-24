@@ -1583,6 +1583,209 @@ export const SendPairingCommandResponse = zod.object({
 })
 
 
+/**
+ * Owner-only dismissal of all current projector messages, without changing session activity or scoreboard data.
+ */
+export const clearPairingMessageResponseCodeRegExp = new RegExp('^[A-Za-z0-9]{10}$');
+export const clearPairingMessageResponseGroupIdMax = 80;
+
+export const clearPairingMessageResponseAssignmentDateRegExp = new RegExp('^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$');
+
+export const clearPairingMessageResponseActivitiesMonthRegExp = new RegExp('^\\d{4}-(0[1-9]|1[0-2])$');
+export const clearPairingMessageResponseStateGroupsItemIdMax = 80;
+
+export const clearPairingMessageResponseStateGroupsItemNameMax = 100;
+
+export const clearPairingMessageResponseStateGroupsItemScoreMin = 0;
+export const clearPairingMessageResponseStateGroupsItemScoreMax = 1000000000;
+
+export const clearPairingMessageResponseStateGroupsItemColorMax = 200;
+
+export const clearPairingMessageResponseStateGroupsItemBadgeColorMax = 200;
+
+export const clearPairingMessageResponseStateGroupsItemIconMax = 30;
+
+export const clearPairingMessageResponseStateGroupsMax = 100;
+
+export const clearPairingMessageResponseStateHistoryItemIdMax = 80;
+
+export const clearPairingMessageResponseStateHistoryItemGroupIdMax = 80;
+
+export const clearPairingMessageResponseStateHistoryItemGroupNameMax = 100;
+
+export const clearPairingMessageResponseStateHistoryItemAmountMin = -1000000;
+export const clearPairingMessageResponseStateHistoryItemAmountMax = 1000000;
+
+export const clearPairingMessageResponseStateHistoryItemReasonMax = 500;
+
+export const clearPairingMessageResponseStateHistoryItemTimestampMax = 100;
+
+export const clearPairingMessageResponseStateHistoryMax = 1000;
+
+export const clearPairingMessageResponseStateLapRecordsItemIdMax = 80;
+
+export const clearPairingMessageResponseStateLapRecordsItemRunnerNameMax = 100;
+
+export const clearPairingMessageResponseStateLapRecordsItemGroupMax = 100;
+
+export const clearPairingMessageResponseStateLapRecordsItemMinutesMin = 0;
+export const clearPairingMessageResponseStateLapRecordsItemMinutesMax = 999;
+
+export const clearPairingMessageResponseStateLapRecordsItemSecondsMin = 0;
+export const clearPairingMessageResponseStateLapRecordsItemSecondsMax = 59;
+
+export const clearPairingMessageResponseStateLapRecordsItemMsMin = 0;
+export const clearPairingMessageResponseStateLapRecordsItemMsMax = 99;
+
+export const clearPairingMessageResponseStateLapRecordsItemTimeFormattedMax = 30;
+
+export const clearPairingMessageResponseStateLapRecordsItemTotalSecondsMin = 0;
+export const clearPairingMessageResponseStateLapRecordsItemTotalSecondsMax = 100000;
+
+export const clearPairingMessageResponseStateLapRecordsItemCourseNameMax = 200;
+
+export const clearPairingMessageResponseStateLapRecordsItemDateMax = 30;
+
+export const clearPairingMessageResponseStateLapRecordsItemMonthYearMax = 100;
+
+export const clearPairingMessageResponseStateLapRecordsMax = 10000;
+
+export const clearPairingMessageResponseStateMonthlyRecordsItemIdMax = 80;
+
+export const clearPairingMessageResponseStateMonthlyRecordsItemMonthMax = 100;
+
+export const clearPairingMessageResponseStateMonthlyRecordsItemWinnerMax = 500;
+
+export const clearPairingMessageResponseStateMonthlyRecordsItemScoresMax = 2000;
+
+export const clearPairingMessageResponseStateMonthlyRecordsMax = 1000;
+
+export const clearPairingMessageResponseStateActivitiesItemIdMax = 80;
+
+export const clearPairingMessageResponseStateActivitiesItemTitleMax = 300;
+
+export const clearPairingMessageResponseStateActivitiesItemTypeMax = 100;
+
+export const clearPairingMessageResponseStateActivitiesItemPointsMin = -1000000;
+export const clearPairingMessageResponseStateActivitiesItemPointsMax = 1000000;
+
+export const clearPairingMessageResponseStateActivitiesItemLocationMax = 100;
+
+export const clearPairingMessageResponseStateActivitiesItemScrambledPhraseMax = 2000;
+
+export const clearPairingMessageResponseStateActivitiesItemSolvedPhraseMax = 2000;
+
+export const clearPairingMessageResponseStateActivitiesItemHintMax = 2000;
+
+export const clearPairingMessageResponseStateActivitiesItemLessonMax = 5000;
+
+export const clearPairingMessageResponseStateActivitiesItemMaterialsMax = 5000;
+
+export const clearPairingMessageResponseStateActivitiesItemStepsMax = 10000;
+
+export const clearPairingMessageResponseStateActivitiesItemHarderMax = 5000;
+
+export const clearPairingMessageResponseStateActivitiesItemSafetyMax = 5000;
+
+export const clearPairingMessageResponseStateActivitiesMax = 10000;
+
+export const clearPairingMessageResponseMembersItemNameMax = 60;
+
+export const clearPairingMessageResponseMembersItemGroupIdMax = 80;
+
+export const clearPairingMessageResponseMembersItemAssignmentDateRegExp = new RegExp('^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$');
+export const clearPairingMessageResponseProjectorMessagesItemTextMax = 240;
+
+export const clearPairingMessageResponseProjectorMessagesItemSenderNameMax = 60;
+
+export const clearPairingMessageResponseProjectorMessagesMax = 20;
+
+export const clearPairingMessageResponseTokenMin = 32;
+
+
+
+export const ClearPairingMessageResponse = zod.object({
+  "roomId": zod.string().uuid(),
+  "code": zod.string().regex(clearPairingMessageResponseCodeRegExp),
+  "role": zod.enum(['owner', 'counselor']),
+  "memberId": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(clearPairingMessageResponseGroupIdMax).nullable(),
+  "assignmentDate": zod.string().regex(clearPairingMessageResponseAssignmentDateRegExp).nullable(),
+  "version": zod.number().int().min(1),
+  "timeZone": zod.string().describe('IANA timezone used for the room\'s school calendar month (America/Los_Angeles by default).'),
+  "activitiesMonth": zod.string().regex(clearPairingMessageResponseActivitiesMonthRegExp).describe('Calendar month for which missions and Super Scrambles are current.'),
+  "state": zod.object({
+  "groups": zod.array(zod.object({
+  "id": zod.string().min(1).max(clearPairingMessageResponseStateGroupsItemIdMax),
+  "name": zod.string().min(1).max(clearPairingMessageResponseStateGroupsItemNameMax),
+  "score": zod.number().min(clearPairingMessageResponseStateGroupsItemScoreMin).max(clearPairingMessageResponseStateGroupsItemScoreMax),
+  "color": zod.string().max(clearPairingMessageResponseStateGroupsItemColorMax).optional(),
+  "badgeColor": zod.string().max(clearPairingMessageResponseStateGroupsItemBadgeColorMax).optional(),
+  "icon": zod.string().max(clearPairingMessageResponseStateGroupsItemIconMax).optional()
+})).max(clearPairingMessageResponseStateGroupsMax),
+  "history": zod.array(zod.object({
+  "id": zod.string().min(1).max(clearPairingMessageResponseStateHistoryItemIdMax),
+  "groupId": zod.string().min(1).max(clearPairingMessageResponseStateHistoryItemGroupIdMax),
+  "groupName": zod.string().min(1).max(clearPairingMessageResponseStateHistoryItemGroupNameMax),
+  "amount": zod.number().min(clearPairingMessageResponseStateHistoryItemAmountMin).max(clearPairingMessageResponseStateHistoryItemAmountMax),
+  "reason": zod.string().min(1).max(clearPairingMessageResponseStateHistoryItemReasonMax),
+  "timestamp": zod.string().min(1).max(clearPairingMessageResponseStateHistoryItemTimestampMax)
+})).max(clearPairingMessageResponseStateHistoryMax),
+  "lapRecords": zod.array(zod.object({
+  "id": zod.string().min(1).max(clearPairingMessageResponseStateLapRecordsItemIdMax),
+  "runnerName": zod.string().min(1).max(clearPairingMessageResponseStateLapRecordsItemRunnerNameMax),
+  "group": zod.string().min(1).max(clearPairingMessageResponseStateLapRecordsItemGroupMax),
+  "minutes": zod.number().int().min(clearPairingMessageResponseStateLapRecordsItemMinutesMin).max(clearPairingMessageResponseStateLapRecordsItemMinutesMax),
+  "seconds": zod.number().int().min(clearPairingMessageResponseStateLapRecordsItemSecondsMin).max(clearPairingMessageResponseStateLapRecordsItemSecondsMax),
+  "ms": zod.number().int().min(clearPairingMessageResponseStateLapRecordsItemMsMin).max(clearPairingMessageResponseStateLapRecordsItemMsMax),
+  "timeFormatted": zod.string().min(1).max(clearPairingMessageResponseStateLapRecordsItemTimeFormattedMax),
+  "totalSeconds": zod.number().min(clearPairingMessageResponseStateLapRecordsItemTotalSecondsMin).max(clearPairingMessageResponseStateLapRecordsItemTotalSecondsMax),
+  "courseName": zod.string().min(1).max(clearPairingMessageResponseStateLapRecordsItemCourseNameMax),
+  "date": zod.string().min(1).max(clearPairingMessageResponseStateLapRecordsItemDateMax),
+  "monthYear": zod.string().min(1).max(clearPairingMessageResponseStateLapRecordsItemMonthYearMax)
+})).max(clearPairingMessageResponseStateLapRecordsMax),
+  "monthlyRecords": zod.array(zod.object({
+  "id": zod.string().min(1).max(clearPairingMessageResponseStateMonthlyRecordsItemIdMax),
+  "month": zod.string().min(1).max(clearPairingMessageResponseStateMonthlyRecordsItemMonthMax),
+  "winner": zod.string().min(1).max(clearPairingMessageResponseStateMonthlyRecordsItemWinnerMax),
+  "scores": zod.string().max(clearPairingMessageResponseStateMonthlyRecordsItemScoresMax),
+  "rewardClaimed": zod.boolean()
+})).max(clearPairingMessageResponseStateMonthlyRecordsMax),
+  "activities": zod.array(zod.object({
+  "id": zod.string().min(1).max(clearPairingMessageResponseStateActivitiesItemIdMax),
+  "title": zod.string().min(1).max(clearPairingMessageResponseStateActivitiesItemTitleMax),
+  "type": zod.string().min(1).max(clearPairingMessageResponseStateActivitiesItemTypeMax),
+  "points": zod.number().min(clearPairingMessageResponseStateActivitiesItemPointsMin).max(clearPairingMessageResponseStateActivitiesItemPointsMax),
+  "location": zod.string().min(1).max(clearPairingMessageResponseStateActivitiesItemLocationMax),
+  "scrambledPhrase": zod.string().max(clearPairingMessageResponseStateActivitiesItemScrambledPhraseMax).optional(),
+  "solvedPhrase": zod.string().max(clearPairingMessageResponseStateActivitiesItemSolvedPhraseMax).optional(),
+  "hint": zod.string().max(clearPairingMessageResponseStateActivitiesItemHintMax).optional(),
+  "lesson": zod.string().max(clearPairingMessageResponseStateActivitiesItemLessonMax).optional(),
+  "materials": zod.string().max(clearPairingMessageResponseStateActivitiesItemMaterialsMax).optional(),
+  "steps": zod.string().max(clearPairingMessageResponseStateActivitiesItemStepsMax).optional(),
+  "harder": zod.string().max(clearPairingMessageResponseStateActivitiesItemHarderMax).optional(),
+  "safety": zod.string().max(clearPairingMessageResponseStateActivitiesItemSafetyMax).optional()
+})).max(clearPairingMessageResponseStateActivitiesMax)
+}),
+  "members": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string().min(1).max(clearPairingMessageResponseMembersItemNameMax),
+  "role": zod.enum(['owner', 'counselor']),
+  "groupId": zod.string().min(1).max(clearPairingMessageResponseMembersItemGroupIdMax).nullable(),
+  "assignmentDate": zod.string().regex(clearPairingMessageResponseMembersItemAssignmentDateRegExp).nullable()
+})),
+  "projectorMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(clearPairingMessageResponseProjectorMessagesItemTextMax),
+  "senderName": zod.string().min(1).max(clearPairingMessageResponseProjectorMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(clearPairingMessageResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+  "token": zod.string().min(clearPairingMessageResponseTokenMin).optional()
+})
+
+
 export const sendPairingMessageBodyTextMax = 240;
 
 

@@ -624,6 +624,8 @@ export default function App() {
           connected={pairing.status === 'connected'}
           onClose={() => setMessageComposerOpen(false)}
           onSend={pairing.sendMessage}
+          onClear={pairing.session?.role === 'owner' ? pairing.clearMessage : undefined}
+          hasMessage={projectorMessages.some(message => Date.parse(message.expiresAt) > Date.now())}
         />
         <PairingPanel
           open={Boolean(sessionModal)}
@@ -1582,6 +1584,8 @@ export default function App() {
         connected={pairing.status === 'connected'}
         onClose={() => setMessageComposerOpen(false)}
         onSend={pairing.sendMessage}
+        onClear={pairing.session?.role === 'owner' ? pairing.clearMessage : undefined}
+        hasMessage={projectorMessages.some(message => Date.parse(message.expiresAt) > Date.now())}
       />
 
       {/* Modal: Add Custom Scramble or Mission */}
