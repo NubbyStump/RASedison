@@ -1,35 +1,6 @@
-import { useState, useEffect, type FormEvent } from 'react';
-import { 
-  Trophy, Flame, Zap, Award, Timer, Plus, Minus, RotateCcw, 
-  HelpCircle, Share2, Tv, Sparkles, AlertCircle, Check, Play, Pause
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 
-type Group = {
-  id: string;
-  name: string;
-  color: string;
-  score: number;
-};
-
-type PointLog = {
-  id: number;
-  groupName: string;
-  groupId: string;
-  amount: number;
-  reason: string;
-  time: string;
-};
-
-type LapTime = {
-  id: number;
-  runnerName: string;
-  group: string;
-  timeFormatted: string;
-  totalMs: number;
-  date: string;
-};
-
-const INITIAL_GROUPS: Group[] = [
+const INITIAL_GROUPS = [
   { id: 'ladybugs', name: 'Ladybugs', color: 'from-pink-500 to-rose-600', score: 0 },
   { id: 'jellyfish', name: 'Jellyfish', color: 'from-cyan-500 to-blue-600', score: 0 },
   { id: 'tigers', name: 'Tigers', color: 'from-amber-500 to-orange-600', score: 0 }
@@ -67,20 +38,20 @@ const PRELOADED_SCRAMBLES = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('points');
-  const [groups, setGroups] = useState<Group[]>(() => {
+  const [groups, setGroups] = useState(() => {
     const saved = localStorage.getItem('ras_groups');
-    return saved ? JSON.parse(saved) as Group[] : INITIAL_GROUPS;
+    return saved ? JSON.parse(saved) : INITIAL_GROUPS;
   });
   const [reason, setReason] = useState('');
-  const [logs, setLogs] = useState<PointLog[]>(() => {
+  const [logs, setLogs] = useState(() => {
     const saved = localStorage.getItem('ras_logs');
-    return saved ? JSON.parse(saved) as PointLog[] : [];
+    return saved ? JSON.parse(saved) : [];
   });
   
   // Fastest Lap State
-  const [lapTimes, setLapTimes] = useState<LapTime[]>(() => {
+  const [lapTimes, setLapTimes] = useState(() => {
     const saved = localStorage.getItem('ras_laps');
-    return saved ? JSON.parse(saved) as LapTime[] : [];
+    return saved ? JSON.parse(saved) : [];
   });
   const [runnerName, setRunnerName] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('ladybugs');
@@ -108,12 +79,11 @@ export default function App() {
   const maxScore = Math.max(...groups.map(g => g.score));
   const leadingGroups = groups.filter(g => g.score === maxScore && g.score > 0);
 
-  const addPoints = (groupId: string, amount: number) => {
+  const addPoints = (groupId, amount) => {
     const updated = groups.map(g => g.id === groupId ? { ...g, score: g.score + amount } : g);
     setGroups(updated);
     
     const targetGroup = groups.find(g => g.id === groupId);
-    if (!targetGroup) return;
     const logEntry = {
       id: Date.now(),
       groupName: targetGroup.name,
@@ -126,17 +96,17 @@ export default function App() {
     setReason('');
   };
 
-  const undoLog = (logId: number) => {
+  const undoLog = (logId) => {
     const targetLog = logs.find(l => l.id === logId);
     if (!targetLog) return;
     setGroups(groups.map(g => g.id === targetLog.groupId ? { ...g, score: g.score - targetLog.amount } : g));
     setLogs(logs.filter(l => l.id !== logId));
   };
 
-  const saveLapTime = (e: FormEvent<HTMLFormElement>) => {
+  const saveLapTime = (e) => {
     e.preventDefault();
     if (!runnerName) return;
-    const totalMs = (parseInt(lapMinutes) * 60000) + (parseInt(lapSeconds) * 1000) + (parseInt(lapMillis) * 10);
+    const totalMs = (parseInt(lapMinutes || '0') * 60000) + (parseInt(lapSeconds || '0') * 1000) + (parseInt(lapMillis || '0') * 10);
     const newEntry = {
       id: Date.now(),
       runnerName,
@@ -158,8 +128,7 @@ export default function App() {
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="text-center sm:text-left">
             <h1 className="text-xl font-bold text-amber-400 tracking-wide flex items-center justify-center sm:justify-start gap-2">
-              <Sparkles className="w-5 h-5 text-lime-400" />
-              Right At School
+              ✨ Right At School
             </h1>
             <p className="text-xs text-slate-400 font-medium">Edison Language Academy</p>
           </div>
@@ -188,7 +157,7 @@ export default function App() {
               onClick={() => setActiveTab('projector')}
               className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1 ${activeTab === 'projector' ? 'bg-lime-500 text-slate-950' : 'text-lime-400 hover:text-lime-300'}`}
             >
-              <Tv className="w-3.5 h-3.5" /> TV Mode
+              📺 TV Mode
             </button>
           </nav>
         </div>
@@ -274,8 +243,8 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-extrabold text-lime-400">+{log.amount}</span>
-                        <button onClick={() => undoLog(log.id)} className="text-slate-500 hover:text-rose-400">
-                          <RotateCcw className="w-3.5 h-3.5" />
+                        <button onClick={() => undoLog(log.id)} className="text-slate-500 hover:text-rose-400 font-bold">
+                          ↺
                         </button>
                       </div>
                     </div>
@@ -291,7 +260,7 @@ export default function App() {
           <div className="space-y-6">
             <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
               <h2 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-amber-400" /> Whiteboard Super Scrambles
+                ⚡ Whiteboard Super Scrambles
               </h2>
               <p className="text-xs text-slate-400 mt-1">
                 Write these on the classroom whiteboard. First group to decipher the phrase gets 200-600 points!
@@ -328,7 +297,7 @@ export default function App() {
             {/* Record Form */}
             <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700">
               <h2 className="text-lg font-bold text-amber-400 mb-3 flex items-center gap-2">
-                <Timer className="w-5 h-5 text-amber-400" /> Record a Lap Time
+                ⏱️ Record a Lap Time
               </h2>
               <form onSubmit={saveLapTime} className="space-y-3 text-xs">
                 <div>
