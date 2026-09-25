@@ -423,6 +423,13 @@ export async function executePairingCommand(
         && activeMember.role === "counselor"
       ) {
         const groupId = command.payload.groupId;
+        if (
+          command.type === "addPoints"
+          && command.payload.amount < 0
+          && activeMember.groupId !== groupId
+        ) {
+          return { error: "Counselors may only remove points from their assigned group" as const };
+        }
         if (command.type === "reduceGroupPoints" && activeMember.groupId !== groupId) {
           return { error: "Counselors may only remove points from their assigned group" as const };
         }

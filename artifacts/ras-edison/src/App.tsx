@@ -1099,22 +1099,24 @@ export default function App() {
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-1.5 pt-1">
-                          <button
-                            onClick={() => handleAddPoints(group.id, -10)}
-                            aria-label={`Subtract 10 points from ${group.name}`}
-                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
-                          >
-                            -10
-                          </button>
-                          <button
-                            onClick={() => handleAddPoints(group.id, -50)}
-                            aria-label={`Subtract 50 points from ${group.name}`}
-                            className="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
-                          >
-                            -50
-                          </button>
-                        </div>
+                        {(!isLiveCounselor || isMyGroup) && (
+                          <div className="grid grid-cols-2 gap-1.5 pt-1">
+                            <button
+                              onClick={() => handleAddPoints(group.id, -10)}
+                              aria-label={`Subtract 10 points from ${group.name}`}
+                              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                            >
+                              -10
+                            </button>
+                            <button
+                              onClick={() => handleAddPoints(group.id, -50)}
+                              aria-label={`Subtract 50 points from ${group.name}`}
+                              className="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                            >
+                              -50
+                            </button>
+                          </div>
+                        )}
 
                         {isLiveCounselor && isMyGroup && (
                           <div className="grid grid-cols-2 gap-1.5 pt-1">

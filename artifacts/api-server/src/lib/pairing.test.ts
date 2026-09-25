@@ -349,6 +349,15 @@ test("counselors can submit points for approval but owner-only commands remain b
     tokenHash: randomUUID(),
   }).returning();
 
+  await assert.rejects(
+    executePairingCommand(member, {
+      id: randomUUID(),
+      type: "addPoints",
+      payload: { groupId: "tigers", amount: -10, reason: "Cannot deduct from another group" },
+    }),
+    /assigned group/,
+  );
+
   const scored = await executePairingCommand(member, {
     id: randomUUID(),
     type: "addPoints",
