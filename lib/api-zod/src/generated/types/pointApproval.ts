@@ -25,6 +25,8 @@ export interface PointApproval {
      * @maxLength 500
      */
   reason: string;
+  /** @maxLength 500 */
+  specialMentions?: string;
   submittedById: string;
   /**
      * @minLength 1

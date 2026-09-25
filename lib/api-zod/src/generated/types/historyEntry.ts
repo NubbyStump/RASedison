@@ -34,6 +34,13 @@ export interface HistoryEntry {
   reason: string;
   /**
      * @minLength 1
+     * @maxLength 60
+     */
+  submittedByName?: string;
+  /** @maxLength 500 */
+  specialMentions?: string;
+  /**
+     * @minLength 1
      * @maxLength 100
      */
   timestamp: string;

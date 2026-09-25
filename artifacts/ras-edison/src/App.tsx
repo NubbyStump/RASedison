@@ -79,6 +79,7 @@ export default function App() {
   });
 
   const [reasonInput, setReasonInput] = useState({ ladybugs: '', jellyfish: '', tigers: '' });
+  const [specialMentionsInput, setSpecialMentionsInput] = useState({ ladybugs: '', jellyfish: '', tigers: '' });
   const [reasonErrors, setReasonErrors] = useState({});
   const [pointActionError, setPointActionError] = useState('');
   const [approvalClock, setApprovalClock] = useState(() => Date.now());
@@ -358,6 +359,7 @@ export default function App() {
 
   const handleAddPoints = async (groupId, amount) => {
     const enteredReason = reasonInput[groupId]?.trim();
+    const specialMentions = specialMentionsInput[groupId]?.trim();
     if (!enteredReason) {
       setReasonErrors(prev => ({ ...prev, [groupId]: 'Enter a reason before changing points.' }));
       document.getElementById(`points-reason-${groupId}`)?.focus();
@@ -370,8 +372,12 @@ export default function App() {
 
     if (pairing.isPaired) {
       try {
-        await pairing.command({ type: 'addPoints', payload: { groupId, amount, reason } });
+        await pairing.command({
+          type: 'addPoints',
+          payload: { groupId, amount, reason, ...(specialMentions ? { specialMentions } : {}) },
+        });
         setReasonInput(prev => ({ ...prev, [groupId]: '' }));
+        setSpecialMentionsInput(prev => ({ ...prev, [groupId]: '' }));
       } catch (error) {
         setPointActionError(error?.message || 'Unable to submit this points change.');
       }
@@ -386,11 +392,13 @@ export default function App() {
       groupName: targetGroup.name,
       amount,
       reason,
+      ...(specialMentions ? { specialMentions } : {}),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     setLocalHistory(prev => [newLog, ...prev.slice(0, 35)]);
     setReasonInput(prev => ({ ...prev, [groupId]: '' }));
+    setSpecialMentionsInput(prev => ({ ...prev, [groupId]: '' }));
   };
 
   const handlePointApproval = async (type, requestId) => {
@@ -906,6 +914,9 @@ export default function App() {
                             <span className="text-xs text-amber-200">Auto-approves in {minutes}:{String(seconds).padStart(2, '0')}</span>
                           </div>
                           <p className="text-sm text-slate-300 mt-1 italic">“{request.reason}”</p>
+                          {request.specialMentions && (
+                            <p className="text-xs text-cyan-200 mt-1"><span className="font-bold">Special mentions:</span> {request.specialMentions}</p>
+                          )}
                           <p className="text-xs text-slate-400 mt-1">Requested by {request.submittedByName}</p>
                         </div>
                         {isLiveOwner && (
@@ -988,6 +999,21 @@ export default function App() {
                             {reasonErrors[group.id]}
                           </p>
                         )}
+                      </div>
+
+                      <div className="mb-4">
+                        <label htmlFor={`points-mentions-${group.id}`} className="block text-xs text-slate-300 mb-1">
+                          Special mentions (optional)
+                        </label>
+                        <input
+                          id={`points-mentions-${group.id}`}
+                          type="text"
+                          maxLength={500}
+                          placeholder="Names or shout-outs to include in the log"
+                          value={specialMentionsInput[group.id] || ''}
+                          onChange={(e) => setSpecialMentionsInput(prev => ({ ...prev, [group.id]: e.target.value }))}
+                          className="w-full bg-slate-900/80 border border-slate-700 text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
+                        />
                       </div>
 
                       {/* Point Action Buttons in Hundreds Range */}
@@ -1080,17 +1106,24 @@ export default function App() {
                 ) : (
                   <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
                     {history.map((item) => (
-                      <div key={item.id} className="bg-slate-900/70 border border-slate-700/60 rounded-2xl p-3 flex items-center justify-between gap-3 text-sm">
-                        <div className="flex items-center gap-3">
+                      <div key={item.id} className="bg-slate-900/70 border border-slate-700/60 rounded-2xl p-3 flex items-start justify-between gap-3 text-sm">
+                        <div className="flex items-start gap-3 min-w-0">
                           <span className={`font-black px-2.5 py-1 rounded-xl text-xs ${
                             item.amount > 0 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'
                           }`}>
                             {item.amount > 0 ? `+${item.amount}` : item.amount}
                           </span>
-                          <div>
-                            <span className="font-bold text-white">{item.groupName}</span>
-                            <span className="text-slate-400 mx-1.5">•</span>
-                            <span className="text-slate-300 italic">"{item.reason}"</span>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-2">
+                              <span className="font-bold text-white">{item.groupName}</span>
+                              <span className="text-slate-300 italic">“{item.reason}”</span>
+                            </div>
+                            {(item.submittedByName || item.specialMentions) && (
+                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400">
+                                {item.submittedByName && <span>Entered by {item.submittedByName}</span>}
+                                {item.specialMentions && <span><strong className="text-cyan-200">Special mentions:</strong> {item.specialMentions}</span>}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <button

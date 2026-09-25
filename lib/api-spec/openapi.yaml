@@ -276,6 +276,8 @@ components:
         groupName: { type: string, minLength: 1, maxLength: 100 }
         amount: { type: number, minimum: -1000000, maximum: 1000000 }
         reason: { type: string, minLength: 1, maxLength: 500 }
+        submittedByName: { type: string, minLength: 1, maxLength: 60 }
+        specialMentions: { type: string, maxLength: 500 }
         timestamp: { type: string, minLength: 1, maxLength: 100 }
     LapRecord:
       type: object
@@ -357,6 +359,7 @@ components:
         groupName: { type: string, minLength: 1, maxLength: 100 }
         amount: { type: number }
         reason: { type: string, minLength: 1, maxLength: 500 }
+        specialMentions: { type: string, maxLength: 500 }
         submittedById: { type: string, format: uuid }
         submittedByName: { type: string, minLength: 1, maxLength: 60 }
         submittedAt: { type: string, format: date-time }
@@ -494,6 +497,7 @@ components:
             groupId: { type: string, minLength: 1, maxLength: 80 }
             amount: { type: number, minimum: -1000000, maximum: 1000000 }
             reason: { type: string, minLength: 1, maxLength: 500 }
+            specialMentions: { type: string, maxLength: 500 }
     ApprovePointsCommand:
       type: object
       additionalProperties: false

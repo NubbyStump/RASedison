@@ -44,6 +44,10 @@ export const createPairingBodyStateHistoryItemAmountMax = 1000000;
 
 export const createPairingBodyStateHistoryItemReasonMax = 500;
 
+export const createPairingBodyStateHistoryItemSubmittedByNameMax = 60;
+
+export const createPairingBodyStateHistoryItemSpecialMentionsMax = 500;
+
 export const createPairingBodyStateHistoryItemTimestampMax = 100;
 
 export const createPairingBodyStateHistoryMax = 1000;
@@ -121,6 +125,8 @@ export const createPairingBodyStatePendingPointApprovalsItemGroupNameMax = 100;
 
 export const createPairingBodyStatePendingPointApprovalsItemReasonMax = 500;
 
+export const createPairingBodyStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
 export const createPairingBodyStatePendingPointApprovalsItemSubmittedByNameMax = 60;
 
 export const createPairingBodyGroupIdMax = 80;
@@ -146,6 +152,8 @@ export const CreatePairingBody = zod.object({
   "groupName": zod.string().min(1).max(createPairingBodyStateHistoryItemGroupNameMax),
   "amount": zod.number().min(createPairingBodyStateHistoryItemAmountMin).max(createPairingBodyStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(createPairingBodyStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(createPairingBodyStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(createPairingBodyStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(createPairingBodyStateHistoryItemTimestampMax)
 })).max(createPairingBodyStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -189,6 +197,7 @@ export const CreatePairingBody = zod.object({
   "groupName": zod.string().min(1).max(createPairingBodyStatePendingPointApprovalsItemGroupNameMax),
   "amount": zod.number(),
   "reason": zod.string().min(1).max(createPairingBodyStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(createPairingBodyStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
   "submittedById": zod.string().uuid(),
   "submittedByName": zod.string().min(1).max(createPairingBodyStatePendingPointApprovalsItemSubmittedByNameMax),
   "submittedAt": zod.coerce.date(),
@@ -232,6 +241,10 @@ export const createPairingResponseStateHistoryItemAmountMin = -1000000;
 export const createPairingResponseStateHistoryItemAmountMax = 1000000;
 
 export const createPairingResponseStateHistoryItemReasonMax = 500;
+
+export const createPairingResponseStateHistoryItemSubmittedByNameMax = 60;
+
+export const createPairingResponseStateHistoryItemSpecialMentionsMax = 500;
 
 export const createPairingResponseStateHistoryItemTimestampMax = 100;
 
@@ -310,6 +323,8 @@ export const createPairingResponseStatePendingPointApprovalsItemGroupNameMax = 1
 
 export const createPairingResponseStatePendingPointApprovalsItemReasonMax = 500;
 
+export const createPairingResponseStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
 export const createPairingResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
 
 export const createPairingResponseMembersItemNameMax = 60;
@@ -358,6 +373,8 @@ export const CreatePairingResponse = zod.object({
   "groupName": zod.string().min(1).max(createPairingResponseStateHistoryItemGroupNameMax),
   "amount": zod.number().min(createPairingResponseStateHistoryItemAmountMin).max(createPairingResponseStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(createPairingResponseStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(createPairingResponseStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(createPairingResponseStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(createPairingResponseStateHistoryItemTimestampMax)
 })).max(createPairingResponseStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -401,6 +418,7 @@ export const CreatePairingResponse = zod.object({
   "groupName": zod.string().min(1).max(createPairingResponseStatePendingPointApprovalsItemGroupNameMax),
   "amount": zod.number(),
   "reason": zod.string().min(1).max(createPairingResponseStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(createPairingResponseStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
   "submittedById": zod.string().uuid(),
   "submittedByName": zod.string().min(1).max(createPairingResponseStatePendingPointApprovalsItemSubmittedByNameMax),
   "submittedAt": zod.coerce.date(),
@@ -489,6 +507,10 @@ export const joinPairingResponseStateHistoryItemAmountMax = 1000000;
 
 export const joinPairingResponseStateHistoryItemReasonMax = 500;
 
+export const joinPairingResponseStateHistoryItemSubmittedByNameMax = 60;
+
+export const joinPairingResponseStateHistoryItemSpecialMentionsMax = 500;
+
 export const joinPairingResponseStateHistoryItemTimestampMax = 100;
 
 export const joinPairingResponseStateHistoryMax = 1000;
@@ -566,6 +588,8 @@ export const joinPairingResponseStatePendingPointApprovalsItemGroupNameMax = 100
 
 export const joinPairingResponseStatePendingPointApprovalsItemReasonMax = 500;
 
+export const joinPairingResponseStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
 export const joinPairingResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
 
 export const joinPairingResponseMembersItemNameMax = 60;
@@ -614,6 +638,8 @@ export const JoinPairingResponse = zod.object({
   "groupName": zod.string().min(1).max(joinPairingResponseStateHistoryItemGroupNameMax),
   "amount": zod.number().min(joinPairingResponseStateHistoryItemAmountMin).max(joinPairingResponseStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(joinPairingResponseStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(joinPairingResponseStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(joinPairingResponseStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(joinPairingResponseStateHistoryItemTimestampMax)
 })).max(joinPairingResponseStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -657,6 +683,7 @@ export const JoinPairingResponse = zod.object({
   "groupName": zod.string().min(1).max(joinPairingResponseStatePendingPointApprovalsItemGroupNameMax),
   "amount": zod.number(),
   "reason": zod.string().min(1).max(joinPairingResponseStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(joinPairingResponseStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
   "submittedById": zod.string().uuid(),
   "submittedByName": zod.string().min(1).max(joinPairingResponseStatePendingPointApprovalsItemSubmittedByNameMax),
   "submittedAt": zod.coerce.date(),
@@ -725,6 +752,10 @@ export const getPairingSessionResponseStateHistoryItemAmountMin = -1000000;
 export const getPairingSessionResponseStateHistoryItemAmountMax = 1000000;
 
 export const getPairingSessionResponseStateHistoryItemReasonMax = 500;
+
+export const getPairingSessionResponseStateHistoryItemSubmittedByNameMax = 60;
+
+export const getPairingSessionResponseStateHistoryItemSpecialMentionsMax = 500;
 
 export const getPairingSessionResponseStateHistoryItemTimestampMax = 100;
 
@@ -803,6 +834,8 @@ export const getPairingSessionResponseStatePendingPointApprovalsItemGroupNameMax
 
 export const getPairingSessionResponseStatePendingPointApprovalsItemReasonMax = 500;
 
+export const getPairingSessionResponseStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
 export const getPairingSessionResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
 
 export const getPairingSessionResponseMembersItemNameMax = 60;
@@ -851,6 +884,8 @@ export const GetPairingSessionResponse = zod.object({
   "groupName": zod.string().min(1).max(getPairingSessionResponseStateHistoryItemGroupNameMax),
   "amount": zod.number().min(getPairingSessionResponseStateHistoryItemAmountMin).max(getPairingSessionResponseStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(getPairingSessionResponseStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(getPairingSessionResponseStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(getPairingSessionResponseStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(getPairingSessionResponseStateHistoryItemTimestampMax)
 })).max(getPairingSessionResponseStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -894,6 +929,7 @@ export const GetPairingSessionResponse = zod.object({
   "groupName": zod.string().min(1).max(getPairingSessionResponseStatePendingPointApprovalsItemGroupNameMax),
   "amount": zod.number(),
   "reason": zod.string().min(1).max(getPairingSessionResponseStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(getPairingSessionResponseStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
   "submittedById": zod.string().uuid(),
   "submittedByName": zod.string().min(1).max(getPairingSessionResponseStatePendingPointApprovalsItemSubmittedByNameMax),
   "submittedAt": zod.coerce.date(),
@@ -973,6 +1009,10 @@ export const updatePairingAssignmentResponseStateHistoryItemAmountMax = 1000000;
 
 export const updatePairingAssignmentResponseStateHistoryItemReasonMax = 500;
 
+export const updatePairingAssignmentResponseStateHistoryItemSubmittedByNameMax = 60;
+
+export const updatePairingAssignmentResponseStateHistoryItemSpecialMentionsMax = 500;
+
 export const updatePairingAssignmentResponseStateHistoryItemTimestampMax = 100;
 
 export const updatePairingAssignmentResponseStateHistoryMax = 1000;
@@ -1050,6 +1090,8 @@ export const updatePairingAssignmentResponseStatePendingPointApprovalsItemGroupN
 
 export const updatePairingAssignmentResponseStatePendingPointApprovalsItemReasonMax = 500;
 
+export const updatePairingAssignmentResponseStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
 export const updatePairingAssignmentResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
 
 export const updatePairingAssignmentResponseMembersItemNameMax = 60;
@@ -1098,6 +1140,8 @@ export const UpdatePairingAssignmentResponse = zod.object({
   "groupName": zod.string().min(1).max(updatePairingAssignmentResponseStateHistoryItemGroupNameMax),
   "amount": zod.number().min(updatePairingAssignmentResponseStateHistoryItemAmountMin).max(updatePairingAssignmentResponseStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(updatePairingAssignmentResponseStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(updatePairingAssignmentResponseStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(updatePairingAssignmentResponseStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(updatePairingAssignmentResponseStateHistoryItemTimestampMax)
 })).max(updatePairingAssignmentResponseStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -1141,6 +1185,7 @@ export const UpdatePairingAssignmentResponse = zod.object({
   "groupName": zod.string().min(1).max(updatePairingAssignmentResponseStatePendingPointApprovalsItemGroupNameMax),
   "amount": zod.number(),
   "reason": zod.string().min(1).max(updatePairingAssignmentResponseStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(updatePairingAssignmentResponseStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
   "submittedById": zod.string().uuid(),
   "submittedByName": zod.string().min(1).max(updatePairingAssignmentResponseStatePendingPointApprovalsItemSubmittedByNameMax),
   "submittedAt": zod.coerce.date(),
@@ -1184,6 +1229,8 @@ export const sendPairingCommandBodyOnePayloadAmountMin = -1000000;
 export const sendPairingCommandBodyOnePayloadAmountMax = 1000000;
 
 export const sendPairingCommandBodyOnePayloadReasonMax = 500;
+
+export const sendPairingCommandBodyOnePayloadSpecialMentionsMax = 500;
 
 export const sendPairingCommandBodyFourPayloadLogIdMax = 80;
 
@@ -1256,7 +1303,8 @@ export const SendPairingCommandBody = zod.union([zod.object({
   "payload": zod.object({
   "groupId": zod.string().min(1).max(sendPairingCommandBodyOnePayloadGroupIdMax),
   "amount": zod.number().min(sendPairingCommandBodyOnePayloadAmountMin).max(sendPairingCommandBodyOnePayloadAmountMax),
-  "reason": zod.string().min(1).max(sendPairingCommandBodyOnePayloadReasonMax)
+  "reason": zod.string().min(1).max(sendPairingCommandBodyOnePayloadReasonMax),
+  "specialMentions": zod.string().max(sendPairingCommandBodyOnePayloadSpecialMentionsMax).optional()
 })
 }),zod.object({
   "id": zod.string().uuid(),
@@ -1378,6 +1426,10 @@ export const sendPairingCommandResponseStateHistoryItemAmountMax = 1000000;
 
 export const sendPairingCommandResponseStateHistoryItemReasonMax = 500;
 
+export const sendPairingCommandResponseStateHistoryItemSubmittedByNameMax = 60;
+
+export const sendPairingCommandResponseStateHistoryItemSpecialMentionsMax = 500;
+
 export const sendPairingCommandResponseStateHistoryItemTimestampMax = 100;
 
 export const sendPairingCommandResponseStateHistoryMax = 1000;
@@ -1455,6 +1507,8 @@ export const sendPairingCommandResponseStatePendingPointApprovalsItemGroupNameMa
 
 export const sendPairingCommandResponseStatePendingPointApprovalsItemReasonMax = 500;
 
+export const sendPairingCommandResponseStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
 export const sendPairingCommandResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
 
 export const sendPairingCommandResponseMembersItemNameMax = 60;
@@ -1503,6 +1557,8 @@ export const SendPairingCommandResponse = zod.object({
   "groupName": zod.string().min(1).max(sendPairingCommandResponseStateHistoryItemGroupNameMax),
   "amount": zod.number().min(sendPairingCommandResponseStateHistoryItemAmountMin).max(sendPairingCommandResponseStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(sendPairingCommandResponseStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(sendPairingCommandResponseStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(sendPairingCommandResponseStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(sendPairingCommandResponseStateHistoryItemTimestampMax)
 })).max(sendPairingCommandResponseStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -1546,6 +1602,7 @@ export const SendPairingCommandResponse = zod.object({
   "groupName": zod.string().min(1).max(sendPairingCommandResponseStatePendingPointApprovalsItemGroupNameMax),
   "amount": zod.number(),
   "reason": zod.string().min(1).max(sendPairingCommandResponseStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(sendPairingCommandResponseStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
   "submittedById": zod.string().uuid(),
   "submittedByName": zod.string().min(1).max(sendPairingCommandResponseStatePendingPointApprovalsItemSubmittedByNameMax),
   "submittedAt": zod.coerce.date(),
@@ -1618,6 +1675,10 @@ export const clearPairingMessageResponseStateHistoryItemAmountMax = 1000000;
 
 export const clearPairingMessageResponseStateHistoryItemReasonMax = 500;
 
+export const clearPairingMessageResponseStateHistoryItemSubmittedByNameMax = 60;
+
+export const clearPairingMessageResponseStateHistoryItemSpecialMentionsMax = 500;
+
 export const clearPairingMessageResponseStateHistoryItemTimestampMax = 100;
 
 export const clearPairingMessageResponseStateHistoryMax = 1000;
@@ -1689,6 +1750,16 @@ export const clearPairingMessageResponseStateActivitiesItemSafetyMax = 5000;
 
 export const clearPairingMessageResponseStateActivitiesMax = 10000;
 
+export const clearPairingMessageResponseStatePendingPointApprovalsItemGroupIdMax = 80;
+
+export const clearPairingMessageResponseStatePendingPointApprovalsItemGroupNameMax = 100;
+
+export const clearPairingMessageResponseStatePendingPointApprovalsItemReasonMax = 500;
+
+export const clearPairingMessageResponseStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
+export const clearPairingMessageResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
+
 export const clearPairingMessageResponseMembersItemNameMax = 60;
 
 export const clearPairingMessageResponseMembersItemGroupIdMax = 80;
@@ -1699,6 +1770,12 @@ export const clearPairingMessageResponseProjectorMessagesItemTextMax = 240;
 export const clearPairingMessageResponseProjectorMessagesItemSenderNameMax = 60;
 
 export const clearPairingMessageResponseProjectorMessagesMax = 20;
+
+export const clearPairingMessageResponseChatMessagesItemTextMax = 240;
+
+export const clearPairingMessageResponseChatMessagesItemSenderNameMax = 60;
+
+export const clearPairingMessageResponseChatMessagesMax = 100;
 
 export const clearPairingMessageResponseTokenMin = 32;
 
@@ -1729,6 +1806,8 @@ export const ClearPairingMessageResponse = zod.object({
   "groupName": zod.string().min(1).max(clearPairingMessageResponseStateHistoryItemGroupNameMax),
   "amount": zod.number().min(clearPairingMessageResponseStateHistoryItemAmountMin).max(clearPairingMessageResponseStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(clearPairingMessageResponseStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(clearPairingMessageResponseStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(clearPairingMessageResponseStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(clearPairingMessageResponseStateHistoryItemTimestampMax)
 })).max(clearPairingMessageResponseStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -1765,7 +1844,21 @@ export const ClearPairingMessageResponse = zod.object({
   "steps": zod.string().max(clearPairingMessageResponseStateActivitiesItemStepsMax).optional(),
   "harder": zod.string().max(clearPairingMessageResponseStateActivitiesItemHarderMax).optional(),
   "safety": zod.string().max(clearPairingMessageResponseStateActivitiesItemSafetyMax).optional()
-})).max(clearPairingMessageResponseStateActivitiesMax)
+})).max(clearPairingMessageResponseStateActivitiesMax),
+  "pendingPointApprovals": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().min(1).max(clearPairingMessageResponseStatePendingPointApprovalsItemGroupIdMax),
+  "groupName": zod.string().min(1).max(clearPairingMessageResponseStatePendingPointApprovalsItemGroupNameMax),
+  "amount": zod.number(),
+  "reason": zod.string().min(1).max(clearPairingMessageResponseStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(clearPairingMessageResponseStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
+  "submittedById": zod.string().uuid(),
+  "submittedByName": zod.string().min(1).max(clearPairingMessageResponseStatePendingPointApprovalsItemSubmittedByNameMax),
+  "submittedAt": zod.coerce.date(),
+  "dueAt": zod.coerce.date(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'autoApproved']),
+  "resolvedAt": zod.coerce.date().optional()
+})).optional().describe('Point proposals and bounded approval outcomes. Omitted in rooms created before approvals were introduced.')
 }),
   "members": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -1777,11 +1870,21 @@ export const ClearPairingMessageResponse = zod.object({
   "projectorMessages": zod.array(zod.object({
   "id": zod.string().uuid(),
   "text": zod.string().min(1).max(clearPairingMessageResponseProjectorMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
   "senderName": zod.string().min(1).max(clearPairingMessageResponseProjectorMessagesItemSenderNameMax),
   "senderRole": zod.enum(['owner', 'counselor']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date()
-})).max(clearPairingMessageResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. Each expires 20 seconds after creation.'),
+})).max(clearPairingMessageResponseProjectorMessagesMax).describe('Unexpired projector broadcasts, sorted oldest to newest. New messages expire 8 seconds after creation.'),
+  "chatMessages": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "text": zod.string().min(1).max(clearPairingMessageResponseChatMessagesItemTextMax),
+  "senderId": zod.string().uuid().optional().describe('Server-owned sender member ID. Absent on messages created before sender identity tracking.'),
+  "senderName": zod.string().min(1).max(clearPairingMessageResponseChatMessagesItemSenderNameMax),
+  "senderRole": zod.enum(['owner', 'counselor']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})).max(clearPairingMessageResponseChatMessagesMax).describe('Retained recent chat messages, including messages whose projector display has expired, sorted oldest to newest.'),
   "token": zod.string().min(clearPairingMessageResponseTokenMin).optional()
 })
 
@@ -1826,6 +1929,10 @@ export const sendPairingMessageResponseStateHistoryItemAmountMin = -1000000;
 export const sendPairingMessageResponseStateHistoryItemAmountMax = 1000000;
 
 export const sendPairingMessageResponseStateHistoryItemReasonMax = 500;
+
+export const sendPairingMessageResponseStateHistoryItemSubmittedByNameMax = 60;
+
+export const sendPairingMessageResponseStateHistoryItemSpecialMentionsMax = 500;
 
 export const sendPairingMessageResponseStateHistoryItemTimestampMax = 100;
 
@@ -1904,6 +2011,8 @@ export const sendPairingMessageResponseStatePendingPointApprovalsItemGroupNameMa
 
 export const sendPairingMessageResponseStatePendingPointApprovalsItemReasonMax = 500;
 
+export const sendPairingMessageResponseStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
 export const sendPairingMessageResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
 
 export const sendPairingMessageResponseMembersItemNameMax = 60;
@@ -1952,6 +2061,8 @@ export const SendPairingMessageResponse = zod.object({
   "groupName": zod.string().min(1).max(sendPairingMessageResponseStateHistoryItemGroupNameMax),
   "amount": zod.number().min(sendPairingMessageResponseStateHistoryItemAmountMin).max(sendPairingMessageResponseStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(sendPairingMessageResponseStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(sendPairingMessageResponseStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(sendPairingMessageResponseStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(sendPairingMessageResponseStateHistoryItemTimestampMax)
 })).max(sendPairingMessageResponseStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -1995,6 +2106,7 @@ export const SendPairingMessageResponse = zod.object({
   "groupName": zod.string().min(1).max(sendPairingMessageResponseStatePendingPointApprovalsItemGroupNameMax),
   "amount": zod.number(),
   "reason": zod.string().min(1).max(sendPairingMessageResponseStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(sendPairingMessageResponseStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
   "submittedById": zod.string().uuid(),
   "submittedByName": zod.string().min(1).max(sendPairingMessageResponseStatePendingPointApprovalsItemSubmittedByNameMax),
   "submittedAt": zod.coerce.date(),
@@ -2063,6 +2175,10 @@ export const rotatePairingCodeResponseStateHistoryItemAmountMin = -1000000;
 export const rotatePairingCodeResponseStateHistoryItemAmountMax = 1000000;
 
 export const rotatePairingCodeResponseStateHistoryItemReasonMax = 500;
+
+export const rotatePairingCodeResponseStateHistoryItemSubmittedByNameMax = 60;
+
+export const rotatePairingCodeResponseStateHistoryItemSpecialMentionsMax = 500;
 
 export const rotatePairingCodeResponseStateHistoryItemTimestampMax = 100;
 
@@ -2141,6 +2257,8 @@ export const rotatePairingCodeResponseStatePendingPointApprovalsItemGroupNameMax
 
 export const rotatePairingCodeResponseStatePendingPointApprovalsItemReasonMax = 500;
 
+export const rotatePairingCodeResponseStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
 export const rotatePairingCodeResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
 
 export const rotatePairingCodeResponseMembersItemNameMax = 60;
@@ -2189,6 +2307,8 @@ export const RotatePairingCodeResponse = zod.object({
   "groupName": zod.string().min(1).max(rotatePairingCodeResponseStateHistoryItemGroupNameMax),
   "amount": zod.number().min(rotatePairingCodeResponseStateHistoryItemAmountMin).max(rotatePairingCodeResponseStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(rotatePairingCodeResponseStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(rotatePairingCodeResponseStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(rotatePairingCodeResponseStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(rotatePairingCodeResponseStateHistoryItemTimestampMax)
 })).max(rotatePairingCodeResponseStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -2232,6 +2352,7 @@ export const RotatePairingCodeResponse = zod.object({
   "groupName": zod.string().min(1).max(rotatePairingCodeResponseStatePendingPointApprovalsItemGroupNameMax),
   "amount": zod.number(),
   "reason": zod.string().min(1).max(rotatePairingCodeResponseStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(rotatePairingCodeResponseStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
   "submittedById": zod.string().uuid(),
   "submittedByName": zod.string().min(1).max(rotatePairingCodeResponseStatePendingPointApprovalsItemSubmittedByNameMax),
   "submittedAt": zod.coerce.date(),
@@ -2304,6 +2425,10 @@ export const removePairingMemberResponseStateHistoryItemAmountMin = -1000000;
 export const removePairingMemberResponseStateHistoryItemAmountMax = 1000000;
 
 export const removePairingMemberResponseStateHistoryItemReasonMax = 500;
+
+export const removePairingMemberResponseStateHistoryItemSubmittedByNameMax = 60;
+
+export const removePairingMemberResponseStateHistoryItemSpecialMentionsMax = 500;
 
 export const removePairingMemberResponseStateHistoryItemTimestampMax = 100;
 
@@ -2382,6 +2507,8 @@ export const removePairingMemberResponseStatePendingPointApprovalsItemGroupNameM
 
 export const removePairingMemberResponseStatePendingPointApprovalsItemReasonMax = 500;
 
+export const removePairingMemberResponseStatePendingPointApprovalsItemSpecialMentionsMax = 500;
+
 export const removePairingMemberResponseStatePendingPointApprovalsItemSubmittedByNameMax = 60;
 
 export const removePairingMemberResponseMembersItemNameMax = 60;
@@ -2430,6 +2557,8 @@ export const RemovePairingMemberResponse = zod.object({
   "groupName": zod.string().min(1).max(removePairingMemberResponseStateHistoryItemGroupNameMax),
   "amount": zod.number().min(removePairingMemberResponseStateHistoryItemAmountMin).max(removePairingMemberResponseStateHistoryItemAmountMax),
   "reason": zod.string().min(1).max(removePairingMemberResponseStateHistoryItemReasonMax),
+  "submittedByName": zod.string().min(1).max(removePairingMemberResponseStateHistoryItemSubmittedByNameMax).optional(),
+  "specialMentions": zod.string().max(removePairingMemberResponseStateHistoryItemSpecialMentionsMax).optional(),
   "timestamp": zod.string().min(1).max(removePairingMemberResponseStateHistoryItemTimestampMax)
 })).max(removePairingMemberResponseStateHistoryMax),
   "lapRecords": zod.array(zod.object({
@@ -2473,6 +2602,7 @@ export const RemovePairingMemberResponse = zod.object({
   "groupName": zod.string().min(1).max(removePairingMemberResponseStatePendingPointApprovalsItemGroupNameMax),
   "amount": zod.number(),
   "reason": zod.string().min(1).max(removePairingMemberResponseStatePendingPointApprovalsItemReasonMax),
+  "specialMentions": zod.string().max(removePairingMemberResponseStatePendingPointApprovalsItemSpecialMentionsMax).optional(),
   "submittedById": zod.string().uuid(),
   "submittedByName": zod.string().min(1).max(removePairingMemberResponseStatePendingPointApprovalsItemSubmittedByNameMax),
   "submittedAt": zod.coerce.date(),

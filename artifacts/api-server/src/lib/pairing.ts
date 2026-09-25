@@ -26,6 +26,7 @@ export type PointApproval = {
   groupName: string;
   amount: number;
   reason: string;
+  specialMentions?: string;
   submittedById: string;
   submittedByName: string;
   submittedAt: string;
@@ -85,6 +86,7 @@ export const commandSchema = z.discriminatedUnion("type", [
       groupId: shortId,
       amount: z.number().finite().min(-1000000).max(1000000),
       reason: z.string().trim().min(1).max(500),
+      specialMentions: z.string().trim().max(500).optional(),
     }).strict(),
   }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("approvePoints"), payload: z.object({ requestId: shortId }).strict() }).strict(),
@@ -128,6 +130,7 @@ export function reducePairingState(state: PairingState, command: PairingCommand)
         groupName: group.name,
         amount: actualDelta,
         reason: command.payload.reason,
+        ...(command.payload.specialMentions ? { specialMentions: command.payload.specialMentions } : {}),
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       }, ...next.history].slice(0, 36);
       break;

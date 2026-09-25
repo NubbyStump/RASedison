@@ -230,6 +230,8 @@ function resolveDueApprovals(state: PairingState, now = new Date()): boolean {
       groupName: group.name,
       amount: group.score - oldScore,
       reason: request.reason,
+      ...(request.specialMentions ? { specialMentions: request.specialMentions } : {}),
+      submittedByName: request.submittedByName,
       timestamp: request.submittedAt,
     }, ...state.history].slice(0, 36);
     request.status = "autoApproved";
@@ -433,6 +435,7 @@ export async function executePairingCommand(
             groupName: group.name,
             amount: command.payload.amount,
             reason: command.payload.reason,
+            ...(command.payload.specialMentions ? { specialMentions: command.payload.specialMentions } : {}),
             submittedById: activeMember.id,
             submittedByName: activeMember.name,
             submittedAt: submittedAt.toISOString(),
@@ -462,6 +465,8 @@ export async function executePairingCommand(
               groupName: group.name,
               amount: group.score - oldScore,
               reason: request.reason,
+              ...(request.specialMentions ? { specialMentions: request.specialMentions } : {}),
+              submittedByName: request.submittedByName,
               timestamp: request.submittedAt,
             }, ...state.history].slice(0, 36);
             request.status = "approved";
@@ -477,6 +482,9 @@ export async function executePairingCommand(
         ));
       } else {
         Object.assign(state, reducePairingState(state, command));
+        if (command.type === "addPoints" && state.history[0]) {
+          state.history[0].submittedByName = activeMember.name;
+        }
       }
       const [updatedRoom] = await tx.update(pairingRooms).set({
         state,

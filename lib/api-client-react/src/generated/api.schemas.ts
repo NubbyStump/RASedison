@@ -69,6 +69,13 @@ export interface HistoryEntry {
   reason: string;
   /**
      * @minLength 1
+     * @maxLength 60
+     */
+  submittedByName?: string;
+  /** @maxLength 500 */
+  specialMentions?: string;
+  /**
+     * @minLength 1
      * @maxLength 100
      */
   timestamp: string;
@@ -225,6 +232,8 @@ export interface PointApproval {
      * @maxLength 500
      */
   reason: string;
+  /** @maxLength 500 */
+  specialMentions?: string;
   submittedById: string;
   /**
      * @minLength 1
@@ -450,6 +459,8 @@ export type AddPointsCommandPayload = {
      * @maxLength 500
      */
   reason: string;
+  /** @maxLength 500 */
+  specialMentions?: string;
 };
 
 export interface AddPointsCommand {

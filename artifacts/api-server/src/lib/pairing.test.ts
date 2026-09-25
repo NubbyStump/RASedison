@@ -123,21 +123,45 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     assert.ok(counselor.token);
     await request("/assignment", { groupId: "ladybugs", assignmentDate }, counselor.token, "PATCH");
     const scored = await request("/command", {
-      id: randomUUID(), type: "addPoints", payload: { groupId: "ladybugs", amount: 5, reason: "Teamwork" },
+      id: randomUUID(),
+      type: "addPoints",
+      payload: {
+        groupId: "ladybugs",
+        amount: 5,
+        reason: "Teamwork",
+        specialMentions: "Jordan helped their teammates",
+      },
     }, counselor.token);
     assert.equal(scored.state.groups[0].score, 0);
     const pendingRequestId = scored.state.pendingPointApprovals?.[0]?.id;
     assert.ok(pendingRequestId);
+    assert.equal(scored.state.pendingPointApprovals?.[0]?.submittedByName, "Counselor");
+    assert.equal(scored.state.pendingPointApprovals?.[0]?.specialMentions, "Jordan helped their teammates");
     await request("/command", {
       id: randomUUID(), type: "approvePoints", payload: { requestId: pendingRequestId },
+    }, owner.token);
+    await request("/command", {
+      id: randomUUID(),
+      type: "addPoints",
+      payload: {
+        groupId: "ladybugs",
+        amount: 2,
+        reason: "Manager recognition",
+        specialMentions: "Excellent teamwork",
+      },
     }, owner.token);
     await request("/message", { id: randomUUID(), text: "Ready to go" }, counselor.token);
     const visible = await request("/session", undefined, owner.token, "GET");
     assert.equal(visible.projectorMessages.length, 1);
+    assert.equal(visible.state.groups[0].score, 7);
+    assert.equal(visible.state.history[0].submittedByName, "Manager");
+    assert.equal(visible.state.history[0].specialMentions, "Excellent teamwork");
+    assert.equal(visible.state.history[1].submittedByName, "Counselor");
+    assert.equal(visible.state.history[1].specialMentions, "Jordan helped their teammates");
     await request("/message", undefined, owner.token, "DELETE");
     const polled = await request("/session", undefined, counselor.token, "GET");
     assert.deepEqual(polled.projectorMessages, []);
-    assert.equal(polled.state.groups[0].score, 5);
+    assert.equal(polled.state.groups[0].score, 7);
     const rotated = await request("/rotate-code", undefined, owner.token);
     assert.notEqual(rotated.code, owner.code);
     const removable = await request("/join", {
@@ -328,10 +352,16 @@ test("counselors can submit points for approval but owner-only commands remain b
   const scored = await executePairingCommand(member, {
     id: randomUUID(),
     type: "addPoints",
-    payload: { groupId: "ladybugs", amount: 5, reason: "Good work" },
+    payload: {
+      groupId: "ladybugs",
+      amount: 5,
+      reason: "Good work",
+      specialMentions: "Avery encouraged the group",
+    },
   });
   assert.equal((scored.state as PairingState).groups[0].score, 0);
   assert.equal((scored.state as PairingState).pendingPointApprovals?.length, 1);
+  assert.equal((scored.state as PairingState).pendingPointApprovals?.[0]?.specialMentions, "Avery encouraged the group");
 
   const [owner] = await db.select().from(pairingMembers).where(eq(pairingMembers.roomId, room.id));
   const requestId = (scored.state as PairingState).pendingPointApprovals![0].id;
@@ -342,6 +372,8 @@ test("counselors can submit points for approval but owner-only commands remain b
   });
   assert.equal((approved.state as PairingState).groups[0].score, 5);
   assert.equal((approved.state as PairingState).history[0].reason, "Good work");
+  assert.equal((approved.state as PairingState).history[0].specialMentions, "Avery encouraged the group");
+  assert.equal((approved.state as PairingState).history[0].submittedByName, "Counselor");
   assert.equal((approved.state as PairingState).pendingPointApprovals?.[0].status, "approved");
 
   await assert.rejects(
@@ -466,7 +498,12 @@ test("owners can reject requests and expired requests auto-approve", async () =>
   await executePairingCommand(counselor, {
     id: rejectedRequestId,
     type: "addPoints",
-    payload: { groupId: "ladybugs", amount: 10, reason: "Helpful cleanup" },
+    payload: {
+      groupId: "ladybugs",
+      amount: 10,
+      reason: "Helpful cleanup",
+      specialMentions: "The group tidied together",
+    },
   });
   const rejected = await executePairingCommand(owner, {
     id: randomUUID(),
@@ -482,7 +519,12 @@ test("owners can reject requests and expired requests auto-approve", async () =>
   await executePairingCommand(counselor, {
     id: expiredRequestId,
     type: "addPoints",
-    payload: { groupId: "ladybugs", amount: 25, reason: "Old but valid" },
+    payload: {
+      groupId: "ladybugs",
+      amount: 25,
+      reason: "Old but valid",
+      specialMentions: "A counselor-led demo",
+    },
   });
   const current = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
   const staleState = structuredClone(current[0].state as PairingState);
@@ -495,6 +537,8 @@ test("owners can reject requests and expired requests auto-approve", async () =>
   const resolvedState = resolved.state as PairingState;
   assert.equal(resolvedState.groups[0].score, 25);
   assert.equal(resolvedState.history[0].reason, "Old but valid");
+  assert.equal(resolvedState.history[0].specialMentions, "A counselor-led demo");
+  assert.equal(resolvedState.history[0].submittedByName, "Counselor");
   assert.equal(
     resolvedState.pendingPointApprovals?.find((item) => item.id === expiredRequestId)?.status,
     "autoApproved",

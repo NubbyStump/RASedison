@@ -35,6 +35,7 @@ export type PairingState = {
     groupName: string;
     amount: number;
     reason: string;
+    specialMentions?: string;
     submittedById: string;
     submittedByName: string;
     submittedAt: string;
@@ -84,7 +85,7 @@ export type PairingSession = {
 export type PairingStatus = 'local' | 'connecting' | 'connected' | 'reconnecting';
 
 type PairingCommand =
-  | { type: 'addPoints'; payload: { groupId: string; amount: number; reason: string } }
+  | { type: 'addPoints'; payload: { groupId: string; amount: number; reason: string; specialMentions?: string } }
   | { type: 'approvePoints'; payload: { requestId: string } }
   | { type: 'rejectPoints'; payload: { requestId: string } }
   | { type: 'undo'; payload: { logId: string } }

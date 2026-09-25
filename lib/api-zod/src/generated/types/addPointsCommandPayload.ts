@@ -22,4 +22,6 @@ export type AddPointsCommandPayload = {
      * @maxLength 500
      */
   reason: string;
+  /** @maxLength 500 */
+  specialMentions?: string;
 };
