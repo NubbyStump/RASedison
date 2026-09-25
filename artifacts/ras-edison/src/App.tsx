@@ -774,7 +774,7 @@ export default function App() {
                 activeTab === 'generator' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
-                <FileText className="w-4 h-4" /> Missions & Scrambles
+                <FileText className="w-4 h-4" /> Activities
             </button>
             <button
               onClick={() => setActiveTab('fastest_lap')}
@@ -1173,7 +1173,7 @@ export default function App() {
                 <div>
                   <h3 className="font-extrabold text-lg text-white">Whiteboard Super Scramble Guide</h3>
                   <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                    Write the scrambled phrase big on the classroom **whiteboard**. Students work in group teams to decipher the character lesson phrase (e.g. "COOPERATION IS KEY") to earn **200 to 600 points**!
+                    Enter the exact whiteboard prompt, answer key, hint, point value, and counselor instructions yourself. Students work in groups to solve your custom puzzle.
                   </p>
                 </div>
               </div>
@@ -1302,7 +1302,7 @@ export default function App() {
 
                     {currentActivity.harder && (
                       <div className="bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/50">
-                        <span className="font-extrabold text-amber-300 block mb-1">🔥 Make it Harder (+100 PTS):</span>
+                        <span className="font-extrabold text-amber-300 block mb-1">🔥 Challenge Variation:</span>
                         <p className="text-slate-200">{currentActivity.harder}</p>
                       </div>
                     )}
@@ -1560,53 +1560,145 @@ export default function App() {
         hasMessage={projectorMessages.some(message => Date.parse(message.expiresAt) > Date.now())}
       />
 
-      {/* Modal: Add Custom Scramble or Mission */}
+      {/* Modal: create a fully custom mission or Super Scramble */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-black text-white flex items-center gap-2">
-              <PlusCircle className="w-5 h-5 text-amber-400" /> Add a Phrase to Scramble
+              <PlusCircle className="w-5 h-5 text-amber-400" /> Create a Custom Activity
             </h3>
-            <p className="text-sm text-slate-400">
-              Letters are shuffled within each word, and spaces between words stay in place.
-            </p>
+            <p className="text-sm text-slate-400">Enter the activity yourself. Super Scramble prompts and answers are saved exactly as written—nothing is generated.</p>
 
             <form onSubmit={handleSaveCustomActivity} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Phrase *</label>
-                <input
-                  type="text"
+              <label className="block">
+                <span className="text-xs font-bold text-slate-300 block mb-1">Activity type *</span>
+                <select
+                  required
+                  value={newActivity.type}
+                  onChange={(e) => setNewActivity({ ...newActivity, type: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
+                >
+                  <option value="Super Scramble">Super Scramble</option>
+                  <option value="Mission">Mission</option>
+                </select>
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <ActivityField
+                  label="Activity name *"
                   required
                   autoFocus
-                  placeholder="e.g. Teamwork makes us stronger"
-                  value={newActivity.phrase}
-                  onChange={(e) => setNewActivity({ ...newActivity, phrase: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
+                  placeholder="Name this activity"
+                  maxLength={300}
+                  value={newActivity.title}
+                  onChange={(value) => setNewActivity({ ...newActivity, title: value })}
+                />
+                <ActivityField
+                  label="Location *"
+                  required
+                  placeholder="Gym, playground, classroom..."
+                  maxLength={100}
+                  value={newActivity.location}
+                  onChange={(value) => setNewActivity({ ...newActivity, location: value })}
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Worth</label>
-                <select
-                  value={newActivity.points}
-                  onChange={(e) => setNewActivity({ ...newActivity, points: Number(e.target.value) })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
-                >
-                  <option value={100}>100 points</option>
-                  <option value={200}>200 points</option>
-                  <option value={300}>300 points</option>
-                  <option value={400}>400 points</option>
-                  <option value={500}>500 points</option>
-                  <option value={600}>600 points</option>
-                </select>
+              <ActivityField
+                label="Points *"
+                type="number"
+                min={0}
+                max={1000000}
+                step={1}
+                required
+                value={newActivity.points}
+                onChange={(value) => setNewActivity({ ...newActivity, points: value })}
+              />
+
+              {newActivity.type === 'Super Scramble' && (
+                <div className="space-y-4 rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4">
+                  <p className="text-sm font-bold text-amber-200">Type both the board prompt and answer key. The app will not scramble the letters.</p>
+                  <ActivityField
+                    label="Whiteboard prompt *"
+                    required
+                    multiline
+                    placeholder="Enter the exact letters or phrase students will see"
+                    maxLength={2000}
+                    value={newActivity.scrambledPhrase}
+                    onChange={(value) => setNewActivity({ ...newActivity, scrambledPhrase: value })}
+                  />
+                  <ActivityField
+                    label="Answer key *"
+                    required
+                    multiline
+                    placeholder="Enter the answer exactly as you want it shown"
+                    maxLength={2000}
+                    value={newActivity.solvedPhrase}
+                    onChange={(value) => setNewActivity({ ...newActivity, solvedPhrase: value })}
+                  />
+                  <ActivityField
+                    label="Hint"
+                    multiline
+                    placeholder="Optional hint for the group"
+                    maxLength={2000}
+                    value={newActivity.hint}
+                    onChange={(value) => setNewActivity({ ...newActivity, hint: value })}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <ActivityField
+                  label={newActivity.type === 'Mission' ? 'Counselor steps *' : 'Counselor steps'}
+                  required={newActivity.type === 'Mission'}
+                  multiline
+                  placeholder="Write the activity instructions"
+                  maxLength={10000}
+                  value={newActivity.steps}
+                  onChange={(value) => setNewActivity({ ...newActivity, steps: value })}
+                />
+                <ActivityField
+                  label="Character lesson"
+                  multiline
+                  placeholder="Optional learning goal or takeaway"
+                  maxLength={5000}
+                  value={newActivity.lesson}
+                  onChange={(value) => setNewActivity({ ...newActivity, lesson: value })}
+                />
+                <ActivityField
+                  label="Materials"
+                  multiline
+                  placeholder="Optional materials list"
+                  maxLength={5000}
+                  value={newActivity.materials}
+                  onChange={(value) => setNewActivity({ ...newActivity, materials: value })}
+                />
+                <ActivityField
+                  label="Make it harder"
+                  multiline
+                  placeholder="Optional challenge variation"
+                  maxLength={5000}
+                  value={newActivity.harder}
+                  onChange={(value) => setNewActivity({ ...newActivity, harder: value })}
+                />
+                <ActivityField
+                  label="Safety notes"
+                  multiline
+                  placeholder="Optional safety information"
+                  maxLength={5000}
+                  value={newActivity.safety}
+                  onChange={(value) => setNewActivity({ ...newActivity, safety: value })}
+                />
               </div>
+
+              {activityError && <div role="alert" className="rounded-xl border border-red-500/40 bg-red-950/40 p-3 text-sm text-red-200">{activityError}</div>}
 
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddModal(false);
-                    setNewActivity({ phrase: '', points: 600 });
+                    setNewActivity(createEmptyActivity());
+                    setActivityError('');
                   }}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
                 >
@@ -1617,7 +1709,7 @@ export default function App() {
                   disabled={pairing.isPaired && activitySubmitting}
                   className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition"
                 >
-                  Create Scramble
+                  {activitySubmitting ? 'Saving…' : 'Save Activity'}
                 </button>
               </div>
             </form>
@@ -1625,5 +1717,40 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+function ActivityField({ label, value, onChange, placeholder, required = false, multiline = false, autoFocus = false, type = 'text', min, max, maxLength, step }) {
+  const controlClass = "w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500";
+  return (
+    <label className="block">
+      <span className="text-xs font-bold text-slate-300 block mb-1">{label}</span>
+      {multiline ? (
+        <textarea
+          required={required}
+          autoFocus={autoFocus}
+          rows={3}
+          maxLength={maxLength}
+          placeholder={placeholder}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={controlClass}
+        />
+      ) : (
+        <input
+          type={type}
+          required={required}
+          autoFocus={autoFocus}
+          min={min}
+          max={max}
+          maxLength={maxLength}
+          step={step}
+          placeholder={placeholder}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={controlClass}
+        />
+      )}
+    </label>
   );
 }

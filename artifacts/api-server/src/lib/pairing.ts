@@ -63,7 +63,19 @@ const activity = z.object({
   steps: z.string().max(10000).optional(),
   harder: z.string().max(5000).optional(),
   safety: z.string().max(5000).optional(),
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if (value.type === "Super Scramble") {
+    if (!value.scrambledPhrase?.trim()) {
+      ctx.addIssue({ code: "custom", path: ["scrambledPhrase"], message: "Enter the whiteboard prompt" });
+    }
+    if (!value.solvedPhrase?.trim()) {
+      ctx.addIssue({ code: "custom", path: ["solvedPhrase"], message: "Enter the answer key" });
+    }
+  }
+  if (value.type === "Mission" && !value.steps?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["steps"], message: "Enter the mission steps" });
+  }
+});
 
 export const commandSchema = z.discriminatedUnion("type", [
   z.object({

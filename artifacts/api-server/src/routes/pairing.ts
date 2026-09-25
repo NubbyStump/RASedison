@@ -33,7 +33,6 @@ const UNPROTECTED_ROOM_ERROR = "This room cannot accept new joins; the host must
 const OWNER_COMMANDS = new Set<PairingCommand["type"]>([
   "resetMonth",
   "toggleReward",
-  "addActivity",
   "deleteActivity",
   "clearActivities",
   "approvePoints",

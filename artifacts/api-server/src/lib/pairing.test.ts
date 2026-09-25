@@ -125,7 +125,12 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     const scored = await request("/command", {
       id: randomUUID(), type: "addPoints", payload: { groupId: "ladybugs", amount: 5, reason: "Teamwork" },
     }, counselor.token);
-    assert.equal(scored.state.groups[0].score, 5);
+    assert.equal(scored.state.groups[0].score, 0);
+    const pendingRequestId = scored.state.pendingPointApprovals?.[0]?.id;
+    assert.ok(pendingRequestId);
+    await request("/command", {
+      id: randomUUID(), type: "approvePoints", payload: { requestId: pendingRequestId },
+    }, owner.token);
     await request("/message", { id: randomUUID(), text: "Ready to go" }, counselor.token);
     const visible = await request("/session", undefined, owner.token, "GET");
     assert.equal(visible.projectorMessages.length, 1);
@@ -350,6 +355,91 @@ test("counselors can submit points for approval but owner-only commands remain b
   const [unchanged] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
   assert.equal(unchanged.version, 3);
   assert.equal((unchanged.state as PairingState).groups[0].score, 5);
+});
+
+test("counselors can save fully custom missions and scrambles without gaining delete access", async () => {
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state: baseState(),
+  }).returning();
+  roomIds.push(room.id);
+  const [owner] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Manager",
+    role: "owner",
+    tokenHash: randomUUID(),
+  }).returning();
+  const [counselor] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Counselor",
+    role: "counselor",
+    groupId: "ladybugs",
+    tokenHash: randomUUID(),
+  }).returning();
+
+  const scramble = {
+    title: "My Own Word Puzzle",
+    type: "Super Scramble",
+    points: 275,
+    location: "Classroom",
+    scrambledPhrase: "WOTKREMA",
+    solvedPhrase: "TEAMWORK",
+    hint: "A value we practice together",
+    steps: "Write the prompt on the board.",
+  };
+  const withScramble = await executePairingCommand(counselor, {
+    id: randomUUID(),
+    type: "addActivity",
+    payload: { activity: scramble },
+  });
+  const scrambleState = withScramble.state as PairingState;
+  assert.deepEqual(scrambleState.activities[0], {
+    ...scramble,
+    id: scrambleState.activities[0].id,
+  });
+
+  const mission = {
+    title: "Counselor-Created Relay",
+    type: "Mission",
+    points: 425,
+    location: "Playground",
+    steps: "Create a relay using these exact instructions.",
+    materials: "Three cones",
+    safety: "Walk between stations.",
+  };
+  const withMission = await executePairingCommand(counselor, {
+    id: randomUUID(),
+    type: "addActivity",
+    payload: { activity: mission },
+  });
+  const missionState = withMission.state as PairingState;
+  assert.deepEqual(missionState.activities[0], {
+    ...mission,
+    id: missionState.activities[0].id,
+  });
+  assert.equal(missionState.activities[1].scrambledPhrase, "WOTKREMA");
+
+  await assert.rejects(
+    executePairingCommand(counselor, {
+      id: randomUUID(),
+      type: "deleteActivity",
+      payload: { id: missionState.activities[0].id },
+    }),
+    /Owner role required/,
+  );
+  assert.equal(owner.role, "owner");
+  assert.equal(commandSchema.safeParse({
+    id: randomUUID(),
+    type: "addActivity",
+    payload: {
+      activity: {
+        title: "Missing scramble content",
+        type: "Super Scramble",
+        points: 100,
+        location: "Classroom",
+      },
+    },
+  }).success, false);
 });
 
 test("owners can reject requests and expired requests auto-approve", async () => {
