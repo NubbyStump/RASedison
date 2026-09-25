@@ -23,8 +23,8 @@ export interface HistoryEntry {
      */
   groupName: string;
   /**
-     * @minimum -1000000
-     * @maximum 1000000
+     * @minimum -1000000000
+     * @maximum 1000000000
      */
   amount: number;
   /**

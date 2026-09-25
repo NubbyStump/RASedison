@@ -274,7 +274,7 @@ components:
         id: { type: string, minLength: 1, maxLength: 80 }
         groupId: { type: string, minLength: 1, maxLength: 80 }
         groupName: { type: string, minLength: 1, maxLength: 100 }
-        amount: { type: number, minimum: -1000000, maximum: 1000000 }
+        amount: { type: number, minimum: -1000000000, maximum: 1000000000 }
         reason: { type: string, minLength: 1, maxLength: 500 }
         submittedByName: { type: string, minLength: 1, maxLength: 60 }
         specialMentions: { type: string, maxLength: 500 }
@@ -472,6 +472,7 @@ components:
     PairingCommandInput:
       oneOf:
         - $ref: "#/components/schemas/AddPointsCommand"
+        - $ref: "#/components/schemas/ReduceGroupPointsCommand"
         - $ref: "#/components/schemas/ApprovePointsCommand"
         - $ref: "#/components/schemas/RejectPointsCommand"
         - $ref: "#/components/schemas/UndoCommand"
@@ -496,6 +497,22 @@ components:
           properties:
             groupId: { type: string, minLength: 1, maxLength: 80 }
             amount: { type: number, minimum: -1000000, maximum: 1000000 }
+            reason: { type: string, minLength: 1, maxLength: 500 }
+            specialMentions: { type: string, maxLength: 500 }
+    ReduceGroupPointsCommand:
+      type: object
+      additionalProperties: false
+      required: [id, type, payload]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [reduceGroupPoints] }
+        payload:
+          type: object
+          additionalProperties: false
+          required: [groupId, mode, reason]
+          properties:
+            groupId: { type: string, minLength: 1, maxLength: 80 }
+            mode: { type: string, enum: [half, all] }
             reason: { type: string, minLength: 1, maxLength: 500 }
             specialMentions: { type: string, maxLength: 500 }
     ApprovePointsCommand:

@@ -145,6 +145,7 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, []);
   const isLiveOwner = pairing.session?.role === 'owner';
+  const isLiveCounselor = pairing.session?.role === 'counselor';
   const canManageActivities = !pairing.isPaired || isLiveOwner;
   const canCreateActivities = !pairing.isPaired || Boolean(pairing.session);
   const groups = pairing.session?.state.groups ?? localGroups;
@@ -401,6 +402,37 @@ export default function App() {
     setSpecialMentionsInput(prev => ({ ...prev, [groupId]: '' }));
   };
 
+  const handleReduceGroupPoints = async (groupId, mode) => {
+    const enteredReason = reasonInput[groupId]?.trim();
+    const specialMentions = specialMentionsInput[groupId]?.trim();
+    if (!enteredReason) {
+      setReasonErrors(prev => ({ ...prev, [groupId]: 'Enter a reason before changing points.' }));
+      document.getElementById(`points-reason-${groupId}`)?.focus();
+      return;
+    }
+    if (!pairing.isPaired) {
+      setPointActionError('Bulk point removal is only available in a live counselor session.');
+      return;
+    }
+    setReasonErrors(prev => ({ ...prev, [groupId]: '' }));
+    setPointActionError('');
+    try {
+      await pairing.command({
+        type: 'reduceGroupPoints',
+        payload: {
+          groupId,
+          mode,
+          reason: enteredReason,
+          ...(specialMentions ? { specialMentions } : {}),
+        },
+      });
+      setReasonInput(prev => ({ ...prev, [groupId]: '' }));
+      setSpecialMentionsInput(prev => ({ ...prev, [groupId]: '' }));
+    } catch (error) {
+      setPointActionError(error?.message || 'Unable to request this points removal.');
+    }
+  };
+
   const handlePointApproval = async (type, requestId) => {
     setPointActionError('');
     try {
@@ -640,7 +672,12 @@ export default function App() {
           >
             <Layout className="w-5 h-5 md:w-6 md:h-6 shrink-0" /> <span className="hidden sm:inline">Exit Projector View</span><span className="sm:hidden">Exit View</span>
           </button>
-          
+          <img
+            src={`${import.meta.env.BASE_URL}logo.png`}
+            alt="Right At School Logo"
+            className="h-10 w-auto object-contain bg-white p-1 rounded-xl shadow-md"
+          />
+
           <div className="flex flex-wrap items-center justify-end gap-3">
             {pairing.isPaired && (
               <button
@@ -746,19 +783,15 @@ export default function App() {
       <header className="bg-slate-800/90 backdrop-blur border-b border-slate-700/80 sticky top-0 z-30 px-4 py-3">
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-green-400 flex items-center justify-center shadow-lg text-slate-950 shrink-0">
-              <svg viewBox="0 0 64 64" role="img" aria-label="Edison eagle" className="w-8 h-8" fill="none">
-                <path d="M8 25c9-1 16 1 23 6 6-7 14-11 25-12-5 5-9 9-15 12 6 0 11 2 16 5-9 4-17 5-25 3l5 12-6-4-6 6-2-11c-6 1-11 0-16-2l9-5c-4-2-6-5-8-10Z" fill="#083344"/>
-                <path d="M31 31c6-7 13-11 25-12-4 5-9 9-15 12l-7 5-8-4c1 7 1 12-1 17l-5-10 5-8Z" fill="#0f766e"/>
-                <path d="m42 25 8-3-5 6" stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="46" cy="23" r="1.6" fill="#f8fafc"/>
-                <path d="m46 27 5 1-5 2" fill="#f59e0b"/>
-              </svg>
-            </div>
+            <img
+              src={`${import.meta.env.BASE_URL}logo.png`}
+              alt="Right At School Logo"
+              className="h-10 w-auto object-contain bg-white p-1 rounded-xl shadow-md"
+            />
             <div>
               {/* Explicit School Title Header */}
               <div className="text-[10px] uppercase font-black tracking-widest text-emerald-400 flex items-center gap-1">
-                <School className="w-3 h-3" /> Right At School
+                Right At School
               </div>
               <h1 className="font-black text-base md:text-lg text-white tracking-tight leading-tight">
                 Edison Language Academy
@@ -1082,6 +1115,29 @@ export default function App() {
                             -50
                           </button>
                         </div>
+
+                        {isLiveCounselor && isMyGroup && (
+                          <div className="grid grid-cols-2 gap-1.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleReduceGroupPoints(group.id, 'half')}
+                              disabled={group.score <= 0}
+                              aria-label={`Request removal of half the points from ${group.name}, rounded up`}
+                              className="bg-red-500/10 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-red-300 border border-red-500/40 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                            >
+                              Remove half (−{Math.ceil(group.score / 2)})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleReduceGroupPoints(group.id, 'all')}
+                              disabled={group.score <= 0}
+                              aria-label={`Request removal of all ${group.score} points from ${group.name}`}
+                              className="bg-red-500/20 hover:bg-red-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-red-200 border border-red-500/50 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                            >
+                              Remove all (−{group.score})
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

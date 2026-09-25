@@ -58,8 +58,8 @@ export interface HistoryEntry {
      */
   groupName: string;
   /**
-     * @minimum -1000000
-     * @maximum 1000000
+     * @minimum -1000000000
+     * @maximum 1000000000
      */
   amount: number;
   /**
@@ -469,6 +469,43 @@ export interface AddPointsCommand {
   payload: AddPointsCommandPayload;
 }
 
+export type ReduceGroupPointsCommandType = typeof ReduceGroupPointsCommandType[keyof typeof ReduceGroupPointsCommandType];
+
+
+export const ReduceGroupPointsCommandType = {
+  reduceGroupPoints: 'reduceGroupPoints',
+} as const;
+
+export type ReduceGroupPointsCommandPayloadMode = typeof ReduceGroupPointsCommandPayloadMode[keyof typeof ReduceGroupPointsCommandPayloadMode];
+
+
+export const ReduceGroupPointsCommandPayloadMode = {
+  half: 'half',
+  all: 'all',
+} as const;
+
+export type ReduceGroupPointsCommandPayload = {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  groupId: string;
+  mode: ReduceGroupPointsCommandPayloadMode;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  reason: string;
+  /** @maxLength 500 */
+  specialMentions?: string;
+};
+
+export interface ReduceGroupPointsCommand {
+  id: string;
+  type: ReduceGroupPointsCommandType;
+  payload: ReduceGroupPointsCommandPayload;
+}
+
 export type ApprovePointsCommandType = typeof ApprovePointsCommandType[keyof typeof ApprovePointsCommandType];
 
 
@@ -657,7 +694,7 @@ export interface ToggleRewardCommand {
   payload: ToggleRewardCommandPayload;
 }
 
-export type PairingCommandInput = AddPointsCommand | ApprovePointsCommand | RejectPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;
+export type PairingCommandInput = AddPointsCommand | ReduceGroupPointsCommand | ApprovePointsCommand | RejectPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;
 
 /**
  * Malformed input

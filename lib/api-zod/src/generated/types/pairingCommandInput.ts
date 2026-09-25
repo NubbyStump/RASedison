@@ -11,10 +11,11 @@ import type { ApprovePointsCommand } from './approvePointsCommand';
 import type { ClearActivitiesCommand } from './clearActivitiesCommand';
 import type { DeleteActivityCommand } from './deleteActivityCommand';
 import type { DeleteLapCommand } from './deleteLapCommand';
+import type { ReduceGroupPointsCommand } from './reduceGroupPointsCommand';
 import type { RejectPointsCommand } from './rejectPointsCommand';
 import type { ResetMonthCommand } from './resetMonthCommand';
 import type { SaveLapCommand } from './saveLapCommand';
 import type { ToggleRewardCommand } from './toggleRewardCommand';
 import type { UndoCommand } from './undoCommand';
 
-export type PairingCommandInput = AddPointsCommand | ApprovePointsCommand | RejectPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;
+export type PairingCommandInput = AddPointsCommand | ReduceGroupPointsCommand | ApprovePointsCommand | RejectPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;

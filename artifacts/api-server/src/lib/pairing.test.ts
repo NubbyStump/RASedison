@@ -389,6 +389,78 @@ test("counselors can submit points for approval but owner-only commands remain b
   assert.equal((unchanged.state as PairingState).groups[0].score, 5);
 });
 
+test("counselors can request half or all of their assigned group's points removed", async () => {
+  const state = baseState();
+  state.groups[0].score = 20;
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state,
+  }).returning();
+  roomIds.push(room.id);
+  const [owner] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Manager",
+    role: "owner",
+    tokenHash: randomUUID(),
+  }).returning();
+  const [counselor] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Counselor",
+    role: "counselor",
+    groupId: "ladybugs",
+    assignmentDate: "2025-01-01",
+    tokenHash: randomUUID(),
+  }).returning();
+
+  await assert.rejects(
+    executePairingCommand(counselor, {
+      id: randomUUID(),
+      type: "reduceGroupPoints",
+      payload: { groupId: "tigers", mode: "all", reason: "Wrong group" },
+    }),
+    /assigned group/,
+  );
+
+  const halfRequest = await executePairingCommand(counselor, {
+    id: randomUUID(),
+    type: "reduceGroupPoints",
+    payload: {
+      groupId: "ladybugs",
+      mode: "half",
+      reason: "Reset after rough play",
+      specialMentions: "The team can earn these back",
+    },
+  });
+  const halfPending = (halfRequest.state as PairingState).pendingPointApprovals?.at(-1);
+  assert.equal(halfPending?.amount, -10);
+  assert.equal((halfRequest.state as PairingState).groups[0].score, 20);
+
+  const halfApproved = await executePairingCommand(owner, {
+    id: randomUUID(),
+    type: "approvePoints",
+    payload: { requestId: halfPending!.id },
+  });
+  assert.equal((halfApproved.state as PairingState).groups[0].score, 10);
+  assert.equal((halfApproved.state as PairingState).history[0].amount, -10);
+  assert.equal((halfApproved.state as PairingState).history[0].submittedByName, "Counselor");
+  assert.equal((halfApproved.state as PairingState).history[0].specialMentions, "The team can earn these back");
+
+  const allRequest = await executePairingCommand(counselor, {
+    id: randomUUID(),
+    type: "reduceGroupPoints",
+    payload: { groupId: "ladybugs", mode: "all", reason: "Full reset" },
+  });
+  const allPending = (allRequest.state as PairingState).pendingPointApprovals?.at(-1);
+  assert.equal(allPending?.amount, -10);
+  const allApproved = await executePairingCommand(owner, {
+    id: randomUUID(),
+    type: "approvePoints",
+    payload: { requestId: allPending!.id },
+  });
+  assert.equal((allApproved.state as PairingState).groups[0].score, 0);
+  assert.equal((allApproved.state as PairingState).history[0].amount, -10);
+});
+
 test("counselors can save fully custom missions and scrambles without gaining delete access", async () => {
   const [room] = await db.insert(pairingRooms).values({
     code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),

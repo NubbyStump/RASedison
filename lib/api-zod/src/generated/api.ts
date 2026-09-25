@@ -39,8 +39,8 @@ export const createPairingBodyStateHistoryItemGroupIdMax = 80;
 
 export const createPairingBodyStateHistoryItemGroupNameMax = 100;
 
-export const createPairingBodyStateHistoryItemAmountMin = -1000000;
-export const createPairingBodyStateHistoryItemAmountMax = 1000000;
+export const createPairingBodyStateHistoryItemAmountMin = -1000000000;
+export const createPairingBodyStateHistoryItemAmountMax = 1000000000;
 
 export const createPairingBodyStateHistoryItemReasonMax = 500;
 
@@ -237,8 +237,8 @@ export const createPairingResponseStateHistoryItemGroupIdMax = 80;
 
 export const createPairingResponseStateHistoryItemGroupNameMax = 100;
 
-export const createPairingResponseStateHistoryItemAmountMin = -1000000;
-export const createPairingResponseStateHistoryItemAmountMax = 1000000;
+export const createPairingResponseStateHistoryItemAmountMin = -1000000000;
+export const createPairingResponseStateHistoryItemAmountMax = 1000000000;
 
 export const createPairingResponseStateHistoryItemReasonMax = 500;
 
@@ -502,8 +502,8 @@ export const joinPairingResponseStateHistoryItemGroupIdMax = 80;
 
 export const joinPairingResponseStateHistoryItemGroupNameMax = 100;
 
-export const joinPairingResponseStateHistoryItemAmountMin = -1000000;
-export const joinPairingResponseStateHistoryItemAmountMax = 1000000;
+export const joinPairingResponseStateHistoryItemAmountMin = -1000000000;
+export const joinPairingResponseStateHistoryItemAmountMax = 1000000000;
 
 export const joinPairingResponseStateHistoryItemReasonMax = 500;
 
@@ -748,8 +748,8 @@ export const getPairingSessionResponseStateHistoryItemGroupIdMax = 80;
 
 export const getPairingSessionResponseStateHistoryItemGroupNameMax = 100;
 
-export const getPairingSessionResponseStateHistoryItemAmountMin = -1000000;
-export const getPairingSessionResponseStateHistoryItemAmountMax = 1000000;
+export const getPairingSessionResponseStateHistoryItemAmountMin = -1000000000;
+export const getPairingSessionResponseStateHistoryItemAmountMax = 1000000000;
 
 export const getPairingSessionResponseStateHistoryItemReasonMax = 500;
 
@@ -1004,8 +1004,8 @@ export const updatePairingAssignmentResponseStateHistoryItemGroupIdMax = 80;
 
 export const updatePairingAssignmentResponseStateHistoryItemGroupNameMax = 100;
 
-export const updatePairingAssignmentResponseStateHistoryItemAmountMin = -1000000;
-export const updatePairingAssignmentResponseStateHistoryItemAmountMax = 1000000;
+export const updatePairingAssignmentResponseStateHistoryItemAmountMin = -1000000000;
+export const updatePairingAssignmentResponseStateHistoryItemAmountMax = 1000000000;
 
 export const updatePairingAssignmentResponseStateHistoryItemReasonMax = 500;
 
@@ -1232,68 +1232,74 @@ export const sendPairingCommandBodyOnePayloadReasonMax = 500;
 
 export const sendPairingCommandBodyOnePayloadSpecialMentionsMax = 500;
 
-export const sendPairingCommandBodyFourPayloadLogIdMax = 80;
+export const sendPairingCommandBodyTwoPayloadGroupIdMax = 80;
 
-export const sendPairingCommandBodyFivePayloadMonthMax = 100;
+export const sendPairingCommandBodyTwoPayloadReasonMax = 500;
 
-export const sendPairingCommandBodySixPayloadRecordIdMax = 80;
+export const sendPairingCommandBodyTwoPayloadSpecialMentionsMax = 500;
 
-export const sendPairingCommandBodySixPayloadRecordRunnerNameMax = 100;
+export const sendPairingCommandBodyFivePayloadLogIdMax = 80;
 
-export const sendPairingCommandBodySixPayloadRecordGroupMax = 100;
+export const sendPairingCommandBodySixPayloadMonthMax = 100;
 
-export const sendPairingCommandBodySixPayloadRecordMinutesMin = 0;
-export const sendPairingCommandBodySixPayloadRecordMinutesMax = 999;
+export const sendPairingCommandBodySevenPayloadRecordIdMax = 80;
 
-export const sendPairingCommandBodySixPayloadRecordSecondsMin = 0;
-export const sendPairingCommandBodySixPayloadRecordSecondsMax = 59;
+export const sendPairingCommandBodySevenPayloadRecordRunnerNameMax = 100;
 
-export const sendPairingCommandBodySixPayloadRecordMsMin = 0;
-export const sendPairingCommandBodySixPayloadRecordMsMax = 99;
+export const sendPairingCommandBodySevenPayloadRecordGroupMax = 100;
 
-export const sendPairingCommandBodySixPayloadRecordTimeFormattedMax = 30;
+export const sendPairingCommandBodySevenPayloadRecordMinutesMin = 0;
+export const sendPairingCommandBodySevenPayloadRecordMinutesMax = 999;
 
-export const sendPairingCommandBodySixPayloadRecordTotalSecondsMin = 0;
-export const sendPairingCommandBodySixPayloadRecordTotalSecondsMax = 100000;
+export const sendPairingCommandBodySevenPayloadRecordSecondsMin = 0;
+export const sendPairingCommandBodySevenPayloadRecordSecondsMax = 59;
 
-export const sendPairingCommandBodySixPayloadRecordCourseNameMax = 200;
+export const sendPairingCommandBodySevenPayloadRecordMsMin = 0;
+export const sendPairingCommandBodySevenPayloadRecordMsMax = 99;
 
-export const sendPairingCommandBodySixPayloadRecordDateMax = 30;
+export const sendPairingCommandBodySevenPayloadRecordTimeFormattedMax = 30;
 
-export const sendPairingCommandBodySixPayloadRecordMonthYearMax = 100;
+export const sendPairingCommandBodySevenPayloadRecordTotalSecondsMin = 0;
+export const sendPairingCommandBodySevenPayloadRecordTotalSecondsMax = 100000;
 
-export const sendPairingCommandBodySevenPayloadIdMax = 80;
+export const sendPairingCommandBodySevenPayloadRecordCourseNameMax = 200;
 
-export const sendPairingCommandBodyEightPayloadActivityIdMax = 80;
+export const sendPairingCommandBodySevenPayloadRecordDateMax = 30;
 
-export const sendPairingCommandBodyEightPayloadActivityTitleMax = 300;
+export const sendPairingCommandBodySevenPayloadRecordMonthYearMax = 100;
 
-export const sendPairingCommandBodyEightPayloadActivityTypeMax = 100;
+export const sendPairingCommandBodyEightPayloadIdMax = 80;
 
-export const sendPairingCommandBodyEightPayloadActivityPointsMin = -1000000;
-export const sendPairingCommandBodyEightPayloadActivityPointsMax = 1000000;
+export const sendPairingCommandBodyNinePayloadActivityIdMax = 80;
 
-export const sendPairingCommandBodyEightPayloadActivityLocationMax = 100;
+export const sendPairingCommandBodyNinePayloadActivityTitleMax = 300;
 
-export const sendPairingCommandBodyEightPayloadActivityScrambledPhraseMax = 2000;
+export const sendPairingCommandBodyNinePayloadActivityTypeMax = 100;
 
-export const sendPairingCommandBodyEightPayloadActivitySolvedPhraseMax = 2000;
+export const sendPairingCommandBodyNinePayloadActivityPointsMin = -1000000;
+export const sendPairingCommandBodyNinePayloadActivityPointsMax = 1000000;
 
-export const sendPairingCommandBodyEightPayloadActivityHintMax = 2000;
+export const sendPairingCommandBodyNinePayloadActivityLocationMax = 100;
 
-export const sendPairingCommandBodyEightPayloadActivityLessonMax = 5000;
+export const sendPairingCommandBodyNinePayloadActivityScrambledPhraseMax = 2000;
 
-export const sendPairingCommandBodyEightPayloadActivityMaterialsMax = 5000;
+export const sendPairingCommandBodyNinePayloadActivitySolvedPhraseMax = 2000;
 
-export const sendPairingCommandBodyEightPayloadActivityStepsMax = 10000;
+export const sendPairingCommandBodyNinePayloadActivityHintMax = 2000;
 
-export const sendPairingCommandBodyEightPayloadActivityHarderMax = 5000;
+export const sendPairingCommandBodyNinePayloadActivityLessonMax = 5000;
 
-export const sendPairingCommandBodyEightPayloadActivitySafetyMax = 5000;
+export const sendPairingCommandBodyNinePayloadActivityMaterialsMax = 5000;
 
-export const sendPairingCommandBodyNinePayloadIdMax = 80;
+export const sendPairingCommandBodyNinePayloadActivityStepsMax = 10000;
 
-export const sendPairingCommandBodyOneonePayloadIdMax = 80;
+export const sendPairingCommandBodyNinePayloadActivityHarderMax = 5000;
+
+export const sendPairingCommandBodyNinePayloadActivitySafetyMax = 5000;
+
+export const sendPairingCommandBodyOnezeroPayloadIdMax = 80;
+
+export const sendPairingCommandBodyOnetwoPayloadIdMax = 80;
 
 
 
@@ -1305,6 +1311,15 @@ export const SendPairingCommandBody = zod.union([zod.object({
   "amount": zod.number().min(sendPairingCommandBodyOnePayloadAmountMin).max(sendPairingCommandBodyOnePayloadAmountMax),
   "reason": zod.string().min(1).max(sendPairingCommandBodyOnePayloadReasonMax),
   "specialMentions": zod.string().max(sendPairingCommandBodyOnePayloadSpecialMentionsMax).optional()
+})
+}),zod.object({
+  "id": zod.string().uuid(),
+  "type": zod.enum(['reduceGroupPoints']),
+  "payload": zod.object({
+  "groupId": zod.string().min(1).max(sendPairingCommandBodyTwoPayloadGroupIdMax),
+  "mode": zod.enum(['half', 'all']),
+  "reason": zod.string().min(1).max(sendPairingCommandBodyTwoPayloadReasonMax),
+  "specialMentions": zod.string().max(sendPairingCommandBodyTwoPayloadSpecialMentionsMax).optional()
 })
 }),zod.object({
   "id": zod.string().uuid(),
@@ -1322,63 +1337,63 @@ export const SendPairingCommandBody = zod.union([zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['undo']),
   "payload": zod.object({
-  "logId": zod.string().min(1).max(sendPairingCommandBodyFourPayloadLogIdMax)
+  "logId": zod.string().min(1).max(sendPairingCommandBodyFivePayloadLogIdMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['resetMonth']),
   "payload": zod.object({
-  "month": zod.string().min(1).max(sendPairingCommandBodyFivePayloadMonthMax)
+  "month": zod.string().min(1).max(sendPairingCommandBodySixPayloadMonthMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['saveLap']),
   "payload": zod.object({
   "record": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordIdMax),
-  "runnerName": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordRunnerNameMax),
-  "group": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordGroupMax),
-  "minutes": zod.number().int().min(sendPairingCommandBodySixPayloadRecordMinutesMin).max(sendPairingCommandBodySixPayloadRecordMinutesMax),
-  "seconds": zod.number().int().min(sendPairingCommandBodySixPayloadRecordSecondsMin).max(sendPairingCommandBodySixPayloadRecordSecondsMax),
-  "ms": zod.number().int().min(sendPairingCommandBodySixPayloadRecordMsMin).max(sendPairingCommandBodySixPayloadRecordMsMax),
-  "timeFormatted": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordTimeFormattedMax),
-  "totalSeconds": zod.number().min(sendPairingCommandBodySixPayloadRecordTotalSecondsMin).max(sendPairingCommandBodySixPayloadRecordTotalSecondsMax),
-  "courseName": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordCourseNameMax),
-  "date": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordDateMax),
-  "monthYear": zod.string().min(1).max(sendPairingCommandBodySixPayloadRecordMonthYearMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordIdMax),
+  "runnerName": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordRunnerNameMax),
+  "group": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordGroupMax),
+  "minutes": zod.number().int().min(sendPairingCommandBodySevenPayloadRecordMinutesMin).max(sendPairingCommandBodySevenPayloadRecordMinutesMax),
+  "seconds": zod.number().int().min(sendPairingCommandBodySevenPayloadRecordSecondsMin).max(sendPairingCommandBodySevenPayloadRecordSecondsMax),
+  "ms": zod.number().int().min(sendPairingCommandBodySevenPayloadRecordMsMin).max(sendPairingCommandBodySevenPayloadRecordMsMax),
+  "timeFormatted": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordTimeFormattedMax),
+  "totalSeconds": zod.number().min(sendPairingCommandBodySevenPayloadRecordTotalSecondsMin).max(sendPairingCommandBodySevenPayloadRecordTotalSecondsMax),
+  "courseName": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordCourseNameMax),
+  "date": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordDateMax),
+  "monthYear": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordMonthYearMax)
 })
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['deleteLap']),
   "payload": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodySevenPayloadIdMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodyEightPayloadIdMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['addActivity']),
   "payload": zod.object({
   "activity": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyEightPayloadActivityIdMax),
-  "title": zod.string().min(1).max(sendPairingCommandBodyEightPayloadActivityTitleMax),
-  "type": zod.string().min(1).max(sendPairingCommandBodyEightPayloadActivityTypeMax),
-  "points": zod.number().min(sendPairingCommandBodyEightPayloadActivityPointsMin).max(sendPairingCommandBodyEightPayloadActivityPointsMax),
-  "location": zod.string().min(1).max(sendPairingCommandBodyEightPayloadActivityLocationMax),
-  "scrambledPhrase": zod.string().max(sendPairingCommandBodyEightPayloadActivityScrambledPhraseMax).optional(),
-  "solvedPhrase": zod.string().max(sendPairingCommandBodyEightPayloadActivitySolvedPhraseMax).optional(),
-  "hint": zod.string().max(sendPairingCommandBodyEightPayloadActivityHintMax).optional(),
-  "lesson": zod.string().max(sendPairingCommandBodyEightPayloadActivityLessonMax).optional(),
-  "materials": zod.string().max(sendPairingCommandBodyEightPayloadActivityMaterialsMax).optional(),
-  "steps": zod.string().max(sendPairingCommandBodyEightPayloadActivityStepsMax).optional(),
-  "harder": zod.string().max(sendPairingCommandBodyEightPayloadActivityHarderMax).optional(),
-  "safety": zod.string().max(sendPairingCommandBodyEightPayloadActivitySafetyMax).optional()
+  "id": zod.string().min(1).max(sendPairingCommandBodyNinePayloadActivityIdMax),
+  "title": zod.string().min(1).max(sendPairingCommandBodyNinePayloadActivityTitleMax),
+  "type": zod.string().min(1).max(sendPairingCommandBodyNinePayloadActivityTypeMax),
+  "points": zod.number().min(sendPairingCommandBodyNinePayloadActivityPointsMin).max(sendPairingCommandBodyNinePayloadActivityPointsMax),
+  "location": zod.string().min(1).max(sendPairingCommandBodyNinePayloadActivityLocationMax),
+  "scrambledPhrase": zod.string().max(sendPairingCommandBodyNinePayloadActivityScrambledPhraseMax).optional(),
+  "solvedPhrase": zod.string().max(sendPairingCommandBodyNinePayloadActivitySolvedPhraseMax).optional(),
+  "hint": zod.string().max(sendPairingCommandBodyNinePayloadActivityHintMax).optional(),
+  "lesson": zod.string().max(sendPairingCommandBodyNinePayloadActivityLessonMax).optional(),
+  "materials": zod.string().max(sendPairingCommandBodyNinePayloadActivityMaterialsMax).optional(),
+  "steps": zod.string().max(sendPairingCommandBodyNinePayloadActivityStepsMax).optional(),
+  "harder": zod.string().max(sendPairingCommandBodyNinePayloadActivityHarderMax).optional(),
+  "safety": zod.string().max(sendPairingCommandBodyNinePayloadActivitySafetyMax).optional()
 })
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['deleteActivity']),
   "payload": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyNinePayloadIdMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodyOnezeroPayloadIdMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
@@ -1390,7 +1405,7 @@ export const SendPairingCommandBody = zod.union([zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['toggleReward']),
   "payload": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyOneonePayloadIdMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodyOnetwoPayloadIdMax)
 })
 })])
 
@@ -1421,8 +1436,8 @@ export const sendPairingCommandResponseStateHistoryItemGroupIdMax = 80;
 
 export const sendPairingCommandResponseStateHistoryItemGroupNameMax = 100;
 
-export const sendPairingCommandResponseStateHistoryItemAmountMin = -1000000;
-export const sendPairingCommandResponseStateHistoryItemAmountMax = 1000000;
+export const sendPairingCommandResponseStateHistoryItemAmountMin = -1000000000;
+export const sendPairingCommandResponseStateHistoryItemAmountMax = 1000000000;
 
 export const sendPairingCommandResponseStateHistoryItemReasonMax = 500;
 
@@ -1670,8 +1685,8 @@ export const clearPairingMessageResponseStateHistoryItemGroupIdMax = 80;
 
 export const clearPairingMessageResponseStateHistoryItemGroupNameMax = 100;
 
-export const clearPairingMessageResponseStateHistoryItemAmountMin = -1000000;
-export const clearPairingMessageResponseStateHistoryItemAmountMax = 1000000;
+export const clearPairingMessageResponseStateHistoryItemAmountMin = -1000000000;
+export const clearPairingMessageResponseStateHistoryItemAmountMax = 1000000000;
 
 export const clearPairingMessageResponseStateHistoryItemReasonMax = 500;
 
@@ -1925,8 +1940,8 @@ export const sendPairingMessageResponseStateHistoryItemGroupIdMax = 80;
 
 export const sendPairingMessageResponseStateHistoryItemGroupNameMax = 100;
 
-export const sendPairingMessageResponseStateHistoryItemAmountMin = -1000000;
-export const sendPairingMessageResponseStateHistoryItemAmountMax = 1000000;
+export const sendPairingMessageResponseStateHistoryItemAmountMin = -1000000000;
+export const sendPairingMessageResponseStateHistoryItemAmountMax = 1000000000;
 
 export const sendPairingMessageResponseStateHistoryItemReasonMax = 500;
 
@@ -2171,8 +2186,8 @@ export const rotatePairingCodeResponseStateHistoryItemGroupIdMax = 80;
 
 export const rotatePairingCodeResponseStateHistoryItemGroupNameMax = 100;
 
-export const rotatePairingCodeResponseStateHistoryItemAmountMin = -1000000;
-export const rotatePairingCodeResponseStateHistoryItemAmountMax = 1000000;
+export const rotatePairingCodeResponseStateHistoryItemAmountMin = -1000000000;
+export const rotatePairingCodeResponseStateHistoryItemAmountMax = 1000000000;
 
 export const rotatePairingCodeResponseStateHistoryItemReasonMax = 500;
 
@@ -2421,8 +2436,8 @@ export const removePairingMemberResponseStateHistoryItemGroupIdMax = 80;
 
 export const removePairingMemberResponseStateHistoryItemGroupNameMax = 100;
 
-export const removePairingMemberResponseStateHistoryItemAmountMin = -1000000;
-export const removePairingMemberResponseStateHistoryItemAmountMax = 1000000;
+export const removePairingMemberResponseStateHistoryItemAmountMin = -1000000000;
+export const removePairingMemberResponseStateHistoryItemAmountMax = 1000000000;
 
 export const removePairingMemberResponseStateHistoryItemReasonMax = 500;
 

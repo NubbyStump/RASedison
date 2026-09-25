@@ -418,22 +418,37 @@ export async function executePairingCommand(
     if (!duplicate) {
       const state = structuredClone(room.state as PairingState);
       resolveDueApprovals(state);
-      if (command.type === "addPoints" && activeMember.role === "counselor") {
+      if (
+        (command.type === "addPoints" || command.type === "reduceGroupPoints")
+        && activeMember.role === "counselor"
+      ) {
+        const groupId = command.payload.groupId;
+        if (command.type === "reduceGroupPoints" && activeMember.groupId !== groupId) {
+          return { error: "Counselors may only remove points from their assigned group" as const };
+        }
         const [owner] = await tx.select({ id: pairingMembers.id }).from(pairingMembers).where(and(
           eq(pairingMembers.roomId, room.id),
           eq(pairingMembers.role, "owner"),
           isNull(pairingMembers.revokedAt),
         )).limit(1);
         if (owner) {
-          const group = state.groups.find((item) => item.id === command.payload.groupId);
+          const group = state.groups.find((item) => item.id === groupId);
           if (!group) throw new Error("Group not found");
+          if (command.type === "reduceGroupPoints" && group.score <= 0) {
+            return { error: "There are no points to remove from this group" as const };
+          }
+          const amount = command.type === "addPoints"
+            ? command.payload.amount
+            : command.payload.mode === "all"
+              ? -group.score
+              : -Math.ceil(group.score / 2);
           const submittedAt = new Date();
           const pending = state.pendingPointApprovals ?? [];
           pending.push({
             id: command.id,
             groupId: group.id,
             groupName: group.name,
-            amount: command.payload.amount,
+            amount,
             reason: command.payload.reason,
             ...(command.payload.specialMentions ? { specialMentions: command.payload.specialMentions } : {}),
             submittedById: activeMember.id,
@@ -446,6 +461,8 @@ export async function executePairingCommand(
         } else {
           return { error: "Program Manager approval is unavailable" as const };
         }
+      } else if (command.type === "reduceGroupPoints") {
+        return { error: "Counselor role required for this command" as const };
       } else if (command.type === "approvePoints" || command.type === "rejectPoints") {
         const requests = state.pendingPointApprovals ?? [];
         const request = requests.find((item) => item.id === command.payload.requestId);

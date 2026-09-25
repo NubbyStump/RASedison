@@ -86,6 +86,7 @@ export type PairingStatus = 'local' | 'connecting' | 'connected' | 'reconnecting
 
 type PairingCommand =
   | { type: 'addPoints'; payload: { groupId: string; amount: number; reason: string; specialMentions?: string } }
+  | { type: 'reduceGroupPoints'; payload: { groupId: string; mode: 'half' | 'all'; reason: string; specialMentions?: string } }
   | { type: 'approvePoints'; payload: { requestId: string } }
   | { type: 'rejectPoints'; payload: { requestId: string } }
   | { type: 'undo'; payload: { logId: string } }

@@ -89,6 +89,16 @@ export const commandSchema = z.discriminatedUnion("type", [
       specialMentions: z.string().trim().max(500).optional(),
     }).strict(),
   }).strict(),
+  z.object({
+    id: z.string().uuid(),
+    type: z.literal("reduceGroupPoints"),
+    payload: z.object({
+      groupId: shortId,
+      mode: z.enum(["half", "all"]),
+      reason: z.string().trim().min(1).max(500),
+      specialMentions: z.string().trim().max(500).optional(),
+    }).strict(),
+  }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("approvePoints"), payload: z.object({ requestId: shortId }).strict() }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("rejectPoints"), payload: z.object({ requestId: shortId }).strict() }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("undo"), payload: z.object({ logId: shortId }).strict() }).strict(),
@@ -118,6 +128,8 @@ export const projectorMessageInputSchema = z.object({
 export function reducePairingState(state: PairingState, command: PairingCommand): PairingState {
   const next = structuredClone(state);
   switch (command.type) {
+    case "reduceGroupPoints":
+      throw new Error("Group point reductions require an authenticated counselor assignment");
     case "addPoints": {
       const group = next.groups.find((item) => item.id === command.payload.groupId);
       if (!group) throw new Error("Group not found");
