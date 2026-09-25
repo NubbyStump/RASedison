@@ -18,7 +18,6 @@ import {
   Calendar, 
   Timer, 
   Zap, 
-  Dices,
   PlusCircle,
   ShieldAlert,
   Medal,
@@ -42,22 +41,22 @@ const totalSecondsFromLap = (minutes, seconds, ms) => {
   return (parseInt(minutes) || 0) * 60 + (parseInt(seconds) || 0) + (parseInt(ms) || 0) / 100;
 };
 
-const scramblePhrase = (phrase) => {
-  const normalizedPhrase = phrase.trim().replace(/\s+/g, ' ');
-  return normalizedPhrase
-    .split(' ')
-    .map((word) => {
-      const letters = word.split('');
-      for (let i = letters.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [letters[i], letters[j]] = [letters[j], letters[i]];
-      }
-      return letters.join('');
-    })
-    .join(' ');
-};
-
 const ACTIVITY_MONTH_KEY = 'ras_edison_activities_month_v1';
+const createEmptyActivity = () => ({
+  title: '',
+  type: 'Super Scramble',
+  points: 600,
+  location: '',
+  scrambledPhrase: '',
+  solvedPhrase: '',
+  hint: '',
+  lesson: '',
+  materials: '',
+  steps: '',
+  harder: '',
+  safety: '',
+});
+
 const pacificMonthKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Los_Angeles',
   year: 'numeric',
@@ -125,34 +124,15 @@ export default function App() {
     }
     if (!saved) return [];
 
-    const parsed = JSON.parse(saved);
-    const migrated = parsed.map((activity) => {
-      const oldScramble = activity.scrambledPhrase || '';
-      if (activity.type !== 'Super Scramble' || !/\s{2,}/.test(oldScramble)) {
-        return activity;
-      }
-      return {
-        ...activity,
-        scrambledPhrase: scramblePhrase(activity.solvedPhrase || activity.title)
-      };
-    });
-
-    if (migrated.some((activity, index) => activity !== parsed[index])) {
-      localStorage.setItem('ras_edison_activities_v5', JSON.stringify(migrated));
-    }
-    return migrated;
+    return JSON.parse(saved);
   });
 
-  const [filterType, setFilterType] = useState('Either');
-  const [filterLocation, setFilterLocation] = useState('Either');
   const [currentActivity, setCurrentActivity] = useState(() => localActivities[0] || null);
 
-  // Custom Activity Modal State
+  // Manually authored mission and Super Scramble state.
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newActivity, setNewActivity] = useState({
-    phrase: '',
-    points: 600
-  });
+  const [newActivity, setNewActivity] = useState(createEmptyActivity);
+  const [activityError, setActivityError] = useState('');
   const activitySubmittingRef = useRef(false);
   const [activitySubmitting, setActivitySubmitting] = useState(false);
 
@@ -165,6 +145,7 @@ export default function App() {
   }, []);
   const isLiveOwner = pairing.session?.role === 'owner';
   const canManageActivities = !pairing.isPaired || isLiveOwner;
+  const canCreateActivities = !pairing.isPaired || Boolean(pairing.session);
   const groups = pairing.session?.state.groups ?? localGroups;
   const ledGroup = pairing.currentGroupId
     ? groups.find((group) => group.id === pairing.currentGroupId) || null
@@ -525,21 +506,6 @@ export default function App() {
     setLocalLapRecords(prev => prev.filter(r => r.id !== id));
   };
 
-  const getRandomActivity = () => {
-    if (activities.length === 0) return;
-
-    let filtered = activities.filter(act => {
-      const matchType = filterType === 'Either' || act.type === filterType;
-      const matchLoc = filterLocation === 'Either' || act.location === filterLocation;
-      return matchType && matchLoc;
-    });
-
-    if (filtered.length === 0) filtered = activities;
-
-    const randomIndex = Math.floor(Math.random() * filtered.length);
-    setCurrentActivity(filtered[randomIndex]);
-  };
-
   const handleDeleteActivity = async (activityId) => {
     const activityToDelete = activities.find(activity => activity.id === activityId);
     if (!activityToDelete) return;
@@ -569,38 +535,42 @@ export default function App() {
 
   const handleSaveCustomActivity = async (e) => {
     e.preventDefault();
-    const phrase = newActivity.phrase?.trim();
-    if (!phrase) return;
+    const title = newActivity.title.trim();
+    const location = newActivity.location.trim();
+    const scrambledPhrase = newActivity.scrambledPhrase.trim();
+    const solvedPhrase = newActivity.solvedPhrase.trim();
+    const steps = newActivity.steps.trim();
+    const points = Number(newActivity.points);
+    if (!title || !location || !Number.isFinite(points) || points < 0) return;
+    if (newActivity.type === 'Super Scramble' && (!scrambledPhrase || !solvedPhrase)) return;
+    if (newActivity.type === 'Mission' && !steps) return;
     if (pairing.isPaired && activitySubmittingRef.current) return;
 
     const created = {
-      id: Date.now().toString(),
-      title: phrase,
-      type: 'Super Scramble',
-      points: Number(newActivity.points) || 600,
-      scrambledPhrase: scramblePhrase(phrase),
-      solvedPhrase: phrase.toUpperCase(),
-      hint: 'Rearrange the letters to reveal the phrase.',
-      lesson: '',
-      location: 'Indoor',
-      materials: 'Whiteboard & Marker',
-      steps: 'Write the scrambled phrase on the whiteboard. The first group to solve it wins the points!',
-      harder: '',
-      safety: ''
+      title,
+      type: newActivity.type,
+      points,
+      location,
+      scrambledPhrase,
+      solvedPhrase,
+      hint: newActivity.hint.trim(),
+      lesson: newActivity.lesson.trim(),
+      materials: newActivity.materials.trim(),
+      steps,
+      harder: newActivity.harder.trim(),
+      safety: newActivity.safety.trim(),
     };
+    setActivityError('');
 
     if (pairing.isPaired) {
       activitySubmittingRef.current = true;
       setActivitySubmitting(true);
       try {
         const nextSession = await pairing.command({ type: 'addActivity', payload: { activity: created } });
-        const savedActivity = nextSession.state.activities.find((activity) =>
-          activity.title === created.title &&
-          activity.solvedPhrase === created.solvedPhrase &&
-          activity.scrambledPhrase === created.scrambledPhrase
-        ) || nextSession.state.activities[0];
+        const savedActivity = nextSession.state.activities[0];
         setCurrentActivity(savedActivity || null);
-      } catch {
+      } catch (error) {
+        setActivityError(error?.message || 'Unable to save this activity. Please try again.');
         return;
       } finally {
         activitySubmittingRef.current = false;
@@ -611,7 +581,7 @@ export default function App() {
       setCurrentActivity(created);
     }
     setShowAddModal(false);
-    setNewActivity({ phrase: '', points: 600 });
+    setNewActivity(createEmptyActivity());
   };
 
 
@@ -804,7 +774,7 @@ export default function App() {
                 activeTab === 'generator' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
               }`}
             >
-              <FileText className="w-4 h-4" /> Scrambles
+                <FileText className="w-4 h-4" /> Missions & Scrambles
             </button>
             <button
               onClick={() => setActiveTab('fastest_lap')}
@@ -1213,68 +1183,56 @@ export default function App() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-2xl font-black text-white flex items-center gap-2">
-                    <FileText className="w-6 h-6 text-amber-400" /> Scramble & Mission Generator
+                    <FileText className="w-6 h-6 text-amber-400" /> Custom Missions & Super Scrambles
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Pick a phrase for the whiteboard or a physical group mission.
-                    Missions and scrambles clear automatically each month on the school’s Pacific time. Scores, laps, and history are kept.
+                    Create your own activities and choose one from the library. Nothing is generated or shuffled for you.
+                    Activities clear automatically each month on the school’s Pacific time; scores, laps, and history are kept.
                   </p>
                 </div>
 
-                {canManageActivities && <div className="flex flex-wrap items-center gap-2">
+                {canCreateActivities && <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => setShowAddModal(true)}
+                    onClick={() => { setNewActivity(createEmptyActivity()); setActivityError(''); setShowAddModal(true); }}
                     className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition flex items-center gap-2 shadow-md"
                   >
-                    <PlusCircle className="w-4 h-4" /> Add Custom Scramble
+                    <PlusCircle className="w-4 h-4" /> Create Custom Activity
                   </button>
-                  <button
+                  {canManageActivities && <button
                     onClick={handleClearActivities}
                     disabled={activities.length === 0}
                     className="bg-red-500/10 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40 text-red-300 border border-red-500/30 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition flex items-center gap-2"
                   >
                     <Trash2 className="w-4 h-4" /> Clear All
-                  </button>
+                  </button>}
                 </div>}
               </div>
 
-              {/* Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-900/80 p-4 rounded-2xl border border-slate-700/60 mb-6">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-1">Type</label>
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
-                  >
-                    <option value="Either">Either (All)</option>
-                    <option value="Super Scramble">Super Scramble (Whiteboard)</option>
-                    <option value="Mission">Mission (Physical Goal)</option>
-                  </select>
+              {activities.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-black text-slate-200 mb-3">Activity library</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {activities.map((activity) => {
+                      const selected = currentActivity?.id === activity.id;
+                      return (
+                        <button
+                          key={activity.id}
+                          type="button"
+                          onClick={() => setCurrentActivity(activity)}
+                          aria-pressed={selected}
+                          className={`text-left rounded-2xl border p-4 transition ${selected ? 'border-amber-400 bg-amber-500/10' : 'border-slate-700 bg-slate-900/70 hover:border-slate-500'}`}
+                        >
+                          <span className="flex items-center justify-between gap-3">
+                            <span className="font-bold text-white truncate">{activity.title}</span>
+                            <span className="text-xs text-emerald-300 shrink-0">{activity.points || 0} pts</span>
+                          </span>
+                          <span className="mt-1 block text-xs text-slate-400">{activity.type} · {activity.location}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-1">Location</label>
-                  <select
-                    value={filterLocation}
-                    onChange={(e) => setFilterLocation(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
-                  >
-                    <option value="Either">Either (Indoor/Outdoor)</option>
-                    <option value="Indoor">Indoor (Gym/Cafeteria)</option>
-                    <option value="Outdoor">Outdoor (Playground)</option>
-                  </select>
-                </div>
-
-                <div className="flex items-end">
-                  <button
-                    onClick={getRandomActivity}
-                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black py-2.5 px-4 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg active:scale-95"
-                  >
-                    <Dices className="w-5 h-5" /> Shuffle New Scramble
-                  </button>
-                </div>
-              </div>
+              )}
 
               {/* Display Activity */}
               {currentActivity && (
@@ -1348,6 +1306,20 @@ export default function App() {
                         <p className="text-slate-200">{currentActivity.harder}</p>
                       </div>
                     )}
+
+                    {currentActivity.materials && (
+                      <div className="bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/50">
+                        <span className="font-extrabold text-cyan-300 block mb-1">Materials:</span>
+                        <p className="text-slate-200">{currentActivity.materials}</p>
+                      </div>
+                    )}
+
+                    {currentActivity.safety && (
+                      <div className="bg-red-950/30 p-3.5 rounded-2xl border border-red-500/30">
+                        <span className="font-extrabold text-red-300 block mb-1">Safety notes:</span>
+                        <p className="text-slate-200">{currentActivity.safety}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1357,9 +1329,9 @@ export default function App() {
                   <Trash2 className="w-8 h-8 text-slate-500 mx-auto mb-3" />
                   <h3 className="text-lg font-black text-white">No missions or super scrambles yet</h3>
                   <p className="text-sm text-slate-400 mt-1 mb-5">Add a custom activity to start building your library again.</p>
-                  {canManageActivities && <button
+                  {canCreateActivities && <button
                     type="button"
-                    onClick={() => setShowAddModal(true)}
+                    onClick={() => { setNewActivity(createEmptyActivity()); setActivityError(''); setShowAddModal(true); }}
                     className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition inline-flex items-center gap-2"
                   >
                     <PlusCircle className="w-4 h-4" /> Add Activity
