@@ -28,6 +28,11 @@ app.use(
 
 app.use(express.json({ limit: "10kb" }));
 
+// Root route handler (Serves https://rasedison.onrender.com/)
+app.get("/", (_req, res) => {
+  res.json({ status: "ok", message: "API Server is running" });
+});
+
 // 2. Dynamic PORT Assignment & Validation
 const rawPort = process.env.PORT || "5000";
 const port = Number(rawPort);
