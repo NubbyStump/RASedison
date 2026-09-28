@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { AlertCircle, Check, Clipboard, Loader2, LogIn, LogOut, Radio, Shield, Trash2, Users, XCircle } from 'lucide-react';
+import { AlertCircle, Check, Clipboard, Loader2, LogIn, LogOut, QrCode, Radio, Shield, Trash2, Users, XCircle } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import type { PairingSession, PairingStatus } from '../hooks/usePairing';
 
 const GROUPS = [
@@ -35,14 +36,25 @@ export default function PairingPanel(props: Props) {
   const [code, setCode] = useState('');
   const [group, setGroup] = useState('');
   const [assignment, setAssignment] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [copyError, setCopyError] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
+  const [inviteCopyError, setInviteCopyError] = useState(false);
+  const [showInviteQr, setShowInviteQr] = useState(false);
+  const [joiningFromInvite, setJoiningFromInvite] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  const codeRef = useRef<HTMLElement>(null);
+  const inviteLinkRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open && mode === 'startup') setPath('home');
-  }, [open, mode]);
+    if (!open || mode !== 'startup') return;
+    const inviteCode = new URLSearchParams(window.location.search).get('join')?.trim().toUpperCase();
+    if (status === 'local' && !session && inviteCode && /^[A-Z0-9]{1,10}$/.test(inviteCode)) {
+      setPath('join');
+      setCode(inviteCode);
+      setJoiningFromInvite(true);
+    } else {
+      setPath('home');
+      setJoiningFromInvite(false);
+    }
+  }, [open, mode, session, status]);
   useEffect(() => {
     if (open && mode === 'controls' && session) {
       setAssignment(needsDailyAssignment ? '' : (session.groupId || 'coordinator'));
@@ -63,30 +75,40 @@ export default function PairingPanel(props: Props) {
     event.preventDefault();
     if (name.trim() && code.trim() && group && password.length >= 4) {
       const ok = await props.onJoin(name.trim(), code.trim(), password, group);
-      if (ok) clearPassword();
+      if (ok) {
+        clearPassword();
+        setJoiningFromInvite(false);
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('join')) {
+          url.searchParams.delete('join');
+          window.history.replaceState(window.history.state, '', url.toString());
+        }
+      }
     }
   };
 
-  const handleCopyCode = async () => {
+  const inviteUrl = session
+    ? (() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('join', session.code);
+        return url.toString();
+      })()
+    : '';
+
+  const handleCopyInviteLink = async () => {
     if (!session) return;
     if (navigator.clipboard && window.isSecureContext) {
       try {
-        await navigator.clipboard.writeText(session.code);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        await navigator.clipboard.writeText(inviteUrl);
+        setInviteCopied(true);
+        setTimeout(() => setInviteCopied(false), 1500);
         return;
-      } catch (err) {}
+      } catch {}
     }
-    // Fallback: visible message and select code
-    setCopyError(true);
-    if (codeRef.current) {
-      const selection = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(codeRef.current);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-    }
-    setTimeout(() => setCopyError(false), 4000);
+    setInviteCopyError(true);
+    inviteLinkRef.current?.focus();
+    inviteLinkRef.current?.select();
+    setTimeout(() => setInviteCopyError(false), 4000);
   };
 
   return (
@@ -120,7 +142,7 @@ export default function PairingPanel(props: Props) {
               </button>
               <button onClick={() => setPath('join')} className="w-full text-left rounded-2xl border border-cyan-500/30 bg-slate-800 p-4 hover:border-cyan-400">
                 <span className="flex items-center gap-2 text-white font-black"><LogIn className="w-5 h-5 text-cyan-400" /> Join Live Session</span>
-                <span className="block text-xs text-slate-400 mt-1">Join as a counselor with a room code and password.</span>
+                <span className="block text-xs text-slate-400 mt-1">Open an invite link, or enter a room code and password.</span>
               </button>
               <button onClick={props.onOffline} disabled={busy} className="w-full rounded-2xl border border-slate-700 py-3 text-slate-300 font-bold hover:bg-slate-800 disabled:opacity-50">Continue Offline</button>
               </>}
@@ -134,7 +156,14 @@ export default function PairingPanel(props: Props) {
               <Field label="Your name"><input required maxLength={60} autoComplete="name" autoCapitalize="words" value={name} onChange={e => setName(e.target.value)} className="field" placeholder="Your name" /></Field>
               {path === 'join' && <>
                 <Field label="Your group"><select required value={group} onChange={e => setGroup(e.target.value)} className="field"><option value="">Choose today’s group</option>{GROUPS.map(g => <option key={g.id} value={g.id}>{g.icon} {g.name}</option>)}</select></Field>
-                <Field label="Room code"><input required maxLength={10} autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck="false" value={code} onChange={e => setCode(e.target.value.toUpperCase())} className="field font-mono uppercase tracking-widest" /></Field>
+                {joiningFromInvite ? (
+                  <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/30 p-3 text-sm text-cyan-100">
+                    This invite link selected the room. Enter your name, group, and session password to join.
+                    <button type="button" onClick={() => { setJoiningFromInvite(false); setCode(''); }} className="block mt-2 text-xs font-bold text-cyan-300 underline underline-offset-2">Use a different room code</button>
+                  </div>
+                ) : (
+                  <Field label="Room code"><input required maxLength={10} autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck="false" value={code} onChange={e => setCode(e.target.value.toUpperCase())} className="field font-mono uppercase tracking-widest" /></Field>
+                )}
               </>}
               <Field label="Session password / PIN (4–128 characters)"><input required minLength={4} maxLength={128} type="password" autoComplete={path === 'create' ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} className="field" /></Field>
               <button disabled={busy || !name.trim() || password.length < 4 || (path === 'join' && (!code.trim() || !group))} className={`w-full py-3 rounded-xl font-black text-slate-950 disabled:opacity-50 ${path === 'create' ? 'bg-purple-400' : 'bg-cyan-400'}`}>{busy ? 'Connecting…' : path === 'create' ? 'Create Live Session' : 'Join Live Session'}</button>
@@ -143,16 +172,46 @@ export default function PairingPanel(props: Props) {
 
           {mode === 'controls' && session && (
             <div className="space-y-5">
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4"><div className="text-xs uppercase font-bold text-slate-400">Room code</div>
-                <div className="mt-1 flex items-center gap-3">
-                  <strong ref={codeRef} className="font-mono text-2xl text-purple-300 tracking-wider">{session.code}</strong>
-                  <button aria-label="Copy room code" onClick={handleCopyCode} className="p-2 bg-slate-700 rounded-lg">{copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Clipboard className="w-4 h-4" />}</button>
+              {session.role === 'owner' && (
+                <section className="rounded-2xl bg-slate-800 border border-slate-700 p-4">
+                  <h3 className="text-xs uppercase font-bold tracking-wide text-slate-300">Invite counselors</h3>
+                  <p className="mt-1 text-xs text-slate-400">Share this link or QR code. Counselors won’t need to type the room code; they’ll still need the session password.</p>
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <input
+                      ref={inviteLinkRef}
+                      aria-label="Counselor invite link"
+                      readOnly
+                      value={inviteUrl}
+                      onFocus={event => event.currentTarget.select()}
+                      className="field min-w-0 flex-1 font-mono text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyInviteLink}
+                      className="shrink-0 px-4 py-2.5 rounded-xl bg-cyan-400 text-slate-950 font-black flex items-center justify-center gap-2"
+                    >
+                      {inviteCopied ? <Check className="w-4 h-4" /> : <Clipboard className="w-4 h-4" />}
+                      {inviteCopied ? 'Copied' : 'Copy invite link'}
+                    </button>
+                  </div>
+                  {inviteCopyError && <div role="status" className="mt-2 text-xs text-amber-300 font-medium bg-amber-950/40 border border-amber-500/30 px-2 py-1.5 rounded-md">Clipboard unavailable. The invite link is selected for manual copying.</div>}
+                  <button
+                    type="button"
+                    onClick={() => setShowInviteQr(value => !value)}
+                    aria-expanded={showInviteQr}
+                    aria-controls="counselor-invite-qr"
+                    className="mt-3 px-3 py-2 rounded-xl border border-slate-600 text-slate-200 font-bold text-sm flex items-center gap-2 hover:bg-slate-700"
+                  >
+                    <QrCode className="w-4 h-4" /> {showInviteQr ? 'Hide QR code' : 'Show QR code'}
+                  </button>
+                  {showInviteQr && (
+                    <div id="counselor-invite-qr" className="mt-4 flex justify-center rounded-xl bg-white p-4">
+                      <QRCodeSVG value={inviteUrl} size={220} level="M" aria-hidden="true" />
+                    </div>
+                  )}
                 </div>
-                {copyError && <div className="mt-2 text-xs text-amber-300 font-medium bg-amber-950/40 border border-amber-500/30 px-2 py-1.5 rounded-md">Clipboard unavailable. Code selected for manual copy.</div>}
-                </div>
-                <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4"><div className="text-xs uppercase font-bold text-slate-400">Connection</div><div className="mt-2 font-bold text-white capitalize">{status}</div><div className="text-xs text-slate-400">{session.role === 'owner' ? 'Host / Program Manager' : 'Counselor'}</div></div>
-              </div>
+              )}
+              <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4"><div className="text-xs uppercase font-bold text-slate-400">Connection</div><div className="mt-2 font-bold text-white capitalize">{status}</div><div className="text-xs text-slate-400">{session.role === 'owner' ? 'Host / Program Manager' : 'Counselor'}</div></div>
               <div>
                 <label className="text-xs uppercase tracking-wide font-bold text-slate-400">Your assigned group today</label>
                 <div className="flex flex-col sm:flex-row gap-2 mt-2">
