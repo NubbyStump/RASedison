@@ -205,11 +205,11 @@ export default function PairingPanel(props: Props) {
                     <QrCode className="w-4 h-4" /> {showInviteQr ? 'Hide QR code' : 'Show QR code'}
                   </button>
                   {showInviteQr && (
-                    <div id="counselor-invite-qr" className="mt-4 flex justify-center rounded-xl bg-white p-4">
+                    <div id="counselor-invite-qr" role="img" aria-label="QR code for counselor invite link" className="mt-4 flex justify-center rounded-xl bg-white p-4">
                       <QRCodeSVG value={inviteUrl} size={220} level="M" aria-hidden="true" />
                     </div>
                   )}
-                </div>
+                </section>
               )}
               <div className="rounded-2xl bg-slate-800 border border-slate-700 p-4"><div className="text-xs uppercase font-bold text-slate-400">Connection</div><div className="mt-2 font-bold text-white capitalize">{status}</div><div className="text-xs text-slate-400">{session.role === 'owner' ? 'Host / Program Manager' : 'Counselor'}</div></div>
               <div>
