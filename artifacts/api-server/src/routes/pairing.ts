@@ -223,7 +223,9 @@ function resolveDueApprovals(state: PairingState, now = new Date()): boolean {
       continue;
     }
     const oldScore = group.score;
-    group.score = Math.max(0, Math.min(1_000_000_000, oldScore + request.amount));
+    group.score = request.setScore === undefined
+      ? Math.max(0, Math.min(1_000_000_000, oldScore + request.amount))
+      : request.setScore;
     state.history = [{
       id: request.id,
       groupId: group.id,
@@ -419,7 +421,11 @@ export async function executePairingCommand(
       const state = structuredClone(room.state as PairingState);
       resolveDueApprovals(state);
       if (
-        (command.type === "addPoints" || command.type === "reduceGroupPoints")
+        (
+          command.type === "addPoints"
+          || command.type === "reduceGroupPoints"
+          || command.type === "setGroupPoints"
+        )
         && activeMember.role === "counselor"
       ) {
         const groupId = command.payload.groupId;
@@ -430,7 +436,10 @@ export async function executePairingCommand(
         ) {
           return { error: "Counselors may only remove points from their assigned group" as const };
         }
-        if (command.type === "reduceGroupPoints" && activeMember.groupId !== groupId) {
+        if (
+          (command.type === "reduceGroupPoints" || command.type === "setGroupPoints")
+          && activeMember.groupId !== groupId
+        ) {
           return { error: "Counselors may only remove points from their assigned group" as const };
         }
         const [owner] = await tx.select({ id: pairingMembers.id }).from(pairingMembers).where(and(
@@ -446,9 +455,11 @@ export async function executePairingCommand(
           }
           const amount = command.type === "addPoints"
             ? command.payload.amount
-            : command.payload.mode === "all"
-              ? -group.score
-              : -Math.ceil(group.score / 2);
+            : command.type === "reduceGroupPoints"
+              ? command.payload.mode === "all"
+                ? -group.score
+                : -Math.ceil(group.score / 2)
+              : command.payload.score - group.score;
           const submittedAt = new Date();
           const pending = state.pendingPointApprovals ?? [];
           pending.push({
@@ -456,6 +467,7 @@ export async function executePairingCommand(
             groupId: group.id,
             groupName: group.name,
             amount,
+            ...(command.type === "setGroupPoints" ? { setScore: command.payload.score } : {}),
             reason: command.payload.reason,
             ...(command.payload.specialMentions ? { specialMentions: command.payload.specialMentions } : {}),
             submittedById: activeMember.id,
@@ -468,7 +480,7 @@ export async function executePairingCommand(
         } else {
           return { error: "Program Manager approval is unavailable" as const };
         }
-      } else if (command.type === "reduceGroupPoints") {
+      } else if (command.type === "reduceGroupPoints" || command.type === "setGroupPoints") {
         return { error: "Counselor role required for this command" as const };
       } else if (command.type === "approvePoints" || command.type === "rejectPoints") {
         const requests = state.pendingPointApprovals ?? [];
@@ -482,7 +494,9 @@ export async function executePairingCommand(
             const group = state.groups.find((item) => item.id === request.groupId);
             if (!group) throw new Error("Group not found");
             const oldScore = group.score;
-            group.score = Math.max(0, Math.min(1_000_000_000, oldScore + request.amount));
+            group.score = request.setScore === undefined
+              ? Math.max(0, Math.min(1_000_000_000, oldScore + request.amount))
+              : request.setScore;
             state.history = [{
               id: request.id,
               groupId: group.id,

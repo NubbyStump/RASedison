@@ -1238,68 +1238,77 @@ export const sendPairingCommandBodyTwoPayloadReasonMax = 500;
 
 export const sendPairingCommandBodyTwoPayloadSpecialMentionsMax = 500;
 
-export const sendPairingCommandBodyFivePayloadLogIdMax = 80;
+export const sendPairingCommandBodyThreePayloadGroupIdMax = 80;
 
-export const sendPairingCommandBodySixPayloadMonthMax = 100;
+export const sendPairingCommandBodyThreePayloadScoreMin = 0;
+export const sendPairingCommandBodyThreePayloadScoreMax = 1000000000;
 
-export const sendPairingCommandBodySevenPayloadRecordIdMax = 80;
+export const sendPairingCommandBodyThreePayloadReasonMax = 500;
 
-export const sendPairingCommandBodySevenPayloadRecordRunnerNameMax = 100;
+export const sendPairingCommandBodyThreePayloadSpecialMentionsMax = 500;
 
-export const sendPairingCommandBodySevenPayloadRecordGroupMax = 100;
+export const sendPairingCommandBodySixPayloadLogIdMax = 80;
 
-export const sendPairingCommandBodySevenPayloadRecordMinutesMin = 0;
-export const sendPairingCommandBodySevenPayloadRecordMinutesMax = 999;
+export const sendPairingCommandBodySevenPayloadMonthMax = 100;
 
-export const sendPairingCommandBodySevenPayloadRecordSecondsMin = 0;
-export const sendPairingCommandBodySevenPayloadRecordSecondsMax = 59;
+export const sendPairingCommandBodyEightPayloadRecordIdMax = 80;
 
-export const sendPairingCommandBodySevenPayloadRecordMsMin = 0;
-export const sendPairingCommandBodySevenPayloadRecordMsMax = 99;
+export const sendPairingCommandBodyEightPayloadRecordRunnerNameMax = 100;
 
-export const sendPairingCommandBodySevenPayloadRecordTimeFormattedMax = 30;
+export const sendPairingCommandBodyEightPayloadRecordGroupMax = 100;
 
-export const sendPairingCommandBodySevenPayloadRecordTotalSecondsMin = 0;
-export const sendPairingCommandBodySevenPayloadRecordTotalSecondsMax = 100000;
+export const sendPairingCommandBodyEightPayloadRecordMinutesMin = 0;
+export const sendPairingCommandBodyEightPayloadRecordMinutesMax = 999;
 
-export const sendPairingCommandBodySevenPayloadRecordCourseNameMax = 200;
+export const sendPairingCommandBodyEightPayloadRecordSecondsMin = 0;
+export const sendPairingCommandBodyEightPayloadRecordSecondsMax = 59;
 
-export const sendPairingCommandBodySevenPayloadRecordDateMax = 30;
+export const sendPairingCommandBodyEightPayloadRecordMsMin = 0;
+export const sendPairingCommandBodyEightPayloadRecordMsMax = 99;
 
-export const sendPairingCommandBodySevenPayloadRecordMonthYearMax = 100;
+export const sendPairingCommandBodyEightPayloadRecordTimeFormattedMax = 30;
 
-export const sendPairingCommandBodyEightPayloadIdMax = 80;
+export const sendPairingCommandBodyEightPayloadRecordTotalSecondsMin = 0;
+export const sendPairingCommandBodyEightPayloadRecordTotalSecondsMax = 100000;
 
-export const sendPairingCommandBodyNinePayloadActivityIdMax = 80;
+export const sendPairingCommandBodyEightPayloadRecordCourseNameMax = 200;
 
-export const sendPairingCommandBodyNinePayloadActivityTitleMax = 300;
+export const sendPairingCommandBodyEightPayloadRecordDateMax = 30;
 
-export const sendPairingCommandBodyNinePayloadActivityTypeMax = 100;
+export const sendPairingCommandBodyEightPayloadRecordMonthYearMax = 100;
 
-export const sendPairingCommandBodyNinePayloadActivityPointsMin = -1000000;
-export const sendPairingCommandBodyNinePayloadActivityPointsMax = 1000000;
+export const sendPairingCommandBodyNinePayloadIdMax = 80;
 
-export const sendPairingCommandBodyNinePayloadActivityLocationMax = 100;
+export const sendPairingCommandBodyOnezeroPayloadActivityIdMax = 80;
 
-export const sendPairingCommandBodyNinePayloadActivityScrambledPhraseMax = 2000;
+export const sendPairingCommandBodyOnezeroPayloadActivityTitleMax = 300;
 
-export const sendPairingCommandBodyNinePayloadActivitySolvedPhraseMax = 2000;
+export const sendPairingCommandBodyOnezeroPayloadActivityTypeMax = 100;
 
-export const sendPairingCommandBodyNinePayloadActivityHintMax = 2000;
+export const sendPairingCommandBodyOnezeroPayloadActivityPointsMin = -1000000;
+export const sendPairingCommandBodyOnezeroPayloadActivityPointsMax = 1000000;
 
-export const sendPairingCommandBodyNinePayloadActivityLessonMax = 5000;
+export const sendPairingCommandBodyOnezeroPayloadActivityLocationMax = 100;
 
-export const sendPairingCommandBodyNinePayloadActivityMaterialsMax = 5000;
+export const sendPairingCommandBodyOnezeroPayloadActivityScrambledPhraseMax = 2000;
 
-export const sendPairingCommandBodyNinePayloadActivityStepsMax = 10000;
+export const sendPairingCommandBodyOnezeroPayloadActivitySolvedPhraseMax = 2000;
 
-export const sendPairingCommandBodyNinePayloadActivityHarderMax = 5000;
+export const sendPairingCommandBodyOnezeroPayloadActivityHintMax = 2000;
 
-export const sendPairingCommandBodyNinePayloadActivitySafetyMax = 5000;
+export const sendPairingCommandBodyOnezeroPayloadActivityLessonMax = 5000;
 
-export const sendPairingCommandBodyOnezeroPayloadIdMax = 80;
+export const sendPairingCommandBodyOnezeroPayloadActivityMaterialsMax = 5000;
 
-export const sendPairingCommandBodyOnetwoPayloadIdMax = 80;
+export const sendPairingCommandBodyOnezeroPayloadActivityStepsMax = 10000;
+
+export const sendPairingCommandBodyOnezeroPayloadActivityHarderMax = 5000;
+
+export const sendPairingCommandBodyOnezeroPayloadActivitySafetyMax = 5000;
+
+export const sendPairingCommandBodyOneonePayloadIdMax = 80;
+
+export const sendPairingCommandBodyOnethreePayloadIdMax = 80;
 
 
 
@@ -1323,6 +1332,15 @@ export const SendPairingCommandBody = zod.union([zod.object({
 })
 }),zod.object({
   "id": zod.string().uuid(),
+  "type": zod.enum(['setGroupPoints']),
+  "payload": zod.object({
+  "groupId": zod.string().min(1).max(sendPairingCommandBodyThreePayloadGroupIdMax),
+  "score": zod.number().int().min(sendPairingCommandBodyThreePayloadScoreMin).max(sendPairingCommandBodyThreePayloadScoreMax),
+  "reason": zod.string().min(1).max(sendPairingCommandBodyThreePayloadReasonMax),
+  "specialMentions": zod.string().max(sendPairingCommandBodyThreePayloadSpecialMentionsMax).optional()
+})
+}),zod.object({
+  "id": zod.string().uuid(),
   "type": zod.enum(['approvePoints']),
   "payload": zod.object({
   "requestId": zod.string().uuid()
@@ -1337,63 +1355,63 @@ export const SendPairingCommandBody = zod.union([zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['undo']),
   "payload": zod.object({
-  "logId": zod.string().min(1).max(sendPairingCommandBodyFivePayloadLogIdMax)
+  "logId": zod.string().min(1).max(sendPairingCommandBodySixPayloadLogIdMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['resetMonth']),
   "payload": zod.object({
-  "month": zod.string().min(1).max(sendPairingCommandBodySixPayloadMonthMax)
+  "month": zod.string().min(1).max(sendPairingCommandBodySevenPayloadMonthMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['saveLap']),
   "payload": zod.object({
   "record": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordIdMax),
-  "runnerName": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordRunnerNameMax),
-  "group": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordGroupMax),
-  "minutes": zod.number().int().min(sendPairingCommandBodySevenPayloadRecordMinutesMin).max(sendPairingCommandBodySevenPayloadRecordMinutesMax),
-  "seconds": zod.number().int().min(sendPairingCommandBodySevenPayloadRecordSecondsMin).max(sendPairingCommandBodySevenPayloadRecordSecondsMax),
-  "ms": zod.number().int().min(sendPairingCommandBodySevenPayloadRecordMsMin).max(sendPairingCommandBodySevenPayloadRecordMsMax),
-  "timeFormatted": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordTimeFormattedMax),
-  "totalSeconds": zod.number().min(sendPairingCommandBodySevenPayloadRecordTotalSecondsMin).max(sendPairingCommandBodySevenPayloadRecordTotalSecondsMax),
-  "courseName": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordCourseNameMax),
-  "date": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordDateMax),
-  "monthYear": zod.string().min(1).max(sendPairingCommandBodySevenPayloadRecordMonthYearMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodyEightPayloadRecordIdMax),
+  "runnerName": zod.string().min(1).max(sendPairingCommandBodyEightPayloadRecordRunnerNameMax),
+  "group": zod.string().min(1).max(sendPairingCommandBodyEightPayloadRecordGroupMax),
+  "minutes": zod.number().int().min(sendPairingCommandBodyEightPayloadRecordMinutesMin).max(sendPairingCommandBodyEightPayloadRecordMinutesMax),
+  "seconds": zod.number().int().min(sendPairingCommandBodyEightPayloadRecordSecondsMin).max(sendPairingCommandBodyEightPayloadRecordSecondsMax),
+  "ms": zod.number().int().min(sendPairingCommandBodyEightPayloadRecordMsMin).max(sendPairingCommandBodyEightPayloadRecordMsMax),
+  "timeFormatted": zod.string().min(1).max(sendPairingCommandBodyEightPayloadRecordTimeFormattedMax),
+  "totalSeconds": zod.number().min(sendPairingCommandBodyEightPayloadRecordTotalSecondsMin).max(sendPairingCommandBodyEightPayloadRecordTotalSecondsMax),
+  "courseName": zod.string().min(1).max(sendPairingCommandBodyEightPayloadRecordCourseNameMax),
+  "date": zod.string().min(1).max(sendPairingCommandBodyEightPayloadRecordDateMax),
+  "monthYear": zod.string().min(1).max(sendPairingCommandBodyEightPayloadRecordMonthYearMax)
 })
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['deleteLap']),
   "payload": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyEightPayloadIdMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodyNinePayloadIdMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['addActivity']),
   "payload": zod.object({
   "activity": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyNinePayloadActivityIdMax),
-  "title": zod.string().min(1).max(sendPairingCommandBodyNinePayloadActivityTitleMax),
-  "type": zod.string().min(1).max(sendPairingCommandBodyNinePayloadActivityTypeMax),
-  "points": zod.number().min(sendPairingCommandBodyNinePayloadActivityPointsMin).max(sendPairingCommandBodyNinePayloadActivityPointsMax),
-  "location": zod.string().min(1).max(sendPairingCommandBodyNinePayloadActivityLocationMax),
-  "scrambledPhrase": zod.string().max(sendPairingCommandBodyNinePayloadActivityScrambledPhraseMax).optional(),
-  "solvedPhrase": zod.string().max(sendPairingCommandBodyNinePayloadActivitySolvedPhraseMax).optional(),
-  "hint": zod.string().max(sendPairingCommandBodyNinePayloadActivityHintMax).optional(),
-  "lesson": zod.string().max(sendPairingCommandBodyNinePayloadActivityLessonMax).optional(),
-  "materials": zod.string().max(sendPairingCommandBodyNinePayloadActivityMaterialsMax).optional(),
-  "steps": zod.string().max(sendPairingCommandBodyNinePayloadActivityStepsMax).optional(),
-  "harder": zod.string().max(sendPairingCommandBodyNinePayloadActivityHarderMax).optional(),
-  "safety": zod.string().max(sendPairingCommandBodyNinePayloadActivitySafetyMax).optional()
+  "id": zod.string().min(1).max(sendPairingCommandBodyOnezeroPayloadActivityIdMax),
+  "title": zod.string().min(1).max(sendPairingCommandBodyOnezeroPayloadActivityTitleMax),
+  "type": zod.string().min(1).max(sendPairingCommandBodyOnezeroPayloadActivityTypeMax),
+  "points": zod.number().min(sendPairingCommandBodyOnezeroPayloadActivityPointsMin).max(sendPairingCommandBodyOnezeroPayloadActivityPointsMax),
+  "location": zod.string().min(1).max(sendPairingCommandBodyOnezeroPayloadActivityLocationMax),
+  "scrambledPhrase": zod.string().max(sendPairingCommandBodyOnezeroPayloadActivityScrambledPhraseMax).optional(),
+  "solvedPhrase": zod.string().max(sendPairingCommandBodyOnezeroPayloadActivitySolvedPhraseMax).optional(),
+  "hint": zod.string().max(sendPairingCommandBodyOnezeroPayloadActivityHintMax).optional(),
+  "lesson": zod.string().max(sendPairingCommandBodyOnezeroPayloadActivityLessonMax).optional(),
+  "materials": zod.string().max(sendPairingCommandBodyOnezeroPayloadActivityMaterialsMax).optional(),
+  "steps": zod.string().max(sendPairingCommandBodyOnezeroPayloadActivityStepsMax).optional(),
+  "harder": zod.string().max(sendPairingCommandBodyOnezeroPayloadActivityHarderMax).optional(),
+  "safety": zod.string().max(sendPairingCommandBodyOnezeroPayloadActivitySafetyMax).optional()
 })
 })
 }),zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['deleteActivity']),
   "payload": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyOnezeroPayloadIdMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodyOneonePayloadIdMax)
 })
 }),zod.object({
   "id": zod.string().uuid(),
@@ -1405,7 +1423,7 @@ export const SendPairingCommandBody = zod.union([zod.object({
   "id": zod.string().uuid(),
   "type": zod.enum(['toggleReward']),
   "payload": zod.object({
-  "id": zod.string().min(1).max(sendPairingCommandBodyOnetwoPayloadIdMax)
+  "id": zod.string().min(1).max(sendPairingCommandBodyOnethreePayloadIdMax)
 })
 })])
 

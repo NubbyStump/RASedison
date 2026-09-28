@@ -473,6 +473,7 @@ components:
       oneOf:
         - $ref: "#/components/schemas/AddPointsCommand"
         - $ref: "#/components/schemas/ReduceGroupPointsCommand"
+        - $ref: "#/components/schemas/SetGroupPointsCommand"
         - $ref: "#/components/schemas/ApprovePointsCommand"
         - $ref: "#/components/schemas/RejectPointsCommand"
         - $ref: "#/components/schemas/UndoCommand"
@@ -513,6 +514,22 @@ components:
           properties:
             groupId: { type: string, minLength: 1, maxLength: 80 }
             mode: { type: string, enum: [half, all] }
+            reason: { type: string, minLength: 1, maxLength: 500 }
+            specialMentions: { type: string, maxLength: 500 }
+    SetGroupPointsCommand:
+      type: object
+      additionalProperties: false
+      required: [id, type, payload]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [setGroupPoints] }
+        payload:
+          type: object
+          additionalProperties: false
+          required: [groupId, score, reason]
+          properties:
+            groupId: { type: string, minLength: 1, maxLength: 80 }
+            score: { type: integer, minimum: 0, maximum: 1000000000 }
             reason: { type: string, minLength: 1, maxLength: 500 }
             specialMentions: { type: string, maxLength: 500 }
     ApprovePointsCommand:

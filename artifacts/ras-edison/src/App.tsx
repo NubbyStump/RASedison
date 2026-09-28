@@ -138,6 +138,7 @@ export default function App() {
 
   const [reasonInput, setReasonInput] = useState({ ladybugs: '', jellyfish: '', tigers: '' });
   const [specialMentionsInput, setSpecialMentionsInput] = useState({ ladybugs: '', jellyfish: '', tigers: '' });
+  const [setScoreInput, setSetScoreInput] = useState('');
   const [reasonErrors, setReasonErrors] = useState({});
   const [pointActionError, setPointActionError] = useState('');
   const [approvalClock, setApprovalClock] = useState(() => Date.now());
@@ -212,6 +213,9 @@ export default function App() {
       ?? pairing.session?.members.find((member) => member.id === pairing.session?.memberId)?.groupId
       ?? null
     : pairing.currentGroupId;
+  useEffect(() => {
+    setSetScoreInput('');
+  }, [assignedGroupId]);
   const ledGroup = assignedGroupId
     ? groups.find((group) => group.id === assignedGroupId) || null
     : null;
@@ -504,6 +508,57 @@ export default function App() {
       setSpecialMentionsInput(prev => ({ ...prev, [groupId]: '' }));
     } catch (error) {
       setPointActionError(error?.message || 'Unable to request this points removal.');
+    }
+  };
+
+  const handleSetGroupPoints = async (groupId) => {
+    if (!isLiveCounselor || assignedGroupId !== groupId || !pairing.isPaired) {
+      setPointActionError('Setting points is only available for your assigned group in a live counselor session.');
+      return;
+    }
+    const normalizedScore = setScoreInput.trim();
+    if (!/^\d+$/.test(normalizedScore)) {
+      setPointActionError('Enter a whole-number score from 0 to 1,000,000,000.');
+      return;
+    }
+    const score = Number(normalizedScore);
+    if (!Number.isSafeInteger(score) || score > 1_000_000_000) {
+      setPointActionError('Enter a whole-number score from 0 to 1,000,000,000.');
+      return;
+    }
+    const targetGroup = groups.find((group) => group.id === groupId);
+    if (!targetGroup) {
+      setPointActionError('The assigned group could not be found.');
+      return;
+    }
+    if (score === targetGroup.score) {
+      setPointActionError('That group already has this score.');
+      return;
+    }
+    const enteredReason = reasonInput[groupId]?.trim();
+    if (!enteredReason) {
+      setReasonErrors(prev => ({ ...prev, [groupId]: 'Enter a reason before changing points.' }));
+      document.getElementById(`points-reason-${groupId}`)?.focus();
+      return;
+    }
+    const specialMentions = specialMentionsInput[groupId]?.trim();
+    setReasonErrors(prev => ({ ...prev, [groupId]: '' }));
+    setPointActionError('');
+    try {
+      await pairing.command({
+        type: 'setGroupPoints',
+        payload: {
+          groupId,
+          score,
+          reason: enteredReason,
+          ...(specialMentions ? { specialMentions } : {}),
+        },
+      });
+      setReasonInput(prev => ({ ...prev, [groupId]: '' }));
+      setSpecialMentionsInput(prev => ({ ...prev, [groupId]: '' }));
+      setSetScoreInput('');
+    } catch (error) {
+      setPointActionError(error?.message || 'Unable to request this group score.');
     }
   };
 
@@ -1018,12 +1073,13 @@ export default function App() {
                     const remaining = Math.max(0, new Date(request.dueAt).getTime() - approvalClock);
                     const minutes = Math.floor(remaining / 60_000);
                     const seconds = Math.floor((remaining % 60_000) / 1_000);
+                    const isSetScoreRequest = request.setScore !== undefined;
                     return (
                       <div key={request.id} className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/75 border-slate-700/70'} border rounded-2xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3`}>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`font-black px-2 py-1 rounded-lg text-xs ${request.amount >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
-                              {request.amount >= 0 ? `+${request.amount}` : request.amount}
+                            <span className={`font-black px-2 py-1 rounded-lg text-xs ${isSetScoreRequest ? 'bg-cyan-500/20 text-cyan-200' : request.amount >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
+                              {isSetScoreRequest ? `Set total to ${request.setScore}` : request.amount >= 0 ? `+${request.amount}` : request.amount}
                             </span>
                             <span className="font-bold text-white">{request.groupName}</span>
                             <span className="text-xs text-amber-200">Auto-approves in {minutes}:{String(seconds).padStart(2, '0')}</span>
@@ -1095,7 +1151,7 @@ export default function App() {
                         {isLiveCounselor && isMyGroup && (
                           <div className="mb-4 rounded-2xl border border-red-500/35 bg-red-950/20 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                              <span className="text-sm font-black text-red-100">Remove points from {group.name}</span>
+                              <span className="text-sm font-black text-red-100">Change points for {group.name}</span>
                               <span className="text-[11px] font-semibold text-red-200/80">Program Manager approval required</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -1117,6 +1173,43 @@ export default function App() {
                               >
                                 Remove all (−{group.score})
                               </button>
+                            </div>
+                            <div className="mt-3 border-t border-red-500/25 pt-3">
+                              <label htmlFor={`points-set-total-${group.id}`} className="block text-xs font-bold text-red-100 mb-1">
+                                Set group total
+                              </label>
+                              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                                <input
+                                  id={`points-set-total-${group.id}`}
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="0"
+                                  max="1000000000"
+                                  step="1"
+                                  value={setScoreInput}
+                                  onChange={(event) => {
+                                    setSetScoreInput(event.target.value);
+                                    setPointActionError('');
+                                  }}
+                                  aria-label={`New total for ${group.name}`}
+                                  placeholder={`Current total: ${group.score}`}
+                                  className="min-w-0 bg-slate-950/70 border border-red-500/35 rounded-xl px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:border-red-300"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetGroupPoints(group.id)}
+                                  disabled={
+                                    !/^\d+$/.test(setScoreInput.trim())
+                                    || !Number.isSafeInteger(Number(setScoreInput))
+                                    || Number(setScoreInput) > 1_000_000_000
+                                    || Number(setScoreInput) === group.score
+                                  }
+                                  aria-label={`Request setting ${group.name} to ${setScoreInput || 'a new'} points`}
+                                  className="bg-red-500/25 hover:bg-red-500/35 disabled:opacity-40 disabled:cursor-not-allowed text-red-100 border border-red-500/50 rounded-xl px-3 py-2 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                                >
+                                  Request set
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )}

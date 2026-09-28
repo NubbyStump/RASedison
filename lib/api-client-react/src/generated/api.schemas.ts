@@ -506,6 +506,39 @@ export interface ReduceGroupPointsCommand {
   payload: ReduceGroupPointsCommandPayload;
 }
 
+export type SetGroupPointsCommandType = typeof SetGroupPointsCommandType[keyof typeof SetGroupPointsCommandType];
+
+
+export const SetGroupPointsCommandType = {
+  setGroupPoints: 'setGroupPoints',
+} as const;
+
+export type SetGroupPointsCommandPayload = {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  groupId: string;
+  /**
+     * @minimum 0
+     * @maximum 1000000000
+     */
+  score: number;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  reason: string;
+  /** @maxLength 500 */
+  specialMentions?: string;
+};
+
+export interface SetGroupPointsCommand {
+  id: string;
+  type: SetGroupPointsCommandType;
+  payload: SetGroupPointsCommandPayload;
+}
+
 export type ApprovePointsCommandType = typeof ApprovePointsCommandType[keyof typeof ApprovePointsCommandType];
 
 
@@ -694,7 +727,7 @@ export interface ToggleRewardCommand {
   payload: ToggleRewardCommandPayload;
 }
 
-export type PairingCommandInput = AddPointsCommand | ReduceGroupPointsCommand | ApprovePointsCommand | RejectPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;
+export type PairingCommandInput = AddPointsCommand | ReduceGroupPointsCommand | SetGroupPointsCommand | ApprovePointsCommand | RejectPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;
 
 /**
  * Malformed input

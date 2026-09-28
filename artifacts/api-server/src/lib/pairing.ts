@@ -25,6 +25,7 @@ export type PointApproval = {
   groupId: string;
   groupName: string;
   amount: number;
+  setScore?: number;
   reason: string;
   specialMentions?: string;
   submittedById: string;
@@ -99,6 +100,16 @@ export const commandSchema = z.discriminatedUnion("type", [
       specialMentions: z.string().trim().max(500).optional(),
     }).strict(),
   }).strict(),
+  z.object({
+    id: z.string().uuid(),
+    type: z.literal("setGroupPoints"),
+    payload: z.object({
+      groupId: shortId,
+      score: z.number().int().min(0).max(1_000_000_000),
+      reason: z.string().trim().min(1).max(500),
+      specialMentions: z.string().trim().max(500).optional(),
+    }).strict(),
+  }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("approvePoints"), payload: z.object({ requestId: shortId }).strict() }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("rejectPoints"), payload: z.object({ requestId: shortId }).strict() }).strict(),
   z.object({ id: z.string().uuid(), type: z.literal("undo"), payload: z.object({ logId: shortId }).strict() }).strict(),
@@ -130,6 +141,8 @@ export function reducePairingState(state: PairingState, command: PairingCommand)
   switch (command.type) {
     case "reduceGroupPoints":
       throw new Error("Group point reductions require an authenticated counselor assignment");
+    case "setGroupPoints":
+      throw new Error("Setting group points requires an authenticated counselor assignment");
     case "addPoints": {
       const group = next.groups.find((item) => item.id === command.payload.groupId);
       if (!group) throw new Error("Group not found");

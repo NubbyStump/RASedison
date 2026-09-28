@@ -18,6 +18,7 @@ import {
   hashPassword,
   passwordMatches,
   removePairingMember,
+  resolveDuePointApprovals,
   rolloverActivitiesForLockedRoom,
   sendProjectorMessage,
 } from "../routes/pairing";
@@ -468,6 +469,108 @@ test("counselors can request half or all of their assigned group's points remove
   });
   assert.equal((allApproved.state as PairingState).groups[0].score, 0);
   assert.equal((allApproved.state as PairingState).history[0].amount, -10);
+});
+
+test("counselors can request an exact assigned-group score for owner approval", async () => {
+  const state = baseState();
+  state.groups[0].score = 20;
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state,
+  }).returning();
+  roomIds.push(room.id);
+  const [owner] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Manager",
+    role: "owner",
+    tokenHash: randomUUID(),
+  }).returning();
+  const [counselor] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Counselor",
+    role: "counselor",
+    groupId: "ladybugs",
+    assignmentDate: "2025-01-01",
+    tokenHash: randomUUID(),
+  }).returning();
+
+  const invalidScore = commandSchema.safeParse({
+    id: randomUUID(),
+    type: "setGroupPoints",
+    payload: { groupId: "ladybugs", score: 2.5, reason: "Fractional score" },
+  });
+  assert.equal(invalidScore.success, false);
+
+  await assert.rejects(
+    executePairingCommand(counselor, {
+      id: randomUUID(),
+      type: "setGroupPoints",
+      payload: { groupId: "tigers", score: 50, reason: "Wrong group" },
+    }),
+    /assigned group/,
+  );
+
+  const submitted = await executePairingCommand(counselor, {
+    id: randomUUID(),
+    type: "setGroupPoints",
+    payload: {
+      groupId: "ladybugs",
+      score: 45,
+      reason: "Correct the score tally",
+      specialMentions: "Updated after checking the board",
+    },
+  });
+  const request = (submitted.state as PairingState).pendingPointApprovals?.at(-1);
+  assert.equal(request?.setScore, 45);
+  assert.equal(request?.amount, 25);
+  assert.equal((submitted.state as PairingState).groups[0].score, 20);
+
+  await assert.rejects(
+    executePairingCommand(owner, {
+      id: randomUUID(),
+      type: "setGroupPoints",
+      payload: { groupId: "ladybugs", score: 45, reason: "Owner cannot submit" },
+    }),
+    /Counselor role required/,
+  );
+
+  await executePairingCommand(owner, {
+    id: randomUUID(),
+    type: "addPoints",
+    payload: { groupId: "ladybugs", amount: 5, reason: "Manager update before approval" },
+  });
+  const approved = await executePairingCommand(owner, {
+    id: randomUUID(),
+    type: "approvePoints",
+    payload: { requestId: request!.id },
+  });
+  assert.equal((approved.state as PairingState).groups[0].score, 45);
+  assert.equal((approved.state as PairingState).history[0].amount, 20);
+  assert.equal((approved.state as PairingState).history[0].reason, "Correct the score tally");
+  assert.equal((approved.state as PairingState).history[0].specialMentions, "Updated after checking the board");
+  assert.equal((approved.state as PairingState).pendingPointApprovals?.at(-1)?.status, "approved");
+
+  const autoSubmitted = await executePairingCommand(counselor, {
+    id: randomUUID(),
+    type: "setGroupPoints",
+    payload: { groupId: "ladybugs", score: 9, reason: "Correct another tally" },
+  });
+  const autoRequest = (autoSubmitted.state as PairingState).pendingPointApprovals?.at(-1);
+  const [currentRoom] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+  const overdueState = structuredClone(currentRoom.state as PairingState);
+  const storedAutoRequest = overdueState.pendingPointApprovals?.find((item) => item.id === autoRequest?.id);
+  storedAutoRequest!.dueAt = new Date(Date.now() - 1_000).toISOString();
+  await db.update(pairingRooms).set({ state: overdueState }).where(eq(pairingRooms.id, room.id));
+  await resolveDuePointApprovals();
+
+  const [resolvedRoom] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+  const resolvedState = resolvedRoom.state as PairingState;
+  assert.equal(resolvedState.groups[0].score, 9);
+  assert.equal(resolvedState.history[0].amount, -36);
+  assert.equal(
+    resolvedState.pendingPointApprovals?.find((item) => item.id === autoRequest?.id)?.status,
+    "autoApproved",
+  );
 });
 
 test("counselors can save fully custom missions and scrambles without gaining delete access", async () => {

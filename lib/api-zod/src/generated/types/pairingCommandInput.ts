@@ -15,7 +15,8 @@ import type { ReduceGroupPointsCommand } from './reduceGroupPointsCommand';
 import type { RejectPointsCommand } from './rejectPointsCommand';
 import type { ResetMonthCommand } from './resetMonthCommand';
 import type { SaveLapCommand } from './saveLapCommand';
+import type { SetGroupPointsCommand } from './setGroupPointsCommand';
 import type { ToggleRewardCommand } from './toggleRewardCommand';
 import type { UndoCommand } from './undoCommand';
 
-export type PairingCommandInput = AddPointsCommand | ReduceGroupPointsCommand | ApprovePointsCommand | RejectPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;
+export type PairingCommandInput = AddPointsCommand | ReduceGroupPointsCommand | SetGroupPointsCommand | ApprovePointsCommand | RejectPointsCommand | UndoCommand | ResetMonthCommand | SaveLapCommand | DeleteLapCommand | AddActivityCommand | DeleteActivityCommand | ClearActivitiesCommand | ToggleRewardCommand;
