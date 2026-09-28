@@ -207,8 +207,11 @@ export default function App() {
   const canManageActivities = !pairing.isPaired || isLiveOwner;
   const canCreateActivities = !pairing.isPaired || Boolean(pairing.session);
   const groups = pairing.session?.state.groups ?? localGroups;
-  const ledGroup = pairing.currentGroupId
-    ? groups.find((group) => group.id === pairing.currentGroupId) || null
+  const assignedGroupId = isLiveCounselor
+    ? pairing.session?.groupId ?? null
+    : pairing.currentGroupId;
+  const ledGroup = assignedGroupId
+    ? groups.find((group) => group.id === assignedGroupId) || null
     : null;
   const assignedGroupTheme = ledGroup
     ? ASSIGNED_GROUP_PAGE_THEMES[ledGroup.id] || null
@@ -420,6 +423,10 @@ export default function App() {
   const leadingNames = leaders.map(l => l.name);
 
   const handleAddPoints = async (groupId, amount) => {
+    if (isLiveCounselor && amount < 0 && pairing.session?.groupId !== groupId) {
+      setPointActionError('Counselors may only remove points from their assigned group.');
+      return;
+    }
     const enteredReason = reasonInput[groupId]?.trim();
     const specialMentions = specialMentionsInput[groupId]?.trim();
     if (!enteredReason) {
@@ -464,6 +471,10 @@ export default function App() {
   };
 
   const handleReduceGroupPoints = async (groupId, mode) => {
+    if (!isLiveCounselor || pairing.session?.groupId !== groupId) {
+      setPointActionError('Bulk point removal is only available for your assigned group in a live counselor session.');
+      return;
+    }
     const enteredReason = reasonInput[groupId]?.trim();
     const specialMentions = specialMentionsInput[groupId]?.trim();
     if (!enteredReason) {
