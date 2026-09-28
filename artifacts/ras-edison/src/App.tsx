@@ -57,6 +57,27 @@ const createEmptyActivity = () => ({
   safety: '',
 });
 
+const ASSIGNED_GROUP_PAGE_THEMES = {
+  ladybugs: {
+    page: 'bg-gradient-to-br from-rose-950 via-slate-950 to-red-950',
+    header: 'bg-rose-950/80 border-rose-700/60',
+    banner: 'bg-rose-500/15 border-rose-400/40',
+    label: 'text-rose-300',
+  },
+  jellyfish: {
+    page: 'bg-gradient-to-br from-cyan-950 via-slate-950 to-blue-950',
+    header: 'bg-cyan-950/80 border-cyan-700/60',
+    banner: 'bg-cyan-500/15 border-cyan-400/40',
+    label: 'text-cyan-300',
+  },
+  tigers: {
+    page: 'bg-gradient-to-br from-amber-950 via-slate-950 to-orange-950',
+    header: 'bg-amber-950/80 border-amber-700/60',
+    banner: 'bg-amber-500/15 border-amber-400/40',
+    label: 'text-amber-300',
+  },
+};
+
 const pacificMonthKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Los_Angeles',
   year: 'numeric',
@@ -151,6 +172,9 @@ export default function App() {
   const groups = pairing.session?.state.groups ?? localGroups;
   const ledGroup = pairing.currentGroupId
     ? groups.find((group) => group.id === pairing.currentGroupId) || null
+    : null;
+  const assignedGroupTheme = isLiveCounselor && ledGroup
+    ? ASSIGNED_GROUP_PAGE_THEMES[ledGroup.id] || null
     : null;
   const pointsGroups = ledGroup
     ? [ledGroup, ...groups.filter((group) => group.id !== ledGroup.id)]
@@ -778,9 +802,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-slate-900 text-slate-100 flex flex-col font-sans pb-12">
+    <div className={`min-h-[100dvh] ${assignedGroupTheme?.page || 'bg-slate-900'} text-slate-100 flex flex-col font-sans pb-12`}>
       {/* Header Bar */}
-      <header className="bg-slate-800/90 backdrop-blur border-b border-slate-700/80 sticky top-0 z-30 px-4 py-3">
+      <header className={`${assignedGroupTheme?.header || 'bg-slate-800/90 border-slate-700/80'} backdrop-blur border-b sticky top-0 z-30 px-4 py-3`}>
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img
@@ -874,11 +898,11 @@ export default function App() {
         {activeTab === 'scoreboard' && (
           <div className="space-y-6">
             {ledGroup && (
-              <div data-testid="banner-my-group" className="bg-cyan-500/10 border border-cyan-400/40 rounded-2xl px-5 py-3 flex items-center gap-3">
+              <div data-testid="banner-my-group" className={`${assignedGroupTheme?.banner || 'bg-cyan-500/10 border-cyan-400/40'} border rounded-2xl px-5 py-3 flex items-center gap-3`}>
                 <span className="text-2xl">{ledGroup.icon}</span>
                 <div>
-                  <div className="text-[11px] font-black uppercase tracking-widest text-cyan-300">Your Assigned Group</div>
-                  <div className="font-black text-white">{ledGroup.name} — personalized view</div>
+                  <div className={`text-[11px] font-black uppercase tracking-widest ${assignedGroupTheme?.label || 'text-cyan-300'}`}>Your Assigned Group</div>
+                  <div className="font-black text-white">{ledGroup.name}</div>
                 </div>
               </div>
             )}
