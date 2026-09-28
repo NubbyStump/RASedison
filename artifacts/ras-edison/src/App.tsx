@@ -59,22 +59,25 @@ const createEmptyActivity = () => ({
 
 const ASSIGNED_GROUP_PAGE_THEMES = {
   ladybugs: {
-    page: 'bg-gradient-to-br from-rose-950 via-slate-950 to-red-950',
-    header: 'bg-rose-950/80 border-rose-700/60',
-    banner: 'bg-rose-500/15 border-rose-400/40',
-    label: 'text-rose-300',
+    page: 'bg-gradient-to-br from-rose-700 via-red-800 to-red-900',
+    header: 'bg-rose-900/90 border-rose-500/70',
+    banner: 'bg-rose-500/20 border-rose-300/60',
+    label: 'text-rose-100',
+    card: 'border-rose-300/90 shadow-[0_0_35px_rgba(244,63,94,0.3)] ring-2 ring-rose-300/30',
   },
   jellyfish: {
-    page: 'bg-gradient-to-br from-cyan-950 via-slate-950 to-blue-950',
-    header: 'bg-cyan-950/80 border-cyan-700/60',
-    banner: 'bg-cyan-500/15 border-cyan-400/40',
-    label: 'text-cyan-300',
+    page: 'bg-gradient-to-br from-cyan-700 via-blue-800 to-blue-900',
+    header: 'bg-blue-900/90 border-cyan-500/70',
+    banner: 'bg-cyan-500/20 border-cyan-300/60',
+    label: 'text-cyan-100',
+    card: 'border-cyan-300/90 shadow-[0_0_35px_rgba(34,211,238,0.3)] ring-2 ring-cyan-300/30',
   },
   tigers: {
-    page: 'bg-gradient-to-br from-amber-950 via-slate-950 to-orange-950',
-    header: 'bg-amber-950/80 border-amber-700/60',
-    banner: 'bg-amber-500/15 border-amber-400/40',
-    label: 'text-amber-300',
+    page: 'bg-gradient-to-br from-amber-700 via-orange-800 to-orange-900',
+    header: 'bg-orange-900/90 border-amber-500/70',
+    banner: 'bg-amber-500/20 border-amber-300/60',
+    label: 'text-amber-100',
+    card: 'border-amber-300/90 shadow-[0_0_35px_rgba(251,191,36,0.3)] ring-2 ring-amber-300/30',
   },
 };
 
@@ -999,7 +1002,7 @@ export default function App() {
                     key={group.id} 
                     className={`bg-slate-800/90 rounded-3xl p-5 border transition-all duration-300 relative flex flex-col justify-between shadow-lg ${
                       isMyGroup
-                        ? 'border-cyan-400/90 shadow-[0_0_35px_rgba(34,211,238,0.22)] ring-2 ring-cyan-400/30'
+                        ? assignedGroupTheme?.card || 'border-cyan-400/90 shadow-[0_0_35px_rgba(34,211,238,0.22)] ring-2 ring-cyan-400/30'
                         : isLeading ? 'border-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.2)] ring-2 ring-emerald-400/20' : 'border-slate-700/70'
                     }`}
                   >
