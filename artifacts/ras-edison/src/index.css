@@ -357,36 +357,6 @@
   box-shadow: 0 7px 18px color-mix(in srgb, var(--ras-accent) 20%, transparent);
 }
 
-.ras-team-positive {
-  border-color: color-mix(in srgb, var(--ras-accent) 32%, transparent);
-  color: var(--ras-accent);
-}
-
-.ras-team-positive-subtle {
-  background-color: color-mix(in srgb, var(--ras-accent) 8%, transparent);
-}
-
-.ras-team-positive-medium {
-  background-color: color-mix(in srgb, var(--ras-accent) 13%, transparent);
-}
-
-.ras-team-positive-strong {
-  background-color: color-mix(in srgb, var(--ras-accent) 20%, transparent);
-}
-
-.ras-team-positive:hover {
-  background-color: color-mix(in srgb, var(--ras-accent) 26%, transparent);
-}
-
-.ras-team-positive-solid {
-  background-color: var(--ras-accent);
-  color: #111827;
-}
-
-.ras-team-positive-solid:hover {
-  filter: brightness(1.08);
-}
-
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {

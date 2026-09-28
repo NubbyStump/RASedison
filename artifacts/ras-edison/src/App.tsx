@@ -1121,21 +1121,21 @@ export default function App() {
                           <button
                             onClick={() => handleAddPoints(group.id, 10)}
                             aria-label={`Add 10 points to ${group.name}`}
-                            className={`${assignedGroupTheme ? 'ras-team-positive ras-team-positive-subtle' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'} border rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]`}
+                            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]"
                           >
                             +10
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 50)}
                             aria-label={`Add 50 points to ${group.name}`}
-                            className={`${assignedGroupTheme ? 'ras-team-positive ras-team-positive-medium' : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'} border rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]`}
+                            className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]"
                           >
                             +50
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 100)}
                             aria-label={`Add 100 points to ${group.name}`}
-                            className={`${assignedGroupTheme ? 'ras-team-positive ras-team-positive-strong' : 'bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-200 border-emerald-500/50'} border rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]`}
+                            className="bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-100 border border-emerald-500/50 rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]"
                           >
                             +100
                           </button>
@@ -1145,21 +1145,21 @@ export default function App() {
                           <button
                             onClick={() => handleAddPoints(group.id, 200)}
                             aria-label={`Add 200 points to ${group.name}`}
-                            className={`${assignedGroupTheme ? 'ras-team-positive-solid' : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'} rounded-xl py-2 font-black text-xs transition active:scale-95 shadow-md min-h-[44px]`}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl py-2 font-black text-xs transition active:scale-95 shadow-md min-h-[44px]"
                           >
                             +200
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 500)}
                             aria-label={`Add 500 points to ${group.name}`}
-                            className={`${assignedGroupTheme ? 'ras-team-positive-solid' : 'bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950'} font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md min-h-[44px]`}
+                            className="bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md min-h-[44px]"
                           >
                             +500
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 600)}
                             aria-label={`Add 600 points to ${group.name}`}
-                            className="bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md flex items-center justify-center gap-1 min-h-[44px]"
+                            className="bg-gradient-to-r from-emerald-400 to-lime-400 text-slate-950 font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md flex items-center justify-center gap-1 min-h-[44px]"
                           >
                             <Sparkles className="w-3.5 h-3.5" /> +600
                           </button>
