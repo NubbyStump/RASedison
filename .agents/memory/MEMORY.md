@@ -1,2 +1,3 @@
 - [Multi-session browser evidence](browser-evidence.md) — verify room identity before trusting browser test observations; inconsistent snapshots are inconclusive.
 - [Post-merge verification](merge-verification.md) — automatic conflict resolution can damage files not flagged as conflicted; recheck merged code before completion.
+- [Live app vs canvas preview](live-app-vs-canvas-preview.md) — RAS-Edison’s artifact and copied Points mockup are separate; verify which one is being tested.
