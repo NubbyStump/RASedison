@@ -59,27 +59,61 @@ const createEmptyActivity = () => ({
 
 const ASSIGNED_GROUP_PAGE_THEMES = {
   ladybugs: {
-    page: 'bg-gradient-to-br from-rose-700 via-red-800 to-red-900',
-    header: 'bg-rose-900/90 border-rose-500/70',
-    banner: 'bg-rose-500/20 border-rose-300/60',
+    glow: 'rgba(244, 63, 94, 0.17)',
+    surface: 'rgba(43, 31, 41, 0.92)',
+    surfaceRaised: 'rgba(52, 36, 48, 0.96)',
+    surfaceInset: 'rgba(27, 22, 31, 0.96)',
+    border: 'rgba(255, 228, 236, 0.12)',
+    fieldBorder: 'rgba(251, 113, 133, 0.28)',
+    accent: '#fb7185',
+    banner: 'bg-rose-400/10 border-rose-200/25',
     label: 'text-rose-100',
-    card: 'border-rose-300/90 shadow-[0_0_35px_rgba(244,63,94,0.3)] ring-2 ring-rose-300/30',
+    brandLabel: 'text-rose-200',
+    card: 'border-rose-300/80 shadow-[0_14px_34px_rgba(244,63,94,0.16)] ring-1 ring-rose-200/25',
+    cardIdle: 'border-rose-200/20',
+    assignedBadge: 'bg-rose-300 text-slate-950',
   },
   jellyfish: {
-    page: 'bg-gradient-to-br from-cyan-700 via-blue-800 to-blue-900',
-    header: 'bg-blue-900/90 border-cyan-500/70',
-    banner: 'bg-cyan-500/20 border-cyan-300/60',
+    glow: 'rgba(34, 211, 238, 0.17)',
+    surface: 'rgba(28, 46, 59, 0.92)',
+    surfaceRaised: 'rgba(36, 56, 70, 0.96)',
+    surfaceInset: 'rgba(18, 31, 42, 0.96)',
+    border: 'rgba(207, 239, 250, 0.12)',
+    fieldBorder: 'rgba(103, 232, 249, 0.28)',
+    accent: '#67e8f9',
+    banner: 'bg-cyan-400/10 border-cyan-200/25',
     label: 'text-cyan-100',
-    card: 'border-cyan-300/90 shadow-[0_0_35px_rgba(34,211,238,0.3)] ring-2 ring-cyan-300/30',
+    brandLabel: 'text-cyan-200',
+    card: 'border-cyan-200/85 shadow-[0_14px_34px_rgba(34,211,238,0.16)] ring-1 ring-cyan-100/25',
+    cardIdle: 'border-cyan-100/20',
+    assignedBadge: 'bg-cyan-200 text-slate-950',
   },
   tigers: {
-    page: 'bg-gradient-to-br from-amber-700 via-orange-800 to-orange-900',
-    header: 'bg-orange-900/90 border-amber-500/70',
-    banner: 'bg-amber-500/20 border-amber-300/60',
+    glow: 'rgba(245, 158, 11, 0.15)',
+    surface: 'rgba(47, 40, 29, 0.92)',
+    surfaceRaised: 'rgba(57, 48, 34, 0.96)',
+    surfaceInset: 'rgba(27, 25, 22, 0.96)',
+    border: 'rgba(249, 231, 197, 0.12)',
+    fieldBorder: 'rgba(251, 191, 36, 0.28)',
+    accent: '#fbbf24',
+    banner: 'bg-amber-400/10 border-amber-200/25',
     label: 'text-amber-100',
-    card: 'border-amber-300/90 shadow-[0_0_35px_rgba(251,191,36,0.3)] ring-2 ring-amber-300/30',
+    brandLabel: 'text-amber-200',
+    card: 'border-amber-200/85 shadow-[0_14px_34px_rgba(245,158,11,0.16)] ring-1 ring-amber-100/25',
+    cardIdle: 'border-amber-100/20',
+    assignedBadge: 'bg-amber-200 text-slate-950',
   },
 };
+
+const getGroupThemeStyle = (theme) => ({
+  '--ras-group-glow': theme.glow,
+  '--ras-panel-surface': theme.surface,
+  '--ras-panel-raised': theme.surfaceRaised,
+  '--ras-panel-inset': theme.surfaceInset,
+  '--ras-panel-border': theme.border,
+  '--ras-field-border': theme.fieldBorder,
+  '--ras-accent': theme.accent,
+});
 
 const pacificMonthKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Los_Angeles',
@@ -805,9 +839,12 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-[100dvh] ${assignedGroupTheme?.page || 'bg-slate-900'} text-slate-100 flex flex-col font-sans pb-12`}>
+    <div
+      className={`min-h-[100dvh] ${assignedGroupTheme ? 'ras-edison-theme' : 'bg-slate-900'} text-slate-100 flex flex-col font-sans pb-12`}
+      style={assignedGroupTheme ? getGroupThemeStyle(assignedGroupTheme) : undefined}
+    >
       {/* Header Bar */}
-      <header className={`${assignedGroupTheme?.header || 'bg-slate-800/90 border-slate-700/80'} backdrop-blur border-b sticky top-0 z-30 px-4 py-3`}>
+      <header className={`${assignedGroupTheme ? 'ras-theme-header' : 'bg-slate-800/90 border-slate-700/80'} backdrop-blur border-b sticky top-0 z-30 px-4 py-3`}>
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img
@@ -817,7 +854,7 @@ export default function App() {
             />
             <div>
               {/* Explicit School Title Header */}
-              <div className="text-[10px] uppercase font-black tracking-widest text-emerald-400 flex items-center gap-1">
+              <div className={`text-[10px] uppercase font-black tracking-widest ${assignedGroupTheme?.brandLabel || 'text-emerald-400'} flex items-center gap-1`}>
                 Right At School
               </div>
               <h1 className="font-black text-base md:text-lg text-white tracking-tight leading-tight">
@@ -827,11 +864,11 @@ export default function App() {
           </div>
 
           {/* Nav Tabs */}
-          <div className="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-700 overflow-x-auto max-w-full">
+          <div className={`flex items-center ${assignedGroupTheme ? 'ras-theme-nav' : 'bg-slate-900 border-slate-700'} p-1 rounded-2xl border overflow-x-auto max-w-full`}>
             <button
               onClick={() => setActiveTab('scoreboard')}
               className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
-                activeTab === 'scoreboard' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                activeTab === 'scoreboard' ? (assignedGroupTheme ? 'ras-theme-primary' : 'bg-emerald-500 text-slate-950 shadow-md') : 'text-slate-400 hover:text-white'
               }`}
             >
               <Trophy className="w-4 h-4" /> Points
@@ -910,7 +947,7 @@ export default function App() {
               </div>
             )}
             {/* Status Leader Banner */}
-            <div className="bg-gradient-to-r from-slate-800 via-slate-800 to-slate-800/90 border border-slate-700/80 rounded-3xl p-5 shadow-xl">
+            <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-gradient-to-r from-slate-800 via-slate-800 to-slate-800/90 border-slate-700/80'} border rounded-3xl p-5 shadow-xl`}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs tracking-wider uppercase mb-1">
@@ -929,7 +966,7 @@ export default function App() {
                   </h2>
                 </div>
 
-                <div className="flex items-center gap-3 bg-slate-900/80 border border-slate-700 px-4 py-2.5 rounded-2xl self-start md:self-auto">
+                <div className={`flex items-center gap-3 ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/80 border-slate-700'} border px-4 py-2.5 rounded-2xl self-start md:self-auto`}>
                   <Calendar className="w-5 h-5 text-emerald-400" />
                   <div>
                     <div className="text-xs text-slate-400 font-medium">Month Ends In</div>
@@ -946,7 +983,7 @@ export default function App() {
             )}
 
             {pendingPointApprovals.length > 0 && (
-              <section className="bg-amber-950/30 border border-amber-500/40 rounded-3xl p-5 shadow-lg">
+              <section className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-amber-950/30'} border border-amber-500/30 rounded-3xl p-5 shadow-lg`}>
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <div>
                     <h3 className="font-extrabold text-lg text-white">Points Awaiting Approval</h3>
@@ -964,7 +1001,7 @@ export default function App() {
                     const minutes = Math.floor(remaining / 60_000);
                     const seconds = Math.floor((remaining % 60_000) / 1_000);
                     return (
-                      <div key={request.id} className="bg-slate-900/75 border border-slate-700/70 rounded-2xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div key={request.id} className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/75 border-slate-700/70'} border rounded-2xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3`}>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`font-black px-2 py-1 rounded-lg text-xs ${request.amount >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
@@ -997,17 +1034,19 @@ export default function App() {
               {pointsGroups.map((group) => {
                 const isLeading = group.score === maxScore && maxScore > 0;
                 const isMyGroup = group.id === ledGroup?.id;
+                const cardTheme = ASSIGNED_GROUP_PAGE_THEMES[group.id] || assignedGroupTheme;
                 return (
                   <div 
                     key={group.id} 
-                    className={`bg-slate-800/90 rounded-3xl p-5 border transition-all duration-300 relative flex flex-col justify-between shadow-lg ${
+                    style={assignedGroupTheme ? getGroupThemeStyle(cardTheme) : undefined}
+                    className={`${assignedGroupTheme ? 'ras-theme-panel-raised' : 'bg-slate-800/90'} rounded-3xl p-5 border transition-all duration-300 relative flex flex-col justify-between shadow-lg ${
                       isMyGroup
                         ? assignedGroupTheme?.card || 'border-cyan-400/90 shadow-[0_0_35px_rgba(34,211,238,0.22)] ring-2 ring-cyan-400/30'
-                        : isLeading ? 'border-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.2)] ring-2 ring-emerald-400/20' : 'border-slate-700/70'
+                        : isLeading ? 'border-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.2)] ring-2 ring-emerald-400/20' : assignedGroupTheme ? cardTheme?.cardIdle || 'border-slate-700/70' : 'border-slate-700/70'
                     }`}
                   >
                     {isMyGroup && (
-                      <div className="absolute -top-3.5 left-4 bg-cyan-400 text-slate-950 font-black text-xs px-3 py-1 rounded-full shadow-md uppercase tracking-wider">
+                      <div className={`absolute -top-3.5 left-4 ${assignedGroupTheme?.assignedBadge || 'bg-cyan-400 text-slate-950'} font-black text-xs px-3 py-1 rounded-full shadow-md uppercase tracking-wider`}>
                         Your Assigned Group
                       </div>
                     )}
@@ -1030,7 +1069,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="text-3xl font-black text-white bg-slate-900/80 px-4 py-2 rounded-2xl border border-slate-700/60">
+                        <div className={`text-3xl font-black text-white ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/80 border-slate-700/60'} px-4 py-2 rounded-2xl border`}>
                           {group.score}
                         </div>
                       </div>
@@ -1052,7 +1091,7 @@ export default function App() {
                             setReasonInput({ ...reasonInput, [group.id]: e.target.value });
                             setReasonErrors(prev => ({ ...prev, [group.id]: '' }));
                           }}
-                          className="w-full bg-slate-900/80 border border-slate-700 text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+                          className={`w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900/80 border-slate-700 focus:border-emerald-500'} border text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-400 focus:outline-none transition`}
                         />
                         {reasonErrors[group.id] && (
                           <p id={`points-reason-error-${group.id}`} role="alert" className="text-xs text-red-300 mt-1">
@@ -1072,7 +1111,7 @@ export default function App() {
                           placeholder="Names or shout-outs to include in the log"
                           value={specialMentionsInput[group.id] || ''}
                           onChange={(e) => setSpecialMentionsInput(prev => ({ ...prev, [group.id]: e.target.value }))}
-                          className="w-full bg-slate-900/80 border border-slate-700 text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
+                          className={`w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900/80 border-slate-700 focus:border-cyan-500'} border text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-400 focus:outline-none transition`}
                         />
                       </div>
 
@@ -1082,21 +1121,21 @@ export default function App() {
                           <button
                             onClick={() => handleAddPoints(group.id, 10)}
                             aria-label={`Add 10 points to ${group.name}`}
-                            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]"
+                            className={`${assignedGroupTheme ? 'ras-team-positive ras-team-positive-subtle' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'} border rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]`}
                           >
                             +10
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 50)}
                             aria-label={`Add 50 points to ${group.name}`}
-                            className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]"
+                            className={`${assignedGroupTheme ? 'ras-team-positive ras-team-positive-medium' : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'} border rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]`}
                           >
                             +50
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 100)}
                             aria-label={`Add 100 points to ${group.name}`}
-                            className="bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-200 border border-emerald-500/50 rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]"
+                            className={`${assignedGroupTheme ? 'ras-team-positive ras-team-positive-strong' : 'bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-200 border-emerald-500/50'} border rounded-xl py-2 font-black text-xs transition active:scale-95 min-h-[44px]`}
                           >
                             +100
                           </button>
@@ -1106,14 +1145,14 @@ export default function App() {
                           <button
                             onClick={() => handleAddPoints(group.id, 200)}
                             aria-label={`Add 200 points to ${group.name}`}
-                            className="bg-emerald-500 text-slate-950 hover:bg-emerald-400 rounded-xl py-2 font-black text-xs transition active:scale-95 shadow-md min-h-[44px]"
+                            className={`${assignedGroupTheme ? 'ras-team-positive-solid' : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'} rounded-xl py-2 font-black text-xs transition active:scale-95 shadow-md min-h-[44px]`}
                           >
                             +200
                           </button>
                           <button
                             onClick={() => handleAddPoints(group.id, 500)}
                             aria-label={`Add 500 points to ${group.name}`}
-                            className="bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md min-h-[44px]"
+                            className={`${assignedGroupTheme ? 'ras-team-positive-solid' : 'bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950'} font-black rounded-xl py-2 text-xs transition active:scale-95 shadow-md min-h-[44px]`}
                           >
                             +500
                           </button>
@@ -1176,7 +1215,7 @@ export default function App() {
 
             {/* Recent History & Monthly Log */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
-              <div className="lg:col-span-2 bg-slate-800/80 rounded-3xl p-5 border border-slate-700/80 shadow-lg">
+              <div className={`lg:col-span-2 ${assignedGroupTheme ? 'ras-theme-panel' : 'bg-slate-800/80 border-slate-700/80'} rounded-3xl p-5 border shadow-lg`}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
                     <RotateCcw className="w-5 h-5 text-emerald-400" /> Recent Points Entry Log
@@ -1191,7 +1230,7 @@ export default function App() {
                 ) : (
                   <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
                     {history.map((item) => (
-                      <div key={item.id} className="bg-slate-900/70 border border-slate-700/60 rounded-2xl p-3 flex items-start justify-between gap-3 text-sm">
+                      <div key={item.id} className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/70 border-slate-700/60'} border rounded-2xl p-3 flex items-start justify-between gap-3 text-sm`}>
                         <div className="flex items-start gap-3 min-w-0">
                           <span className={`font-black px-2.5 py-1 rounded-xl text-xs ${
                             item.amount > 0 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'
@@ -1213,7 +1252,7 @@ export default function App() {
                         </div>
                         <button
                           onClick={() => handleUndo(item.id)}
-                          className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl transition border border-slate-600/50"
+                          className={`${assignedGroupTheme ? 'ras-theme-panel-raised' : 'bg-slate-800 hover:bg-slate-700 border-slate-600/50'} text-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl transition border`}
                         >
                           Undo
                         </button>
@@ -1224,7 +1263,7 @@ export default function App() {
               </div>
 
               {/* Reset Month & Archive */}
-              <div className="bg-slate-800/80 rounded-3xl p-5 border border-slate-700/80 shadow-lg flex flex-col justify-between">
+              <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-slate-800/80 border-slate-700/80'} rounded-3xl p-5 border shadow-lg flex flex-col justify-between`}>
                 <div>
                   <h3 className="font-extrabold text-lg text-white mb-2 flex items-center gap-2">
                     <Award className="w-5 h-5 text-amber-400" /> Monthly Slime Champions
@@ -1236,7 +1275,7 @@ export default function App() {
                       </div>
                     ) : (
                       monthlyRecords.map((rec) => (
-                        <div key={rec.id} className="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-3 text-xs">
+                        <div key={rec.id} className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/80 border-slate-700/60'} border rounded-2xl p-3 text-xs`}>
                           <div className="flex items-center justify-between font-bold text-slate-200 mb-1">
                             <span>{rec.month}</span>
                             <span className="text-emerald-400">Winner: {rec.winner}</span>
@@ -1269,7 +1308,7 @@ export default function App() {
                 {(!pairing.isPaired || isLiveOwner) && (
                   <button
                     onClick={handleResetMonth}
-                    className="w-full bg-slate-900 hover:bg-red-950/40 text-red-400 hover:text-red-300 border border-slate-700 hover:border-red-500/40 rounded-2xl py-3 text-xs font-extrabold transition flex items-center justify-center gap-2"
+                    className={`w-full ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900 border-slate-700'} hover:bg-red-950/40 text-red-400 hover:text-red-300 border hover:border-red-500/40 rounded-2xl py-3 text-xs font-extrabold transition flex items-center justify-center gap-2`}
                   >
                     <RotateCcw className="w-4 h-4" /> Reset Scores For New Month
                   </button>
@@ -1283,7 +1322,7 @@ export default function App() {
         {activeTab === 'generator' && (
           <div className="space-y-6 max-w-4xl mx-auto">
             {/* Super Scramble Definition Card */}
-            <div className="bg-gradient-to-r from-amber-950/70 via-slate-800 to-slate-800 border-2 border-amber-500/40 rounded-3xl p-5 shadow-xl">
+            <div className={`${assignedGroupTheme ? 'ras-theme-panel-raised' : 'bg-gradient-to-r from-amber-950/70 via-slate-800 to-slate-800'} border-2 border-amber-500/40 rounded-3xl p-5 shadow-xl`}>
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-xl shrink-0 mt-1">
                   ✏️
@@ -1297,7 +1336,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/80 shadow-lg">
+            <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-slate-800/80 border-slate-700/80'} rounded-3xl p-6 border shadow-lg`}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-2xl font-black text-white flex items-center gap-2">
@@ -1338,7 +1377,7 @@ export default function App() {
                           type="button"
                           onClick={() => setCurrentActivity(activity)}
                           aria-pressed={selected}
-                          className={`text-left rounded-2xl border p-4 transition ${selected ? 'border-amber-400 bg-amber-500/10' : 'border-slate-700 bg-slate-900/70 hover:border-slate-500'}`}
+                          className={`text-left rounded-2xl border p-4 transition ${selected ? 'border-amber-400 bg-amber-500/10' : assignedGroupTheme ? 'ras-theme-inset hover:border-slate-500' : 'border-slate-700 bg-slate-900/70 hover:border-slate-500'}`}
                         >
                           <span className="flex items-center justify-between gap-3">
                             <span className="font-bold text-white truncate">{activity.title}</span>
@@ -1354,13 +1393,13 @@ export default function App() {
 
               {/* Display Activity */}
               {currentActivity && (
-                <div className="bg-slate-900 border-2 border-amber-500/60 rounded-3xl p-6 relative overflow-hidden shadow-2xl space-y-4">
+                <div className={`${assignedGroupTheme ? 'ras-theme-panel-raised' : 'bg-slate-900'} border-2 border-amber-500/60 rounded-3xl p-6 relative overflow-hidden shadow-2xl space-y-4`}>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
                     <div className="flex items-center gap-2">
                       <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
                         {currentActivity.type}
                       </span>
-                      <span className="bg-slate-800 text-slate-300 border border-slate-700 px-3 py-1 rounded-full text-xs font-bold">
+                      <span className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-800 border-slate-700'} text-slate-300 border px-3 py-1 rounded-full text-xs font-bold`}>
                         📍 {currentActivity.location}
                       </span>
                     </div>
@@ -1383,20 +1422,20 @@ export default function App() {
 
                   {/* Scramble Specific Box */}
                   {currentActivity.type === 'Super Scramble' && (
-                    <div className="bg-slate-800/90 border-2 border-slate-700 rounded-2xl p-4 space-y-3">
+                    <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-slate-800/90 border-slate-700'} border-2 rounded-2xl p-4 space-y-3`}>
                       <div className="text-xs font-bold text-amber-400 uppercase tracking-widest">
                         ✏️ WRITE THIS PHRASE ON THE WHITEBOARD:
                       </div>
-                      <div className="bg-slate-950 text-emerald-400 font-mono font-black text-lg md:text-xl p-3.5 rounded-xl border border-slate-800 text-center tracking-widest whitespace-pre-wrap select-all">
+                      <div className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-950 border-slate-800'} text-emerald-400 font-mono font-black text-lg md:text-xl p-3.5 rounded-xl border text-center tracking-widest whitespace-pre-wrap select-all`}>
                         "{currentActivity.scrambledPhrase}"
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-1">
-                        <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-700/50">
+                        <div className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/80 border-slate-700/50'} p-3 rounded-xl border`}>
                           <span className="text-slate-400 block font-bold mb-1">Answer Key:</span>
                           <span className="text-white font-extrabold">{currentActivity.solvedPhrase}</span>
                         </div>
-                        <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-700/50">
+                        <div className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/80 border-slate-700/50'} p-3 rounded-xl border`}>
                           <span className="text-slate-400 block font-bold mb-1">Whiteboard Hint:</span>
                           <span className="text-amber-200">{currentActivity.hint}</span>
                         </div>
@@ -1413,20 +1452,20 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/50">
+                    <div className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-800/60 border-slate-700/50'} p-3.5 rounded-2xl border`}>
                       <span className="font-extrabold text-amber-400 block mb-1">📋 Counselor Steps:</span>
                       <p className="text-slate-200 leading-relaxed">{currentActivity.steps}</p>
                     </div>
 
                     {currentActivity.harder && (
-                      <div className="bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/50">
+                      <div className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-800/60 border-slate-700/50'} p-3.5 rounded-2xl border`}>
                         <span className="font-extrabold text-amber-300 block mb-1">🔥 Challenge Variation:</span>
                         <p className="text-slate-200">{currentActivity.harder}</p>
                       </div>
                     )}
 
                     {currentActivity.materials && (
-                      <div className="bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/50">
+                      <div className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-800/60 border-slate-700/50'} p-3.5 rounded-2xl border`}>
                         <span className="font-extrabold text-cyan-300 block mb-1">Materials:</span>
                         <p className="text-slate-200">{currentActivity.materials}</p>
                       </div>
@@ -1443,7 +1482,7 @@ export default function App() {
               )}
 
               {!currentActivity && (
-                <div className="bg-slate-900/70 border-2 border-dashed border-slate-700 rounded-3xl p-10 text-center">
+                <div className={`${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/70 border-slate-700'} border-2 border-dashed rounded-3xl p-10 text-center`}>
                   <Trash2 className="w-8 h-8 text-slate-500 mx-auto mb-3" />
                   <h3 className="text-lg font-black text-white">No missions or super scrambles yet</h3>
                   <p className="text-sm text-slate-400 mt-1 mb-5">Add a custom activity to start building your library again.</p>
@@ -1464,7 +1503,7 @@ export default function App() {
         {activeTab === 'fastest_lap' && (
           <div className="space-y-6 max-w-5xl mx-auto">
             {/* Top Month Record Banner */}
-            <div className="bg-gradient-to-r from-cyan-950/90 via-slate-800 to-slate-800 border-2 border-cyan-500/40 rounded-3xl p-6 shadow-xl">
+            <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-gradient-to-r from-cyan-950/90 via-slate-800 to-slate-800'} border-2 border-cyan-500/40 rounded-3xl p-6 shadow-xl`}>
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div>
                   <div className="inline-flex items-center gap-2 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2">
@@ -1489,7 +1528,7 @@ export default function App() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Form */}
-              <div className="bg-slate-800/80 rounded-3xl p-6 border border-slate-700/80 shadow-lg">
+              <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-slate-800/80 border-slate-700/80'} rounded-3xl p-6 border shadow-lg`}>
                 <h3 className="text-xl font-black text-white mb-1 flex items-center gap-2">
                   <PlusCircle className="w-5 h-5 text-cyan-400" /> Record Lap
                 </h3>
@@ -1504,7 +1543,7 @@ export default function App() {
                       placeholder="e.g. Leo, Maya, Tigers"
                       value={newLap.runnerName}
                       onChange={(e) => setNewLap({ ...newLap, runnerName: e.target.value })}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"
+                      className={`w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900 border-slate-700 focus:border-cyan-500'} border rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none`}
                     />
                   </div>
 
@@ -1513,7 +1552,7 @@ export default function App() {
                     <select
                       value={newLap.group}
                       onChange={(e) => setNewLap({ ...newLap, group: e.target.value })}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none"
+                      className={`w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900 border-slate-700'} border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none`}
                     >
                       <option value="Ladybugs">Ladybugs 🐞</option>
                       <option value="Jellyfish">Jellyfish 🪼</option>
@@ -1532,7 +1571,7 @@ export default function App() {
                         placeholder="Min (0)"
                         value={newLap.minutes}
                         onChange={(e) => setNewLap({ ...newLap, minutes: e.target.value })}
-                        className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center text-sm text-white"
+                        className={`${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900 border-slate-700'} border rounded-xl px-3 py-2 text-center text-sm text-white`}
                       />
                       <input
                         type="number"
@@ -1544,7 +1583,7 @@ export default function App() {
                         placeholder="Sec (42)"
                         value={newLap.seconds}
                         onChange={(e) => setNewLap({ ...newLap, seconds: e.target.value })}
-                        className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center text-sm text-white"
+                        className={`${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900 border-slate-700'} border rounded-xl px-3 py-2 text-center text-sm text-white`}
                       />
                       <input
                         type="number"
@@ -1555,7 +1594,7 @@ export default function App() {
                         placeholder="Ms (00)"
                         value={newLap.ms}
                         onChange={(e) => setNewLap({ ...newLap, ms: e.target.value })}
-                        className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center text-sm text-white"
+                        className={`${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900 border-slate-700'} border rounded-xl px-3 py-2 text-center text-sm text-white`}
                       />
                     </div>
                   </div>
@@ -1567,7 +1606,7 @@ export default function App() {
                       placeholder="e.g. Edison Gym Sprint"
                       value={newLap.courseName}
                       onChange={(e) => setNewLap({ ...newLap, courseName: e.target.value })}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+                      className={`w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900 border-slate-700'} border rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none`}
                     />
                   </div>
 
@@ -1582,7 +1621,7 @@ export default function App() {
               </div>
 
               {/* Leaderboard */}
-              <div className="lg:col-span-2 bg-slate-800/80 rounded-3xl p-6 border border-slate-700/80 shadow-lg">
+              <div className={`lg:col-span-2 ${assignedGroupTheme ? 'ras-theme-panel' : 'bg-slate-800/80 border-slate-700/80'} rounded-3xl p-6 border shadow-lg`}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-black text-white flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-cyan-400" /> Edison Lap Leaderboard
@@ -1604,12 +1643,12 @@ export default function App() {
                           className={`p-4 rounded-2xl border flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 transition ${
                             isTop1 
                               ? 'bg-cyan-950/40 border-cyan-500/60 shadow-md ring-1 ring-cyan-500/30' 
-                              : 'bg-slate-900/80 border-slate-700/60'
+                              : assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/80 border-slate-700/60'
                           }`}
                         >
                           <div className="flex items-center gap-3.5 min-w-[200px] flex-1">
                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
-                              isTop1 ? 'bg-cyan-500 text-slate-950 shadow-md' : 'bg-slate-800 text-slate-300'
+                              isTop1 ? 'bg-cyan-500 text-slate-950 shadow-md' : `${assignedGroupTheme ? 'ras-theme-panel-raised' : 'bg-slate-800'} text-slate-300`
                             }`}>
                               #{index + 1}
                             </div>
@@ -1617,7 +1656,7 @@ export default function App() {
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-extrabold text-white text-base truncate">{item.runnerName}</span>
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-medium border border-slate-700 whitespace-nowrap">
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-800 border-slate-700'} text-slate-300 font-medium border whitespace-nowrap`}>
                                   {item.group}
                                 </span>
                               </div>

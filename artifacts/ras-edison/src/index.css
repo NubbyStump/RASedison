@@ -307,6 +307,86 @@
   transform: translateY(-1px);
 }
 
+.ras-edison-theme {
+  background-color: #111922;
+  background-image:
+    radial-gradient(ellipse at 8% 0%, var(--ras-group-glow) 0, transparent 36rem),
+    radial-gradient(ellipse at 98% 18%, rgba(148, 163, 184, .055) 0, transparent 32rem),
+    linear-gradient(142deg, #18222c 0%, #121b25 52%, #0e151d 100%);
+  background-attachment: fixed;
+}
+
+.ras-theme-header {
+  background-color: var(--ras-panel-raised);
+  border-color: var(--ras-panel-border);
+}
+
+.ras-theme-nav {
+  background-color: var(--ras-panel-inset);
+  border-color: var(--ras-panel-border);
+}
+
+.ras-theme-panel {
+  background-color: var(--ras-panel-surface);
+  border-color: var(--ras-panel-border);
+}
+
+.ras-theme-panel-raised {
+  background-color: var(--ras-panel-raised);
+}
+
+.ras-theme-inset {
+  background-color: var(--ras-panel-inset);
+  border-color: var(--ras-panel-border);
+}
+
+.ras-theme-field {
+  background-color: var(--ras-panel-inset);
+  border-color: var(--ras-field-border);
+  color: #f1f5f9;
+}
+
+.ras-theme-field:focus {
+  border-color: var(--ras-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ras-accent) 18%, transparent);
+}
+
+.ras-theme-primary {
+  background-color: var(--ras-accent);
+  color: #111827;
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--ras-accent) 20%, transparent);
+}
+
+.ras-team-positive {
+  border-color: color-mix(in srgb, var(--ras-accent) 32%, transparent);
+  color: var(--ras-accent);
+}
+
+.ras-team-positive-subtle {
+  background-color: color-mix(in srgb, var(--ras-accent) 8%, transparent);
+}
+
+.ras-team-positive-medium {
+  background-color: color-mix(in srgb, var(--ras-accent) 13%, transparent);
+}
+
+.ras-team-positive-strong {
+  background-color: color-mix(in srgb, var(--ras-accent) 20%, transparent);
+}
+
+.ras-team-positive:hover {
+  background-color: color-mix(in srgb, var(--ras-accent) 26%, transparent);
+}
+
+.ras-team-positive-solid {
+  background-color: var(--ras-accent);
+  color: #111827;
+}
+
+.ras-team-positive-solid:hover {
+  filter: brightness(1.08);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {
