@@ -176,7 +176,7 @@ export default function App() {
   const ledGroup = pairing.currentGroupId
     ? groups.find((group) => group.id === pairing.currentGroupId) || null
     : null;
-  const assignedGroupTheme = isLiveCounselor && ledGroup
+  const assignedGroupTheme = ledGroup
     ? ASSIGNED_GROUP_PAGE_THEMES[ledGroup.id] || null
     : null;
   const pointsGroups = ledGroup
