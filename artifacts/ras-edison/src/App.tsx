@@ -1193,7 +1193,7 @@ export default function App() {
                               aria-label={`Request removal of half the points from ${group.name}, rounded up`}
                               className="bg-red-500/10 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-red-300 border border-red-500/40 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
                             >
-                              Remove half (−{Math.ceil(group.score / 2)})
+                              Request half (−{Math.ceil(group.score / 2)})
                             </button>
                             <button
                               type="button"
@@ -1202,7 +1202,7 @@ export default function App() {
                               aria-label={`Request removal of all ${group.score} points from ${group.name}`}
                               className="bg-red-500/20 hover:bg-red-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-red-200 border border-red-500/50 rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
                             >
-                              Remove all (−{group.score})
+                              Request all (−{group.score})
                             </button>
                           </div>
                         )}
