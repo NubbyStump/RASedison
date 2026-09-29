@@ -427,6 +427,11 @@ export default function App() {
   const maxScore = Math.max(...groups.map(g => g.score));
   const leaders = groups.filter(g => g.score === maxScore && maxScore > 0);
   const leadingNames = leaders.map(l => l.name);
+  const runnerUpScore = [...groups].sort((left, right) => right.score - left.score)[1]?.score ?? null;
+  const runnerUpGroups = runnerUpScore === null
+    ? []
+    : groups.filter(group => group.score === runnerUpScore);
+  const leadGap = runnerUpScore === null ? null : Math.max(0, maxScore - runnerUpScore);
 
   const handleAddPoints = async (groupId, amount) => {
     if (isLiveCounselor && amount < 0 && assignedGroupId !== groupId) {
@@ -1039,6 +1044,18 @@ export default function App() {
                       'Scores reset! Earn points by hundreds.'
                     )}
                   </h2>
+                  {leaders.length === 1 && (
+                    <p className="text-xs md:text-sm text-slate-300 mt-1">
+                      {runnerUpScore === null
+                        ? 'No runner-up yet.'
+                        : `${leadGap?.toLocaleString()} pts ahead of the runner-up (${runnerUpGroups.map(group => group.name).join(' & ')}: ${runnerUpScore.toLocaleString()} pts).`}
+                    </p>
+                  )}
+                  {leaders.length > 1 && (
+                    <p className="text-xs md:text-sm text-slate-300 mt-1">
+                      0-point gap between the co-leaders.
+                    </p>
+                  )}
                 </div>
 
                 <div className={`flex items-center gap-3 ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/80 border-slate-700'} border px-4 py-2.5 rounded-2xl self-start md:self-auto`}>
