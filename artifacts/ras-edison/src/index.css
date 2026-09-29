@@ -39,29 +39,29 @@
 }
 
 :root {
-  --background: 42 35% 91%;
-  --foreground: 164 20% 14%;
-  --border: 39 20% 76%;
-  --input: 39 20% 76%;
-  --ring: 44 78% 50%;
-  --card: 42 42% 95%;
-  --card-foreground: 164 20% 14%;
-  --card-border: 39 22% 78%;
-  --popover: 42 42% 95%;
-  --popover-foreground: 164 20% 14%;
-  --popover-border: 39 22% 78%;
-  --primary: 164 20% 14%;
-  --primary-foreground: 42 42% 95%;
-  --secondary: 39 22% 82%;
-  --secondary-foreground: 164 20% 14%;
-  --muted: 40 24% 86%;
-  --muted-foreground: 164 9% 40%;
-  --accent: 44 78% 50%;
-  --accent-foreground: 164 20% 14%;
-  --destructive: 6 60% 49%;
-  --destructive-foreground: 42 42% 95%;
-  --sidebar: 164 20% 14%;
-  --sidebar-foreground: 42 42% 95%;
+  --background: 151 24% 93%;
+  --foreground: 169 38% 17%;
+  --border: 154 16% 79%;
+  --input: 154 16% 79%;
+  --ring: 184 68% 42%;
+  --card: 42 42% 97%;
+  --card-foreground: 169 38% 17%;
+  --card-border: 154 16% 79%;
+  --popover: 42 42% 97%;
+  --popover-foreground: 169 38% 17%;
+  --popover-border: 154 16% 79%;
+  --primary: 169 38% 17%;
+  --primary-foreground: 42 42% 97%;
+  --secondary: 154 19% 84%;
+  --secondary-foreground: 169 38% 17%;
+  --muted: 151 20% 87%;
+  --muted-foreground: 169 15% 40%;
+  --accent: 184 68% 42%;
+  --accent-foreground: 169 38% 17%;
+  --destructive: 3 61% 48%;
+  --destructive-foreground: 42 42% 97%;
+  --sidebar: 169 38% 17%;
+  --sidebar-foreground: 42 42% 97%;
   --app-font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --app-font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
   --app-font-mono: 'Space Mono', ui-monospace, monospace;
@@ -355,6 +355,269 @@
   background-color: var(--ras-accent);
   color: #111827;
   box-shadow: 0 7px 18px color-mix(in srgb, var(--ras-accent) 20%, transparent);
+}
+
+/*
+ * Points scoreboard: a deliberately lighter, compact working surface inspired
+ * by the assigned-group reference. These selectors are scoped so the existing
+ * dark Activities, Laps, Projector, and Chat workspaces are untouched.
+ */
+.ras-scoreboard-shell {
+  background:
+    radial-gradient(circle at 8% 2%, rgba(87, 190, 193, .11), transparent 25rem),
+    linear-gradient(135deg, #f1f6f2 0%, #e9f1ec 52%, #f5f3ea 100%);
+  color: #173d39;
+}
+
+.ras-scoreboard-header {
+  background: rgba(248, 250, 246, .92);
+  border-color: #d3e1db;
+  box-shadow: 0 1px 0 rgba(23, 61, 57, .04);
+}
+
+.ras-scoreboard-header .ras-brand-kicker {
+  color: #2e7776;
+}
+
+.ras-scoreboard-header .ras-brand-title {
+  color: #173d39;
+}
+
+.ras-scoreboard-nav {
+  background: #e7f0eb;
+  border-color: #d0e0d8;
+}
+
+.ras-scoreboard-nav .ras-nav-muted {
+  color: #58706d;
+}
+
+.ras-scoreboard-nav .ras-nav-muted:hover {
+  color: #173d39;
+  background: rgba(255, 255, 255, .58);
+}
+
+.ras-scoreboard-nav .ras-nav-active {
+  background: #173d39;
+  color: #f8faf6;
+  box-shadow: 0 5px 12px rgba(23, 61, 57, .16);
+}
+
+.ras-scoreboard-nav .ras-nav-live {
+  color: #27756d;
+  border-color: #abd6cc;
+  background: #edf8f3;
+}
+
+.ras-scoreboard-nav .ras-nav-projector,
+.ras-scoreboard-nav .ras-nav-chat {
+  color: #2e7776;
+  border-color: #b8dcd6;
+}
+
+.ras-scoreboard .ras-assigned-banner {
+  background: #effcf9;
+  border-color: #79dce1;
+  color: #173d39;
+  box-shadow: 0 3px 12px rgba(46, 119, 118, .07);
+}
+
+.ras-scoreboard .ras-assigned-banner .ras-assigned-kicker {
+  color: #287877;
+}
+
+.ras-scoreboard .ras-assigned-banner .ras-assigned-name {
+  color: #173d39;
+}
+
+.ras-scoreboard .ras-leader-banner {
+  background: #174843;
+  border-color: #174843;
+  box-shadow: 0 12px 24px rgba(23, 72, 67, .16);
+}
+
+.ras-scoreboard .ras-leader-banner .ras-leader-label {
+  color: #9cddd1;
+}
+
+.ras-scoreboard .ras-leader-banner .ras-leader-title {
+  color: #f6f6eb;
+}
+
+.ras-scoreboard .ras-leader-banner .ras-leader-highlight {
+  color: #a7dfd0;
+}
+
+.ras-scoreboard .ras-leader-banner .ras-leader-support {
+  color: #c8ddd5;
+}
+
+.ras-scoreboard .ras-month-chip {
+  background: rgba(255, 255, 255, .1);
+  border-color: rgba(207, 236, 226, .25);
+}
+
+.ras-scoreboard .ras-month-chip .ras-month-icon {
+  color: #a7dfd0;
+}
+
+.ras-scoreboard .ras-month-chip .ras-month-label {
+  color: #b4cec7;
+}
+
+.ras-scoreboard .ras-month-chip .ras-month-value {
+  color: #f6f6eb;
+}
+
+.ras-scoreboard .ras-approval-panel {
+  background: #fff8e7;
+  border-color: #ead7a9;
+  box-shadow: 0 6px 16px rgba(126, 99, 35, .09);
+}
+
+.ras-scoreboard .ras-approval-panel .ras-approval-title {
+  color: #4d4430;
+}
+
+.ras-scoreboard .ras-approval-panel .ras-approval-description,
+.ras-scoreboard .ras-approval-panel .ras-approval-meta {
+  color: #887c62;
+}
+
+.ras-scoreboard .ras-approval-count {
+  color: #77602a;
+  background: #f9edc6;
+  border-color: #eedca8;
+}
+
+.ras-scoreboard .ras-approval-row,
+.ras-scoreboard .ras-history-row,
+.ras-scoreboard .ras-archive-row {
+  background: #fffefa;
+  border-color: #e4e7de;
+}
+
+.ras-scoreboard .ras-approval-row .ras-request-group,
+.ras-scoreboard .ras-history-row .ras-history-group,
+.ras-scoreboard .ras-archive-row .ras-archive-month {
+  color: #264c47;
+}
+
+.ras-scoreboard .ras-approval-row .ras-request-reason,
+.ras-scoreboard .ras-history-row .ras-history-reason {
+  color: #697a72;
+}
+
+.ras-scoreboard .ras-score-card {
+  background: #fffefa;
+  border-color: #d7dfd9;
+  box-shadow: 0 7px 16px rgba(37, 68, 60, .07);
+}
+
+.ras-scoreboard .ras-score-card.ras-card-assigned {
+  border-color: var(--ras-card-accent, #63cfd0);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--ras-card-accent, #63cfd0) 16%, transparent);
+}
+
+.ras-scoreboard .ras-score-card.ras-card-leading {
+  border-color: #6ebaa4;
+}
+
+.ras-scoreboard .ras-card-name {
+  color: #264c47;
+}
+
+.ras-scoreboard .ras-card-subtitle,
+.ras-scoreboard .ras-field-label {
+  color: #697a72;
+}
+
+.ras-scoreboard .ras-score-value {
+  color: #264c47;
+  background: #f1f5ee;
+  border-color: #dfe7df;
+}
+
+.ras-scoreboard .ras-score-card .ras-theme-field {
+  color: #264c47;
+  background: #fbfcf8;
+  border-color: #d7e3dc;
+}
+
+.ras-scoreboard .ras-score-card .ras-theme-field::placeholder {
+  color: #879890;
+}
+
+.ras-scoreboard .ras-score-card .ras-theme-field:focus {
+  border-color: #4bb8b8;
+  box-shadow: 0 0 0 3px rgba(75, 184, 184, .17);
+}
+
+.ras-scoreboard .ras-score-card .ras-point-positive {
+  color: #247a67;
+  background: #e8f6ed;
+  border-color: #bfe2d0;
+}
+
+.ras-scoreboard .ras-score-card .ras-point-primary {
+  color: #173d39;
+  background: #b8e6d5;
+  border-color: #98d5c0;
+}
+
+.ras-scoreboard .ras-score-card .ras-point-negative {
+  color: #a04444;
+  background: #fff0ee;
+  border-color: #efc4bd;
+}
+
+.ras-scoreboard .ras-secondary-panel {
+  background: #f7faf5;
+  border-color: #d5e1d9;
+  box-shadow: 0 6px 15px rgba(37, 68, 60, .06);
+}
+
+.ras-scoreboard .ras-panel-title {
+  color: #264c47;
+}
+
+.ras-scoreboard .ras-panel-caption {
+  color: #72827b;
+}
+
+.ras-scoreboard .ras-empty-state {
+  color: #819089;
+  border-color: #d6e2db;
+}
+
+.ras-scoreboard .ras-score-card .ras-control-panel {
+  background: #f0f9f6;
+  border-color: #b8ddd3;
+}
+
+.ras-scoreboard .ras-score-card .ras-control-label {
+  color: #286d65;
+}
+
+.ras-scoreboard .ras-score-card .ras-control-note {
+  color: #65837b;
+}
+
+.ras-scoreboard .ras-score-card .ras-control-panel input {
+  color: #264c47;
+  background: #fffefa;
+  border-color: #b8d5cd;
+}
+
+.ras-scoreboard .ras-score-card .ras-control-panel input::placeholder {
+  color: #81948c;
+}
+
+.ras-scoreboard .ras-focus:focus-visible,
+.ras-scoreboard button:focus-visible,
+.ras-scoreboard input:focus-visible {
+  outline: 3px solid #2baeb3;
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
