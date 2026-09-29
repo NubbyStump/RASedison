@@ -93,12 +93,14 @@ paths:
             schema: { $ref: "#/components/schemas/PairingAssignmentInput" }
       responses:
         "200":
-          description: Updated current member assignment
+          description: Updated member assignment
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Session" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /pairing/command:
     post:
       operationId: sendPairingCommand
@@ -176,26 +178,6 @@ paths:
       responses:
         "200":
           description: Counselor membership revoked and updated session returned
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Session" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-  /pairing/member-role:
-    patch:
-      operationId: changePairingMemberRole
-      tags: [pairing]
-      security: [{ bearerAuth: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/PairingMemberRoleInput" }
-      responses:
-        "200":
-          description: Member role changed and updated session returned
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Session" }
@@ -475,20 +457,13 @@ components:
       properties:
         groupId: { type: ["string", "null"], minLength: 1, maxLength: 80 }
         assignmentDate: { type: string, pattern: "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$" }
+        memberId: { type: string, format: uuid }
     PairingMemberRemovalInput:
       type: object
       additionalProperties: false
       required: [memberId]
       properties:
         memberId: { type: string, format: uuid }
-    PairingMemberRoleInput:
-      type: object
-      additionalProperties: false
-      required: [memberId, role]
-      properties:
-        memberId: { type: string, format: uuid }
-        role: { type: string, enum: [owner, counselor] }
-        programManagerRolePassword: { type: string, minLength: 1, maxLength: 128 }
     PairingMessageInput:
       type: object
       additionalProperties: false
