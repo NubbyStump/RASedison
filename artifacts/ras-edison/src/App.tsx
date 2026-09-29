@@ -456,10 +456,8 @@ export default function App() {
     setSessionModal(null);
   };
 
-  const handleUpdateAssignment = async (groupId) => {
-    try {
-      await pairing.updateAssignment(groupId);
-    } catch {}
+  const handleUpdateAssignment = async (groupId, memberId) => {
+    await pairing.updateAssignment(groupId, memberId);
   };
 
   const handleRemoveMember = async (memberId) => {
@@ -1003,7 +1001,6 @@ export default function App() {
           onJoin={handleJoinPairing}
           onUpdateAssignment={handleUpdateAssignment}
           onRemoveMember={handleRemoveMember}
-          onChangeMemberRole={pairing.changeMemberRole}
           onLeave={handleLeavePairing}
           onEnd={handleEndPairing}
         />
@@ -1608,7 +1605,7 @@ export default function App() {
                                     || Number(setScoreValue) === group.score
                                   }
                                   aria-label={`${isLiveOwner ? 'Set' : 'Request setting'} ${group.name} total to ${setScoreValue || 'a new'} points`}
-                                   className={`min-h-[44px] min-w-[6.25rem] whitespace-nowrap rounded-xl border px-3 py-2.5 text-sm font-extrabold shadow-sm transition-colors active:scale-[.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-not-allowed disabled:border-slate-500 disabled:bg-slate-600 disabled:text-white disabled:opacity-100 disabled:hover:border-slate-500 disabled:hover:bg-slate-600 disabled:hover:text-white ${isLiveOwner ? 'border-cyan-300 bg-cyan-400 text-slate-950 hover:bg-cyan-300 focus-visible:ring-cyan-400' : 'border-red-500 bg-red-700 text-white hover:bg-red-600 focus-visible:ring-red-400'}`}
+                                   className={`min-h-[48px] min-w-[7rem] whitespace-nowrap rounded-xl border px-4 py-3 text-base font-black shadow-sm transition-colors active:scale-[.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-not-allowed disabled:border-slate-500 disabled:bg-slate-600 disabled:text-white disabled:opacity-100 disabled:hover:border-slate-500 disabled:hover:bg-slate-600 disabled:hover:text-white ${isLiveOwner ? 'border-cyan-300 bg-cyan-400 text-slate-950 hover:bg-cyan-300 focus-visible:ring-cyan-400' : 'border-red-500 bg-red-700 text-white hover:bg-red-600 focus-visible:ring-red-400'}`}
                                 >
                                   {isLiveOwner ? 'Set total' : 'Request set'}
                                 </button>
@@ -2418,7 +2415,6 @@ export default function App() {
         onJoin={handleJoinPairing}
         onUpdateAssignment={handleUpdateAssignment}
         onRemoveMember={handleRemoveMember}
-        onChangeMemberRole={pairing.changeMemberRole}
         onLeave={handleLeavePairing}
         onEnd={handleEndPairing}
       />

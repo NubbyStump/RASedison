@@ -15,7 +15,6 @@ import {
   pairingRooms,
 } from "@workspace/db";
 import {
-  ChangePairingMemberRoleBody,
   CreatePairingBody,
   JoinPairingBody,
   RemovePairingMemberBody,
@@ -167,14 +166,6 @@ export async function passwordMatches(password: string, encoded: string): Promis
 }
 
 function programManagerPasswordMatches(password: string): boolean {
-  const configuredPassword = process.env.PROGRAM_MANAGER_PASSWORD;
-  if (!configuredPassword) return false;
-  const actualHash = createHash("sha256").update(password).digest();
-  const expectedHash = createHash("sha256").update(configuredPassword).digest();
-  return timingSafeEqual(actualHash, expectedHash);
-}
-
-function programManagerRolePasswordMatches(password: string): boolean {
   const configuredPassword = process.env.PROGRAM_MANAGER_ROLE_PASSWORD;
   if (!configuredPassword) return false;
   const actualHash = createHash("sha256").update(password).digest();
@@ -759,7 +750,7 @@ router.post("/pairing/create", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid request" });
     return;
   }
-  if (!process.env.PROGRAM_MANAGER_PASSWORD) {
+  if (!process.env.PROGRAM_MANAGER_ROLE_PASSWORD) {
     res.status(503).json({ error: "Program Manager access is not configured" });
     return;
   }
@@ -1025,18 +1016,34 @@ router.patch("/pairing/assignment", async (req, res): Promise<void> => {
     const room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
     const activeMember = await activeMemberForRoom(tx, member.id, room.id);
     if (!activeMember) return null;
+    const targetMemberId = parsed.data.memberId ?? activeMember.id;
+    if (targetMemberId !== activeMember.id && activeMember.role !== "owner") {
+      return "forbidden" as const;
+    }
+    const targetMember = await activeMemberForRoom(tx, targetMemberId, room.id);
+    if (!targetMember || (targetMember.id !== activeMember.id && targetMember.role !== "counselor")) {
+      return "not-found" as const;
+    }
     if (parsed.data.groupId !== null && !roomHasGroup(room.state, parsed.data.groupId)) {
       return "invalid-group" as const;
     }
     const [updatedMember] = await tx.update(pairingMembers).set({
       groupId: parsed.data.groupId,
-      assignmentDate: parsed.data.assignmentDate,
+      assignmentDate: targetMember.id === activeMember.id
+        ? parsed.data.assignmentDate
+        : calendarDay(new Date(), room.timeZone),
     }).where(and(
-      eq(pairingMembers.id, member.id),
+      eq(pairingMembers.id, targetMember.id),
+      eq(pairingMembers.roomId, room.id),
       isNull(pairingMembers.revokedAt),
     )).returning();
     if (!updatedMember) return null;
-    return sessionFor(tx, updatedMember, undefined, room);
+    const [updatedRoom] = await tx.update(pairingRooms).set({
+      version: room.version + 1,
+      updatedAt: new Date(),
+    }).where(eq(pairingRooms.id, room.id)).returning();
+    if (!updatedRoom) return null;
+    return sessionFor(tx, activeMember, undefined, updatedRoom);
   });
   if (!result) {
     res.status(401).json({ error: "Unauthorized" });
@@ -1044,6 +1051,14 @@ router.patch("/pairing/assignment", async (req, res): Promise<void> => {
   }
   if (result === "invalid-group") {
     res.status(400).json({ error: "That group is not available in this room" });
+    return;
+  }
+  if (result === "forbidden") {
+    res.status(403).json({ error: "Only the Program Manager can reassign another counselor." });
+    return;
+  }
+  if (result === "not-found") {
+    res.status(404).json({ error: "Counselor not found in this room" });
     return;
   }
   res.json(result);
@@ -1214,51 +1229,6 @@ export async function removePairingMember(
   });
 }
 
-export async function changePairingMemberRole(
-  actor: typeof pairingMembers.$inferSelect,
-  targetMemberId: string,
-  role: "owner" | "counselor",
-  programManagerRolePassword?: string,
-) {
-  return db.transaction(async (tx) => {
-    const lockedRoom = await lockRoomById(tx, actor.roomId);
-    if (!lockedRoom || lockedRoom.endedAt) return { error: "unauthorized" as const };
-    const room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
-    const activeOwner = await activeMemberForRoom(tx, actor.id, room.id);
-    if (!activeOwner) return { error: "unauthorized" as const };
-    if (activeOwner.role !== "owner") return { error: "forbidden" as const };
-    if (targetMemberId === activeOwner.id) return { error: "self" as const };
-
-    const target = await activeMemberForRoom(tx, targetMemberId, room.id);
-    if (!target) return { error: "not-found" as const };
-    if (target.role === role) {
-      return { session: await sessionFor(tx, activeOwner, undefined, room) };
-    }
-    if (role === "owner" && !programManagerRolePasswordMatches(programManagerRolePassword ?? "")) {
-      return { error: "role-password" as const };
-    }
-
-    const changedAt = new Date();
-    const [updatedMember] = await tx.update(pairingMembers).set({
-      role,
-      groupId: null,
-      assignmentDate: calendarDay(changedAt, room.timeZone),
-    }).where(and(
-      eq(pairingMembers.id, target.id),
-      eq(pairingMembers.roomId, room.id),
-      isNull(pairingMembers.revokedAt),
-    )).returning();
-    if (!updatedMember) return { error: "not-found" as const };
-
-    const [updatedRoom] = await tx.update(pairingRooms).set({
-      version: room.version + 1,
-      updatedAt: changedAt,
-    }).where(eq(pairingRooms.id, room.id)).returning();
-    if (!updatedRoom) return { error: "unauthorized" as const };
-    return { session: await sessionFor(tx, activeOwner, undefined, updatedRoom) };
-  });
-}
-
 router.post("/pairing/remove-member", async (req, res): Promise<void> => {
   const member = await authenticate(req);
   if (!member) {
@@ -1289,46 +1259,6 @@ router.post("/pairing/remove-member", async (req, res): Promise<void> => {
         ? "The room owner cannot remove themself"
         : "The room owner cannot be removed",
     });
-    return;
-  }
-  res.status(404).json({ error: "Member not found in this room" });
-});
-
-router.patch("/pairing/member-role", async (req, res): Promise<void> => {
-  const member = await authenticate(req);
-  if (!member) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const parsed = ChangePairingMemberRoleBody.strict().safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request" });
-    return;
-  }
-  const result = await changePairingMemberRole(
-    member,
-    parsed.data.memberId,
-    parsed.data.role,
-    parsed.data.programManagerRolePassword,
-  );
-  if ("session" in result) {
-    res.json(result.session);
-    return;
-  }
-  if (result.error === "unauthorized") {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  if (result.error === "forbidden") {
-    res.status(403).json({ error: "Only the Program Manager can change counselor roles." });
-    return;
-  }
-  if (result.error === "role-password") {
-    res.status(403).json({ error: "Program Manager role password is incorrect." });
-    return;
-  }
-  if (result.error === "self") {
-    res.status(400).json({ error: "You cannot change your own role." });
     return;
   }
   res.status(404).json({ error: "Member not found in this room" });

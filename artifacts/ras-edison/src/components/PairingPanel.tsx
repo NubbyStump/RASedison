@@ -22,9 +22,8 @@ type Props = {
   onOffline: () => Promise<void>;
   onCreate: (name: string, password: string, programManagerPassword: string) => Promise<boolean>;
   onJoin: (name: string, code: string, password: string, groupId: string | null) => Promise<boolean>;
-  onUpdateAssignment: (groupId: string | null) => Promise<void>;
+  onUpdateAssignment: (groupId: string | null, memberId?: string) => Promise<void>;
   onRemoveMember: (memberId: string) => Promise<void>;
-  onChangeMemberRole: (memberId: string, role: 'owner' | 'counselor', programManagerRolePassword?: string) => Promise<void>;
   onLeave: () => Promise<void>;
   onEnd: () => Promise<void>;
 };
@@ -43,9 +42,10 @@ export default function PairingPanel(props: Props) {
   const [showInviteQr, setShowInviteQr] = useState(false);
   const [joiningFromInvite, setJoiningFromInvite] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  const [roleChangeMemberId, setRoleChangeMemberId] = useState<string | null>(null);
-  const [roleChangePassword, setRoleChangePassword] = useState('');
-  const [roleChangeError, setRoleChangeError] = useState('');
+  const [memberAssignmentEdits, setMemberAssignmentEdits] = useState<Record<string, string>>({});
+  const [memberAssignmentErrors, setMemberAssignmentErrors] = useState<Record<string, string>>({});
+  const [savingAssignmentMemberId, setSavingAssignmentMemberId] = useState<string | null>(null);
+  const [assignmentSaveError, setAssignmentSaveError] = useState('');
   const inviteLinkRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -123,15 +123,39 @@ export default function PairingPanel(props: Props) {
     setTimeout(() => setInviteCopyError(false), 4000);
   };
 
-  const submitRoleChange = async (event: React.FormEvent<HTMLFormElement>, memberId: string) => {
+  const saveMemberAssignment = async (event: React.FormEvent<HTMLFormElement>, memberId: string) => {
     event.preventDefault();
-    setRoleChangeError('');
+    const target = session?.members.find((member) => member.id === memberId);
+    if (!session || session.role !== 'owner' || !target || target.role !== 'counselor') return;
+    const selectedGroup = memberAssignmentEdits[memberId] ?? (
+      target.assignmentDate === today && target.groupId ? target.groupId : 'unassigned'
+    );
+    setMemberAssignmentErrors((current) => ({ ...current, [memberId]: '' }));
+    setSavingAssignmentMemberId(memberId);
     try {
-      await props.onChangeMemberRole(memberId, 'owner', roleChangePassword);
-      setRoleChangeMemberId(null);
-      setRoleChangePassword('');
-    } catch (roleError) {
-      setRoleChangeError((roleError as Error).message || 'Unable to change this member’s role.');
+      await props.onUpdateAssignment(selectedGroup === 'unassigned' ? null : selectedGroup, memberId);
+      setMemberAssignmentEdits((current) => {
+        const next = { ...current };
+        delete next[memberId];
+        return next;
+      });
+    } catch (assignmentError) {
+      setMemberAssignmentErrors((current) => ({
+        ...current,
+        [memberId]: (assignmentError as Error).message || 'Unable to update this counselor’s group.',
+      }));
+    } finally {
+      setSavingAssignmentMemberId(null);
+    }
+  };
+  const saveOwnAssignment = async () => {
+    setAssignmentSaveError('');
+    try {
+      await props.onUpdateAssignment(
+        assignment === 'coordinator' || assignment === 'unassigned' ? null : assignment,
+      );
+    } catch (assignmentError) {
+      setAssignmentSaveError((assignmentError as Error).message || 'Unable to update your group.');
     }
   };
 
@@ -269,45 +293,28 @@ export default function PairingPanel(props: Props) {
                     {session.role === 'owner' && <option value="coordinator">Program Manager / all groups</option>}
                     {GROUPS.map(g => <option key={g.id} value={g.id}>{g.icon} {g.name}</option>)}
                   </select>
-                  <button disabled={busy || !assignment} onClick={() => void props.onUpdateAssignment(assignment === 'coordinator' || assignment === 'unassigned' ? null : assignment)} className="shrink-0 px-4 py-3 rounded-xl bg-emerald-400 text-slate-950 font-black disabled:opacity-50">Save for today</button>
+                  <button disabled={busy || !assignment} onClick={() => void saveOwnAssignment()} className="shrink-0 px-4 py-3 rounded-xl bg-emerald-400 text-slate-950 font-black disabled:opacity-50">Save for today</button>
                 </div>
+                {assignmentSaveError && <p role="alert" className="text-red-300 text-xs mt-2">{assignmentSaveError}</p>}
                 {needsDailyAssignment && <p className="text-amber-300 text-xs mt-2">Your previous assignment is stale. Choose today’s group or remain unassigned in view-only mode.</p>}
               </div>
               <div>
                 <h3 className="font-black text-white flex items-center gap-2"><Users className="w-5 h-5 text-cyan-400" /> Session roster</h3>
-                {session.role === 'owner' && <p className="mt-1 text-xs text-slate-400">Change a counselor to Program Manager or back. Granting Program Manager access requires the role password.</p>}
+                {session.role === 'owner' && <p className="mt-1 text-xs text-slate-400">Change any counselor’s group assignment for today. Leaving them unassigned keeps their session view-only.</p>}
                 <div className="mt-2 divide-y divide-slate-700 rounded-2xl border border-slate-700 overflow-hidden">
                   {session.members.map(member => {
-                    const canChangeRole = session.role === 'owner' && member.id !== session.memberId;
+                    const canReassign = session.role === 'owner' && member.role === 'counselor';
                     const canRemove = session.role === 'owner' && member.role === 'counselor' && member.id !== session.memberId;
                     const removing = removingMemberId === member.id;
+                    const memberGroup = memberAssignmentEdits[member.id] ?? (
+                      member.assignmentDate === today && member.groupId ? member.groupId : 'unassigned'
+                    );
+                    const savingAssignment = savingAssignmentMemberId === member.id;
                     return <div key={member.id} className="p-3 bg-slate-800 space-y-3 text-sm">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <span className="font-bold text-white">{member.name}{member.id === session.memberId ? ' (You)' : ''}</span>
                         <div className="flex flex-wrap items-center justify-end gap-2">
                           <span className="text-slate-400 text-right">{member.role === 'owner' ? 'Program Manager' : member.assignmentDate === today ? (member.groupId ? groupName(member.groupId) : 'Unassigned · view only') : `No group for ${today}`}</span>
-                          {canChangeRole && <button
-                            type="button"
-                            disabled={busy}
-                            onClick={async () => {
-                              setRoleChangeError('');
-                              if (member.role === 'owner') {
-                                if (!confirm(`Change ${member.name} to Counselor? They will need to choose a group again.`)) return;
-                                try {
-                                  await props.onChangeMemberRole(member.id, 'counselor');
-                                  setRoleChangeMemberId(null);
-                                  setRoleChangePassword('');
-                                } catch (roleError) {
-                                  setRoleChangeMemberId(member.id);
-                                  setRoleChangeError((roleError as Error).message || 'Unable to change this member’s role.');
-                                }
-                              } else {
-                                setRoleChangeMemberId(member.id);
-                                setRoleChangePassword('');
-                              }
-                            }}
-                            className="rounded-lg border border-cyan-400/40 px-2.5 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-950/60 disabled:opacity-50"
-                          >{member.role === 'owner' ? 'Change to Counselor' : 'Make Program Manager'}</button>}
                         {canRemove && <button
                           type="button"
                           disabled={busy || Boolean(removingMemberId)}
@@ -325,28 +332,34 @@ export default function PairingPanel(props: Props) {
                         >{removing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>}
                         </div>
                       </div>
-                      {roleChangeMemberId === member.id && member.role === 'counselor' && (
-                        <form onSubmit={(event) => void submitRoleChange(event, member.id)} className="rounded-xl border border-cyan-500/25 bg-slate-900/70 p-3">
+                      {canReassign && (
+                        <form onSubmit={(event) => void saveMemberAssignment(event, member.id)} className="rounded-xl border border-cyan-500/25 bg-slate-900/70 p-3">
                           <label className="block text-xs font-bold text-slate-300">
-                            Program Manager role password
-                            <input
-                              required
-                              type="password"
-                              maxLength={128}
-                              autoComplete="off"
-                              value={roleChangePassword}
-                              onChange={(event) => setRoleChangePassword(event.target.value)}
+                            Counselor group
+                            <select
+                              aria-label={`Group assignment for ${member.name}`}
+                              value={memberGroup}
+                              disabled={busy || savingAssignment}
+                              onChange={(event) => setMemberAssignmentEdits((current) => ({
+                                ...current,
+                                [member.id]: event.target.value,
+                              }))}
                               className="field mt-1.5"
-                            />
+                            >
+                              <option value="unassigned">Unassigned — view only</option>
+                              {GROUPS.map((item) => (
+                                <option key={item.id} value={item.id}>{item.icon} {item.name}</option>
+                              ))}
+                            </select>
                           </label>
-                          {roleChangeError && <p role="alert" className="mt-2 text-xs font-bold text-red-300">{roleChangeError}</p>}
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <button type="submit" disabled={busy || !roleChangePassword} className="rounded-lg bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950 disabled:opacity-50">Grant Program Manager role</button>
-                            <button type="button" disabled={busy} onClick={() => { setRoleChangeMemberId(null); setRoleChangePassword(''); setRoleChangeError(''); }} className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-bold text-slate-300 disabled:opacity-50">Cancel</button>
-                          </div>
+                          {memberAssignmentErrors[member.id] && <p role="alert" className="mt-2 text-xs font-bold text-red-300">{memberAssignmentErrors[member.id]}</p>}
+                          <button
+                            type="submit"
+                            disabled={busy || savingAssignment}
+                            className="mt-3 rounded-lg bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950 disabled:opacity-50"
+                          >{savingAssignment ? 'Saving…' : 'Save group assignment'}</button>
                         </form>
                       )}
-                      {roleChangeMemberId === member.id && member.role === 'owner' && roleChangeError && <p role="alert" className="text-xs font-bold text-red-300">{roleChangeError}</p>}
                     </div>;
                   })}
                 </div>

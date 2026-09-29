@@ -42,8 +42,6 @@ export * from './pairingCommandInput';
 export * from './pairingCreateInput';
 export * from './pairingJoinInput';
 export * from './pairingMemberRemovalInput';
-export * from './pairingMemberRoleInput';
-export * from './pairingMemberRoleInputRole';
 export * from './pairingMessageInput';
 export * from './pairingState';
 export * from './pointApproval';

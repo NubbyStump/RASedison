@@ -426,28 +426,11 @@ export interface PairingAssignmentInput {
   groupId: string | null;
   /** @pattern ^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$ */
   assignmentDate: string;
+  memberId?: string;
 }
 
 export interface PairingMemberRemovalInput {
   memberId: string;
-}
-
-export type PairingMemberRoleInputRole = typeof PairingMemberRoleInputRole[keyof typeof PairingMemberRoleInputRole];
-
-
-export const PairingMemberRoleInputRole = {
-  owner: 'owner',
-  counselor: 'counselor',
-} as const;
-
-export interface PairingMemberRoleInput {
-  memberId: string;
-  role: PairingMemberRoleInputRole;
-  /**
-     * @minLength 1
-     * @maxLength 128
-     */
-  programManagerRolePassword?: string;
 }
 
 export interface PairingMessageInput {

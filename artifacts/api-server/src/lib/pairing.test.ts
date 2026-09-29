@@ -325,9 +325,8 @@ test("browser push registration is counselor-only and validates subscription end
 });
 
 test("pairing HTTP lifecycle remains functional alongside message dismissal", async () => {
-  const originalProgramManagerPassword = process.env.PROGRAM_MANAGER_PASSWORD;
   const originalProgramManagerRolePassword = process.env.PROGRAM_MANAGER_ROLE_PASSWORD;
-  process.env.PROGRAM_MANAGER_PASSWORD = randomUUID();
+  process.env.PROGRAM_MANAGER_ROLE_PASSWORD = randomUUID();
   const server = app.listen(0);
   await new Promise<void>(resolve => server.once("listening", resolve));
   const address = server.address();
@@ -342,18 +341,20 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     assert.equal(response.status, 200, `${method} ${path}: ${response.status}`);
     return await response.json() as Session;
   };
-  const requestRoleChange = async (body: unknown, token: string) => fetch(url + "/member-role", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
-    body: JSON.stringify(body),
-  });
   try {
-    process.env.PROGRAM_MANAGER_ROLE_PASSWORD = "role-test-password";
     const password = "test-room-password";
-    const programManagerPassword = process.env.PROGRAM_MANAGER_PASSWORD!;
+    const programManagerPassword = process.env.PROGRAM_MANAGER_ROLE_PASSWORD!;
     const assignmentDate = calendarDay(new Date(), "America/Los_Angeles");
     const owner = await request("/create", {
-      name: "Manager", password, programManagerPassword, assignmentDate, groupId: null, state: baseState(),
+      name: "Manager",
+      password,
+      programManagerPassword,
+      assignmentDate,
+      groupId: null,
+      state: {
+        ...baseState(),
+        groups: [...baseState().groups, { id: "jellyfish", name: "Jellyfish", score: 0 }],
+      },
     });
     roomIds.push(owner.roomId);
     assert.ok(owner.token);
@@ -405,7 +406,7 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     const rotated = await request("/rotate-code", undefined, owner.token);
     assert.notEqual(rotated.code, owner.code);
     const roleCandidate = await request("/join", {
-      name: "Potential manager", password, code: rotated.code, assignmentDate, groupId: null,
+      name: "Assignment counselor", password, code: rotated.code, assignmentDate, groupId: null,
     });
     const blockedUnassignedCommand = await fetch(url + "/command", {
       method: "POST",
@@ -430,32 +431,22 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     }, roleCandidate.token, "PATCH");
     assert.equal(assignedCandidate.members.find((member) => member.id === roleCandidate.memberId)?.groupId, "ladybugs");
     await request("/message", { id: randomUUID(), text: "Assigned and able to send" }, roleCandidate.token);
-    const selfDemotion = await requestRoleChange({
-      memberId: owner.memberId, role: "counselor",
-    }, owner.token);
-    assert.equal(selfDemotion.status, 400);
-    const counselorPromotion = await requestRoleChange({
-      memberId: roleCandidate.memberId, role: "owner", programManagerRolePassword: "role-test-password",
-    }, counselor.token);
-    assert.equal(counselorPromotion.status, 403);
-    const missingRolePassword = await requestRoleChange({
-      memberId: roleCandidate.memberId, role: "owner",
-    }, owner.token);
-    assert.equal(missingRolePassword.status, 403);
-    const incorrectRolePassword = await requestRoleChange({
-      memberId: roleCandidate.memberId, role: "owner", programManagerRolePassword: "wrong-role-password",
-    }, owner.token);
-    assert.equal(incorrectRolePassword.status, 403);
-    const promoted = await request("/member-role", {
-      memberId: roleCandidate.memberId, role: "owner", programManagerRolePassword: "role-test-password",
+    const beforeReassignment = await request("/session", undefined, owner.token, "GET");
+    const reassigned = await request("/assignment", {
+      memberId: roleCandidate.memberId, groupId: "jellyfish", assignmentDate,
     }, owner.token, "PATCH");
-    assert.equal(promoted.members.find((member) => member.id === roleCandidate.memberId)?.role, "owner");
-    const demoted = await request("/member-role", {
-      memberId: roleCandidate.memberId, role: "counselor",
-    }, owner.token, "PATCH");
-    const demotedMember = demoted.members.find((member) => member.id === roleCandidate.memberId);
-    assert.equal(demotedMember?.role, "counselor");
-    assert.equal(demotedMember?.groupId, null);
+    const reassignedCounselor = reassigned.members.find((member) => member.id === roleCandidate.memberId);
+    assert.ok(reassigned.version > beforeReassignment.version);
+    assert.equal(reassignedCounselor?.role, "counselor");
+    assert.equal(reassignedCounselor?.groupId, "jellyfish");
+    const blockedCounselorReassignment = await fetch(url + "/assignment", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", authorization: `Bearer ${roleCandidate.token}` },
+      body: JSON.stringify({
+        memberId: counselor.memberId, groupId: "tigers", assignmentDate,
+      }),
+    });
+    assert.equal(blockedCounselorReassignment.status, 403);
     const removable = await request("/join", {
       name: "Other counselor", password, code: rotated.code, assignmentDate, groupId: "ladybugs",
     });
@@ -466,8 +457,6 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     await request("/end", undefined, owner.token);
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-    if (originalProgramManagerPassword === undefined) delete process.env.PROGRAM_MANAGER_PASSWORD;
-    else process.env.PROGRAM_MANAGER_PASSWORD = originalProgramManagerPassword;
     if (originalProgramManagerRolePassword === undefined) delete process.env.PROGRAM_MANAGER_ROLE_PASSWORD;
     else process.env.PROGRAM_MANAGER_ROLE_PASSWORD = originalProgramManagerRolePassword;
   }
@@ -1374,7 +1363,7 @@ test("member removal enforces owner, room, and owner-member boundaries and revok
 });
 
 test("Program Manager session creation requires its separate access password", async () => {
-  const previousPassword = process.env.PROGRAM_MANAGER_PASSWORD;
+  const previousPassword = process.env.PROGRAM_MANAGER_ROLE_PASSWORD;
   const managerPassword = randomUUID();
   const roomPassword = randomUUID();
   const server = app.listen(0);
@@ -1396,11 +1385,11 @@ test("Program Manager session creation requires its separate access password", a
   });
 
   try {
-    delete process.env.PROGRAM_MANAGER_PASSWORD;
+    delete process.env.PROGRAM_MANAGER_ROLE_PASSWORD;
     const unconfigured = await createRoom(managerPassword);
     assert.equal(unconfigured.status, 503);
 
-    process.env.PROGRAM_MANAGER_PASSWORD = managerPassword;
+    process.env.PROGRAM_MANAGER_ROLE_PASSWORD = managerPassword;
     const rejected = await createRoom("incorrect-access-password");
     assert.equal(rejected.status, 401);
 
@@ -1410,8 +1399,8 @@ test("Program Manager session creation requires its separate access password", a
     roomIds.push(session.roomId);
     assert.equal(session.role, "owner");
   } finally {
-    if (previousPassword === undefined) delete process.env.PROGRAM_MANAGER_PASSWORD;
-    else process.env.PROGRAM_MANAGER_PASSWORD = previousPassword;
+    if (previousPassword === undefined) delete process.env.PROGRAM_MANAGER_ROLE_PASSWORD;
+    else process.env.PROGRAM_MANAGER_ROLE_PASSWORD = previousPassword;
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 });
