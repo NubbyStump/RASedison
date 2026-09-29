@@ -932,6 +932,16 @@
   background-image: none !important;
 }
 
+.ras-workspace-shell [class*="from-amber-950"] {
+  background: #fff5df !important;
+  border-color: #e5d7b3 !important;
+}
+
+.ras-workspace-shell [class*="from-cyan-950"] {
+  background: #eaf7f5 !important;
+  border-color: #c5dfdc !important;
+}
+
 .ras-workspace-shell [class*="border-slate-"] {
   border-color: #d7e3dc !important;
 }
@@ -1157,6 +1167,13 @@
 .ras-projector-shell [class*="bg-slate-800"],
 .ras-projector-shell [class*="bg-slate-950"] {
   background: #fffefa !important;
+}
+
+.ras-projector-shell [class*="bg-emerald-950"],
+.ras-projector-shell [class*="bg-cyan-950"] {
+  background: #e5f3eb !important;
+  color: #264c47 !important;
+  border-color: #c5ddd1 !important;
 }
 
 .ras-projector-shell [class*="border-slate-"] {

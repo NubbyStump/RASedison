@@ -1125,7 +1125,7 @@ export default function App() {
               onClick={() => setActiveTab('chat')}
               className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 border ${
                 activeTab === 'chat'
-                  ? 'border-cyan-400 bg-cyan-400 text-slate-950 shadow-md'
+                  ? 'ras-tab-active-cyan'
                   : 'ras-nav-chat'
               }`}
               aria-label="Open room chat"
