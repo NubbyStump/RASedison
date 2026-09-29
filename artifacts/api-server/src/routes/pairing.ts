@@ -763,6 +763,10 @@ router.post("/pairing/command", async (req, res): Promise<void> => {
       res.status(403).json({ error: error.message });
       return;
     }
+    if (error instanceof Error && error.message === "Only the Program Manager can set a Super Scramble") {
+      res.status(403).json({ error: error.message });
+      return;
+    }
     if (error instanceof Error && /not found/i.test(error.message)) {
       res.status(400).json({ error: error.message });
       return;

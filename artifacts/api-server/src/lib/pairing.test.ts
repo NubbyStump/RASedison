@@ -638,7 +638,9 @@ test("counselors can save regular missions but cannot set Super Scrambles or del
     }),
     /Only the Program Manager can set a Super Scramble/,
   );
-  assert.equal((await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id)))[0].state.activities.length, 0);
+  const [roomAfterRejectedScramble] = await db.select().from(pairingRooms)
+    .where(eq(pairingRooms.id, room.id));
+  assert.equal((roomAfterRejectedScramble.state as PairingState).activities.length, 0);
 
   const withScramble = await executePairingCommand(owner, {
     id: randomUUID(),

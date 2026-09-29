@@ -2,3 +2,4 @@
 - [Post-merge verification](merge-verification.md) — automatic conflict resolution can damage files not flagged as conflicted; recheck merged code before completion.
 - [Live app vs canvas preview](live-app-vs-canvas-preview.md) — RAS-Edison’s artifact and copied Points mockup are separate; verify which one is being tested.
 - [Counselor score changes](counselor-score-approval.md) — counselor score changes target only the assigned group and go through Program Manager approval.
+- [Program Manager permissions](program-manager-permissions.md) — counselors can create regular missions, but only the Program Manager can set Super Scrambles.
