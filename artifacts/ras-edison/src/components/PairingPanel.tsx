@@ -21,7 +21,7 @@ type Props = {
   onClose: () => void;
   onOffline: () => Promise<void>;
   onCreate: (name: string, password: string, programManagerPassword: string) => Promise<boolean>;
-  onJoin: (name: string, code: string, password: string, groupId: string) => Promise<boolean>;
+  onJoin: (name: string, code: string, password: string, groupId: string | null) => Promise<boolean>;
   onUpdateAssignment: (groupId: string | null) => Promise<void>;
   onRemoveMember: (memberId: string) => Promise<void>;
   onLeave: () => Promise<void>;
@@ -35,7 +35,7 @@ export default function PairingPanel(props: Props) {
   const [password, setPassword] = useState('');
   const [programManagerPassword, setProgramManagerPassword] = useState('');
   const [code, setCode] = useState('');
-  const [group, setGroup] = useState('');
+  const [group, setGroup] = useState('unassigned');
   const [assignment, setAssignment] = useState('');
   const [inviteCopied, setInviteCopied] = useState(false);
   const [inviteCopyError, setInviteCopyError] = useState(false);
@@ -58,7 +58,11 @@ export default function PairingPanel(props: Props) {
   }, [open, mode, session, status]);
   useEffect(() => {
     if (open && mode === 'controls' && session) {
-      setAssignment(needsDailyAssignment ? '' : (session.groupId || 'coordinator'));
+      setAssignment(needsDailyAssignment ? '' : (
+        session.role === 'owner'
+          ? (session.groupId || 'coordinator')
+          : (session.groupId || 'unassigned')
+      ));
     }
   }, [open, mode, session?.memberId, session?.groupId, needsDailyAssignment]);
   if (!open) return null;
@@ -78,7 +82,7 @@ export default function PairingPanel(props: Props) {
   const join = async (event: React.FormEvent) => {
     event.preventDefault();
     if (name.trim() && code.trim() && group && password.length >= 4) {
-      const ok = await props.onJoin(name.trim(), code.trim(), password, group);
+      const ok = await props.onJoin(name.trim(), code.trim(), password, group === 'unassigned' ? null : group);
       if (ok) {
         clearPassword();
         setJoiningFromInvite(false);
@@ -159,10 +163,21 @@ export default function PairingPanel(props: Props) {
               <h3 className="text-xl font-black text-white">{path === 'create' ? 'Create as Host / Program Manager' : 'Join as Counselor'}</h3>
               <Field label="Your name"><input required maxLength={60} autoComplete="name" autoCapitalize="words" value={name} onChange={e => setName(e.target.value)} className="field" placeholder="Your name" /></Field>
               {path === 'join' && <>
-                <Field label="Your group"><select required value={group} onChange={e => setGroup(e.target.value)} className="field"><option value="">Choose today’s group</option>{GROUPS.map(g => <option key={g.id} value={g.id}>{g.icon} {g.name}</option>)}</select></Field>
+                <Field label="Your group today">
+                  <select required value={group} onChange={e => setGroup(e.target.value)} className="field">
+                    <option value="">Choose a group or view-only</option>
+                    <option value="unassigned">Unassigned — view only</option>
+                    {GROUPS.map(g => <option key={g.id} value={g.id}>{g.icon} {g.name}</option>)}
+                  </select>
+                </Field>
+                {group === 'unassigned' && (
+                  <p className="text-xs text-slate-400 -mt-2">
+                    You can choose a group later in session controls. Until then, you can view the dashboard and chat but can’t make changes or send messages.
+                  </p>
+                )}
                 {joiningFromInvite ? (
                   <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/30 p-3 text-sm text-cyan-100">
-                    This invite link selected the room. Enter your name, group, and session password to join.
+                    This invite link selected the room. Enter your name, assignment, and session password to join.
                     <button type="button" onClick={() => { setJoiningFromInvite(false); setCode(''); }} className="block mt-2 text-xs font-bold text-cyan-300 underline underline-offset-2">Use a different room code</button>
                   </div>
                 ) : (
@@ -234,12 +249,13 @@ export default function PairingPanel(props: Props) {
                 <div className="flex flex-col sm:flex-row gap-2 mt-2">
                   <select value={assignment} onChange={e => setAssignment(e.target.value)} disabled={busy} className="field">
                     <option value="">Choose today’s group</option>
+                    {session.role === 'counselor' && <option value="unassigned">Unassigned — view only</option>}
                     {session.role === 'owner' && <option value="coordinator">Program Manager / all groups</option>}
                     {GROUPS.map(g => <option key={g.id} value={g.id}>{g.icon} {g.name}</option>)}
                   </select>
-                  <button disabled={busy || !assignment} onClick={() => void props.onUpdateAssignment(assignment === 'coordinator' ? null : assignment)} className="shrink-0 px-4 py-3 rounded-xl bg-emerald-400 text-slate-950 font-black disabled:opacity-50">Save for today</button>
+                  <button disabled={busy || !assignment} onClick={() => void props.onUpdateAssignment(assignment === 'coordinator' || assignment === 'unassigned' ? null : assignment)} className="shrink-0 px-4 py-3 rounded-xl bg-emerald-400 text-slate-950 font-black disabled:opacity-50">Save for today</button>
                 </div>
-                {needsDailyAssignment && <p className="text-amber-300 text-xs mt-2">Your previous assignment is stale. Choose today’s group to continue.</p>}
+                {needsDailyAssignment && <p className="text-amber-300 text-xs mt-2">Your previous assignment is stale. Choose today’s group or remain unassigned in view-only mode.</p>}
               </div>
               <div>
                 <h3 className="font-black text-white flex items-center gap-2"><Users className="w-5 h-5 text-cyan-400" /> Session roster</h3>
@@ -250,7 +266,7 @@ export default function PairingPanel(props: Props) {
                     return <div key={member.id} className="p-3 bg-slate-800 flex items-center justify-between gap-3 text-sm">
                       <span className="font-bold text-white">{member.name}{member.id === session.memberId ? ' (You)' : ''}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-slate-400 text-right">{member.role === 'owner' ? 'Host' : member.assignmentDate === today ? groupName(member.groupId) : `No group for ${today}`}</span>
+                       <span className="text-slate-400 text-right">{member.role === 'owner' ? 'Host' : member.assignmentDate === today ? (member.groupId ? groupName(member.groupId) : 'Unassigned · view only') : `No group for ${today}`}</span>
                         {canRemove && <button
                           type="button"
                           disabled={busy || Boolean(removingMemberId)}

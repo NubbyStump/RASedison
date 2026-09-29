@@ -421,7 +421,7 @@ export function usePairing() {
     establish('/api/pairing/create', { name, password, programManagerPassword, state, groupId: null, assignmentDate: localCalendarDate() })
   ), [establish]);
 
-  const join = useCallback((name: string, code: string, password: string, groupId: string) => (
+  const join = useCallback((name: string, code: string, password: string, groupId: string | null) => (
     establish('/api/pairing/join', {
       name,
       password,

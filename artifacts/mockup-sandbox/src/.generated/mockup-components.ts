@@ -3,5 +3,7 @@ type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/ras-edison-group-identity/AssignedGroupColorways.tsx": () => import("../components/mockups/ras-edison-group-identity/AssignedGroupColorways.tsx"),
   "./components/mockups/ras-edison-group-identity/Current.tsx": () => import("../components/mockups/ras-edison-group-identity/Current.tsx"),
-  "./components/mockups/ras-refined/EdisonDashboardRefined.tsx": () => import("../components/mockups/ras-refined/EdisonDashboardRefined.tsx")
+  "./components/mockups/ras-refined/EdisonDashboardRefined.tsx": () => import("../components/mockups/ras-refined/EdisonDashboardRefined.tsx"),
+  "./components/mockups/ras-set-total-button/Current.tsx": () => import("../components/mockups/ras-set-total-button/Current.tsx"),
+  "./components/mockups/ras-set-total-button/HighContrast.tsx": () => import("../components/mockups/ras-set-total-button/HighContrast.tsx")
 };

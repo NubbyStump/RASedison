@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --background: 42 35% 91%;
+  --foreground: 164 20% 14%;
+  --border: 39 20% 76%;
+  --input: 39 20% 76%;
+  --ring: 44 78% 50%;
+  --card: 42 42% 95%;
+  --card-foreground: 164 20% 14%;
+  --card-border: 39 22% 78%;
+  --popover: 42 42% 95%;
+  --popover-foreground: 164 20% 14%;
+  --popover-border: 39 22% 78%;
+  --primary: 164 20% 14%;
+  --primary-foreground: 42 42% 95%;
+  --secondary: 39 22% 82%;
+  --secondary-foreground: 164 20% 14%;
+  --muted: 40 24% 86%;
+  --muted-foreground: 164 9% 40%;
+  --accent: 44 78% 50%;
+  --accent-foreground: 164 20% 14%;
+  --destructive: 6 60% 49%;
+  --destructive-foreground: 42 42% 95%;
+  --sidebar: 164 20% 14%;
+  --sidebar-foreground: 42 42% 95%;
+  --app-font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --app-font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --app-font-mono: 'Space Mono', ui-monospace, monospace;
+  --radius: 0.75rem;
+  --shadow-color: 164 20% 14%;
+  --elevate-1: rgba(27, 43, 39, 0.06);
+  --elevate-2: rgba(27, 43, 39, 0.12);
+}
+
+.dark {
+  --background: 164 20% 14%;
+  --foreground: 42 42% 95%;
+  --border: 164 11% 30%;
+  --input: 164 11% 30%;
+  --ring: 44 78% 50%;
+  --card: 164 17% 19%;
+  --card-foreground: 42 42% 95%;
+  --card-border: 164 11% 30%;
+  --popover: 164 17% 19%;
+  --popover-foreground: 42 42% 95%;
+  --popover-border: 164 11% 30%;
+  --primary: 42 42% 95%;
+  --primary-foreground: 164 20% 14%;
+  --secondary: 164 13% 27%;
+  --secondary-foreground: 42 42% 95%;
+  --muted: 164 13% 24%;
+  --muted-foreground: 42 18% 68%;
+  --accent: 44 78% 50%;
+  --accent-foreground: 164 20% 14%;
+  --destructive: 6 60% 59%;
+  --destructive-foreground: 42 42% 95%;
+  --sidebar: 164 24% 10%;
+  --sidebar-foreground: 42 42% 95%;
+}
+
+.ras-set-total-preview,
+.ras-set-total-preview button {
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+}

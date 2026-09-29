@@ -474,7 +474,7 @@ export const JoinPairingBody = zod.object({
   "name": zod.string().min(1).max(joinPairingBodyNameMax),
   "password": zod.string().min(joinPairingBodyPasswordMin).max(joinPairingBodyPasswordMax),
   "code": zod.string().regex(joinPairingBodyCodeRegExp),
-  "groupId": zod.string().min(1).max(joinPairingBodyGroupIdMax),
+  "groupId": zod.string().min(1).max(joinPairingBodyGroupIdMax).nullable(),
   "assignmentDate": zod.string().regex(joinPairingBodyAssignmentDateRegExp)
 })
 

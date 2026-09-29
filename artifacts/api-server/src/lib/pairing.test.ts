@@ -12,6 +12,7 @@ import {
   type PairingState,
 } from "./pairing";
 import {
+  calendarDay,
   calendarMonth,
   clearProjectorMessage,
   executePairingCommand,

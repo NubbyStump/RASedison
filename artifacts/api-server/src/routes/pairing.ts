@@ -103,6 +103,23 @@ export function calendarMonth(
   return `${year}-${month}`;
 }
 
+export function calendarDay(
+  now = new Date(),
+  timeZone = "America/Los_Angeles",
+): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  if (!year || !month || !day) throw new Error(`Could not determine calendar day for ${timeZone}`);
+  return `${year}-${month}-${day}`;
+}
+
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 const makeToken = () => randomBytes(32).toString("base64url");
 const makeCode = () => Array.from(randomBytes(10), (byte) => alphabet[byte % alphabet.length]).join("");
@@ -174,6 +191,17 @@ function validAssignmentDate(value: string): boolean {
   return date.getUTCFullYear() === year
     && date.getUTCMonth() === month - 1
     && date.getUTCDate() === day;
+}
+
+const COUNSELOR_ASSIGNMENT_REQUIRED_ERROR = "Choose a group before making changes or sending messages";
+
+function counselorHasCurrentAssignment(
+  member: typeof pairingMembers.$inferSelect,
+  room: typeof pairingRooms.$inferSelect,
+  now = new Date(),
+): boolean {
+  return member.role !== "counselor"
+    || Boolean(member.groupId && member.assignmentDate === calendarDay(now, room.timeZone));
 }
 
 function limited(req: Request): boolean {
@@ -478,6 +506,9 @@ export async function sendProjectorMessage(
     let room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
     const activeMember = await activeMemberForRoom(tx, member.id, room.id);
     if (!activeMember) return { error: "unauthorized" as const };
+    if (!counselorHasCurrentAssignment(activeMember, room)) {
+      return { error: "assignment-required" as const };
+    }
 
     if (room.projectorMessages.some((message) => message.id === input.id)) {
       return { session: await sessionFor(tx, activeMember, undefined, room) };
@@ -507,7 +538,9 @@ export async function sendProjectorMessage(
     return { session: await sessionFor(tx, activeMember, undefined, room) };
   });
   if ("error" in result) {
-    throw new Error(result.error === "rate-limited" ? "Too many messages" : "Unauthorized");
+    if (result.error === "rate-limited") throw new Error("Too many messages");
+    if (result.error === "assignment-required") throw new Error(COUNSELOR_ASSIGNMENT_REQUIRED_ERROR);
+    throw new Error("Unauthorized");
   }
   return result.session;
 }
@@ -541,6 +574,9 @@ export async function executePairingCommand(
     let room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
     const activeMember = await activeMemberForRoom(tx, member.id, room.id);
     if (!activeMember) return { error: "Unauthorized" as const };
+    if (!counselorHasCurrentAssignment(activeMember, room)) {
+      return { error: COUNSELOR_ASSIGNMENT_REQUIRED_ERROR as const };
+    }
     if (OWNER_COMMANDS.has(command.type) && activeMember.role !== "owner") {
       return { error: "Owner role required for this command" as const };
     }
@@ -784,7 +820,9 @@ router.post("/pairing/join", async (req, res): Promise<void> => {
     const room = await rolloverActivitiesForLockedRoom(tx, foundRoom);
     if (!room.passwordHash) return "unprotected" as const;
     if (!await passwordMatches(parsed.data.password, room.passwordHash)) return "bad-password" as const;
-    if (!roomHasGroup(room.state, parsed.data.groupId)) return "invalid-group" as const;
+    if (parsed.data.groupId !== null && !roomHasGroup(room.state, parsed.data.groupId)) {
+      return "invalid-group" as const;
+    }
     const [member] = await tx.insert(pairingMembers).values({
       roomId: room.id,
       name,
@@ -976,9 +1014,6 @@ router.patch("/pairing/assignment", async (req, res): Promise<void> => {
     const room = await rolloverActivitiesForLockedRoom(tx, lockedRoom);
     const activeMember = await activeMemberForRoom(tx, member.id, room.id);
     if (!activeMember) return null;
-    if (activeMember.role === "counselor" && parsed.data.groupId === null) {
-      return "invalid-group" as const;
-    }
     if (parsed.data.groupId !== null && !roomHasGroup(room.state, parsed.data.groupId)) {
       return "invalid-group" as const;
     }
@@ -1027,6 +1062,10 @@ router.post("/pairing/command", async (req, res): Promise<void> => {
       return;
     }
     if (error instanceof Error && error.message === "Only the Program Manager can set a Super Scramble") {
+      res.status(403).json({ error: error.message });
+      return;
+    }
+    if (error instanceof Error && error.message === COUNSELOR_ASSIGNMENT_REQUIRED_ERROR) {
       res.status(403).json({ error: error.message });
       return;
     }
@@ -1079,6 +1118,10 @@ router.post("/pairing/message", async (req, res): Promise<void> => {
     }
     if (error instanceof Error && error.message === "Too many messages") {
       res.status(429).json({ error: "Too many messages" });
+      return;
+    }
+    if (error instanceof Error && error.message === COUNSELOR_ASSIGNMENT_REQUIRED_ERROR) {
+      res.status(403).json({ error: error.message });
       return;
     }
     throw error;

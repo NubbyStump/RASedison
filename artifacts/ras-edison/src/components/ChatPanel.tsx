@@ -7,6 +7,7 @@ type Props = {
   status: PairingStatus;
   onOpenLobby: () => void;
   onSend: (text: string) => Promise<unknown>;
+  readOnly?: boolean;
 };
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
@@ -23,7 +24,7 @@ function roleName(role: ChatMessage['senderRole']) {
   return role === 'owner' ? 'Program Manager' : 'Counselor';
 }
 
-export default function ChatPanel({ session, status, onOpenLobby, onSend }: Props) {
+export default function ChatPanel({ session, status, onOpenLobby, onSend, readOnly = false }: Props) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -35,6 +36,12 @@ export default function ChatPanel({ session, status, onOpenLobby, onSend }: Prop
   const roomIdRef = useRef<string | null>(null);
   const messages = session?.chatMessages ?? [];
   const lastMessage = messages[messages.length - 1];
+
+  useEffect(() => {
+    if (!readOnly) return;
+    setDraft('');
+    setError('');
+  }, [readOnly]);
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
@@ -66,7 +73,7 @@ export default function ChatPanel({ session, status, onOpenLobby, onSend }: Prop
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
     const text = draft.trim();
-    if (!text || pending || status !== 'connected' || !session) return;
+    if (!text || pending || readOnly || status !== 'connected' || !session) return;
     setPending(true);
     setError('');
     try {
@@ -169,7 +176,11 @@ export default function ChatPanel({ session, status, onOpenLobby, onSend }: Prop
       </div>
 
       <div className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
-      <form onSubmit={send} className="border-t border-slate-700 bg-slate-900/90 p-3 sm:p-4">
+      {readOnly ? (
+        <div role="status" className="border-t border-slate-700 bg-slate-900/90 px-4 py-4 text-sm text-slate-300">
+          View-only access: choose a group in Live session controls to send chat messages.
+        </div>
+      ) : <form onSubmit={send} className="border-t border-slate-700 bg-slate-900/90 p-3 sm:p-4">
         {status !== 'connected' && (
           <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-amber-300">
             <AlertCircle className="h-4 w-4" /> Reconnecting. Your draft will stay here.
@@ -209,7 +220,7 @@ export default function ChatPanel({ session, status, onOpenLobby, onSend }: Prop
         <div id="chat-send-status" className="sr-only" aria-live="polite">
           {pending ? 'Sending message' : error}
         </div>
-      </form>
+      </form>}
     </section>
   );
 }

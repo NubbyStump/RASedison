@@ -22,8 +22,9 @@ export interface PairingJoinInput {
   /**
      * @minLength 1
      * @maxLength 80
+     * @nullable
      */
-  groupId: string;
+  groupId: string | null;
   /** @pattern ^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$ */
   assignmentDate: string;
 }

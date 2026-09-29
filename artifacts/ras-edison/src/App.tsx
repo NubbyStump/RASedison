@@ -328,13 +328,19 @@ export default function App() {
   }, [isLiveCounselor, pairing.session?.roomId, pairing.session?.notifications]);
 
   const canManageActivities = !pairing.isPaired || isLiveOwner;
-  const canCreateActivities = !pairing.isPaired || Boolean(pairing.session);
   const groups = pairing.session?.state.groups ?? localGroups;
   const assignedGroupId = isLiveCounselor
-    ? pairing.session?.groupId
-      ?? pairing.session?.members.find((member) => member.id === pairing.session?.memberId)?.groupId
-      ?? null
+    ? pairing.session?.assignmentDate === pairing.today
+      ? pairing.session.groupId
+        ?? pairing.session.members.find((member) => member.id === pairing.session?.memberId)?.groupId
+        ?? null
+      : null
     : pairing.currentGroupId;
+  const isLiveReadOnlyCounselor = isLiveCounselor && !assignedGroupId;
+  const canCreateActivities = !pairing.isPaired || Boolean(pairing.session && !isLiveReadOnlyCounselor);
+  useEffect(() => {
+    if (isLiveReadOnlyCounselor) setMessageComposerOpen(false);
+  }, [isLiveReadOnlyCounselor]);
   const selectedActivityAwardGroupId = isLiveCounselor
     ? assignedGroupId ?? ''
     : groups.some((group) => group.id === activityAwardGroupId)
@@ -565,6 +571,7 @@ export default function App() {
   const leadGap = runnerUpScore === null ? null : Math.max(0, maxScore - runnerUpScore);
 
   const handleAddPoints = async (groupId, amount) => {
+    if (isLiveReadOnlyCounselor) return;
     if (isLiveCounselor && amount < 0 && assignedGroupId !== groupId) {
       setPointActionError('Counselors may only remove points from their assigned group.');
       return;
@@ -613,6 +620,7 @@ export default function App() {
   };
 
   const handleReduceGroupPoints = async (groupId, mode) => {
+    if (isLiveReadOnlyCounselor) return;
     if (!isLiveCounselor || assignedGroupId !== groupId) {
       setPointActionError('Bulk point removal is only available for your assigned group in a live counselor session.');
       return;
@@ -648,6 +656,7 @@ export default function App() {
   };
 
   const handleSetGroupPoints = async (groupId) => {
+    if (isLiveReadOnlyCounselor) return;
     if (
       !pairing.isPaired
       || (!isLiveOwner && !(isLiveCounselor && assignedGroupId === groupId))
@@ -711,6 +720,7 @@ export default function App() {
   };
 
   const handleUndo = async (logId) => {
+    if (isLiveReadOnlyCounselor) return;
     const itemToUndo = history.find(h => h.id === logId);
     if (!itemToUndo) return;
 
@@ -753,6 +763,7 @@ export default function App() {
 
   const handleSaveLap = async (e) => {
     e.preventDefault();
+    if (isLiveReadOnlyCounselor) return;
     if (!newLap.runnerName || !newLap.seconds) return;
     if (pairing.isPaired && lapSubmittingRef.current) return;
 
@@ -803,6 +814,7 @@ export default function App() {
   };
 
   const handleDeleteLap = async (id) => {
+    if (isLiveReadOnlyCounselor) return;
     if (pairing.isPaired) {
       try {
         await pairing.command({ type: 'deleteLap', payload: { id } });
@@ -898,6 +910,7 @@ export default function App() {
   };
 
   const handleAwardActivityPoints = async () => {
+    if (isLiveReadOnlyCounselor) return;
     if (!currentActivity || activityAwardSubmittingRef.current) return;
     const targetGroup = activityAwardGroup;
     const groupId = selectedActivityAwardGroupId;
@@ -968,7 +981,7 @@ export default function App() {
       <div className="ras-projector-shell min-h-[100dvh] bg-slate-950 text-white flex flex-col justify-between p-6 md:p-10 font-sans relative overflow-hidden select-none">
         <ProjectorMessage roomId={pairing.session?.roomId ?? null} messages={projectorMessages} />
         <MessageComposer
-          open={messageComposerOpen}
+          open={messageComposerOpen && !isLiveReadOnlyCounselor}
           connected={pairing.status === 'connected'}
           onClose={() => setMessageComposerOpen(false)}
           onSend={pairing.sendMessage}
@@ -1017,7 +1030,7 @@ export default function App() {
           />
 
           <div className="flex flex-wrap items-center justify-end gap-3">
-            {pairing.isPaired && (
+            {pairing.isPaired && !isLiveReadOnlyCounselor && (
               <button
                 type="button"
                 onClick={() => setMessageComposerOpen(true)}
@@ -1354,12 +1367,18 @@ export default function App() {
             Pairing error: {pairing.error}
           </div>
         )}
+        {isLiveReadOnlyCounselor && (
+          <div role="status" className="mb-5 rounded-2xl border border-amber-500/40 bg-amber-950/35 px-4 py-3 text-sm text-amber-100">
+            <strong>View-only counselor.</strong> You can see the dashboard and chat. Choose a group in Live session controls to enable counselor actions.
+          </div>
+        )}
         {activeTab === 'chat' && (
           <ChatPanel
             session={pairing.session}
             status={pairing.status}
             onOpenLobby={() => setSessionModal('startup')}
             onSend={pairing.sendMessage}
+            readOnly={isLiveReadOnlyCounselor}
           />
         )}
         {/* TAB 1: POINTS TRACKER */}
@@ -1588,7 +1607,7 @@ export default function App() {
                                     || Number(setScoreValue) === group.score
                                   }
                                   aria-label={`${isLiveOwner ? 'Set' : 'Request setting'} ${group.name} total to ${setScoreValue || 'a new'} points`}
-                                  className={`disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-3 py-2 font-bold text-xs transition active:scale-95 min-h-[44px] ${isLiveOwner ? 'bg-cyan-500/25 hover:bg-cyan-500/35 text-cyan-100 border border-cyan-500/50' : 'bg-red-500/25 hover:bg-red-500/35 text-red-100 border border-red-500/50'}`}
+                                   className={`min-h-[44px] min-w-[6.25rem] whitespace-nowrap rounded-xl border px-3 py-2.5 text-sm font-extrabold shadow-sm transition-colors active:scale-[.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-not-allowed disabled:border-slate-500 disabled:bg-slate-600 disabled:text-white disabled:opacity-100 disabled:hover:border-slate-500 disabled:hover:bg-slate-600 disabled:hover:text-white ${isLiveOwner ? 'border-cyan-300 bg-cyan-400 text-slate-950 hover:bg-cyan-300 focus-visible:ring-cyan-400' : 'border-red-500 bg-red-700 text-white hover:bg-red-600 focus-visible:ring-red-400'}`}
                                 >
                                   {isLiveOwner ? 'Set total' : 'Request set'}
                                 </button>
@@ -1597,6 +1616,8 @@ export default function App() {
                           </div>
                         )}
 
+                      {!isLiveReadOnlyCounselor && (
+                        <>
                       {/* Point reason */}
                       <div className="mb-4">
                            <label htmlFor={`points-reason-${group.id}`} className="ras-field-label block text-xs mb-1">
@@ -1708,6 +1729,8 @@ export default function App() {
                         )}
 
                       </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -1751,12 +1774,12 @@ export default function App() {
                             )}
                           </div>
                         </div>
-                         <button
+                          {!isLiveReadOnlyCounselor && <button
                           onClick={() => handleUndo(item.id)}
                            className={`${assignedGroupTheme ? 'ras-theme-panel-raised' : 'bg-slate-800 hover:bg-slate-700 border-slate-600/50'} text-slate-500 text-xs font-semibold px-2.5 py-1.5 rounded-xl transition border`}
                         >
                           Undo
-                        </button>
+                          </button>}
                       </div>
                     ))}
                   </div>
@@ -2092,7 +2115,7 @@ export default function App() {
                     )}
                   </div>
 
-                  <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-emerald-950/25 border-emerald-500/30'} border rounded-2xl p-4 space-y-3`}>
+                  {!isLiveReadOnlyCounselor && <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-emerald-950/25 border-emerald-500/30'} border rounded-2xl p-4 space-y-3`}>
                     <div>
                       <h4 className="text-sm font-black text-emerald-200">Award {currentActivity.type} points</h4>
                       <p className="text-xs text-slate-300 mt-1">
@@ -2160,7 +2183,7 @@ export default function App() {
 
                     {activityAwardError && <p role="alert" className="text-xs font-semibold text-red-200">{activityAwardError}</p>}
                     {activityAwardStatus && <p role="status" className="text-xs font-semibold text-emerald-200">{activityAwardStatus}</p>}
-                  </div>
+                  </div>}
                 </div>
               )}
 
@@ -2217,11 +2240,12 @@ export default function App() {
               {/* Form */}
               <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-slate-800/80 border-slate-700/80'} rounded-3xl p-6 border shadow-lg`}>
                 <h3 className="text-xl font-black text-white mb-1 flex items-center gap-2">
-                  <PlusCircle className="w-5 h-5 text-cyan-400" /> Record Lap
+                  <PlusCircle className="w-5 h-5 text-cyan-400" /> {isLiveReadOnlyCounselor ? 'Lap Records · View Only' : 'Record Lap'}
                 </h3>
-                <p className="text-xs text-slate-400 mb-5">Time gym obstacle sprints or relay laps.</p>
+                <p className="text-xs text-slate-400 mb-5">{isLiveReadOnlyCounselor ? 'Choose a group in Live session controls to record or remove laps.' : 'Time gym obstacle sprints or relay laps.'}</p>
 
                 <form onSubmit={handleSaveLap} className="space-y-4">
+                  <fieldset disabled={isLiveReadOnlyCounselor} className="space-y-4">
                   <div>
                     <label className="text-xs font-bold text-slate-300 block mb-1">Runner or Group Name *</label>
                     <input
@@ -2299,11 +2323,12 @@ export default function App() {
 
                   <button
                     type="submit"
-                    disabled={pairing.isPaired && lapSubmitting}
+                    disabled={isLiveReadOnlyCounselor || (pairing.isPaired && lapSubmitting)}
                     className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black py-3 rounded-xl text-sm transition shadow-lg active:scale-95"
                   >
                     Save Lap Record
                   </button>
+                  </fieldset>
                 </form>
               </div>
 
@@ -2357,13 +2382,13 @@ export default function App() {
                             <div className="text-right">
                               <div className="text-xl font-black text-cyan-400 tracking-tight">{item.timeFormatted}</div>
                             </div>
-                            <button
+                            {!isLiveReadOnlyCounselor && <button
                               onClick={() => handleDeleteLap(item.id)}
                               aria-label={`Delete lap for ${item.runnerName}`}
                               className="text-slate-500 hover:text-red-400 p-2 rounded-xl transition min-h-[44px] min-w-[44px] flex justify-center items-center"
                             >
                               <Trash2 className="w-4 h-4" />
-                            </button>
+                            </button>}
                           </div>
                         </div>
                       );
@@ -2396,7 +2421,7 @@ export default function App() {
         onEnd={handleEndPairing}
       />
       <MessageComposer
-        open={messageComposerOpen}
+        open={messageComposerOpen && !isLiveReadOnlyCounselor}
         connected={pairing.status === 'connected'}
         onClose={() => setMessageComposerOpen(false)}
         onSend={pairing.sendMessage}
