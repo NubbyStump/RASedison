@@ -130,6 +130,13 @@ export default function App() {
   const [notificationToast, setNotificationToast] = useState(null);
   const [notificationError, setNotificationError] = useState('');
   const notificationSeenRef = useRef({ roomId: null, ids: new Set() });
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [chatToast, setChatToast] = useState<string | null>(null);
+  const chatSeenRef = useRef({
+    roomId: null as string | null,
+    memberId: null as string | null,
+    ids: new Set<string>(),
+  });
 
   // Persistent Group Scores State
   const [localGroups, setLocalGroups] = useState(() => {
@@ -222,10 +229,63 @@ export default function App() {
   }, [pairing.refresh]);
 
   useEffect(() => {
+    const session = pairing.session;
+    if (!session?.roomId) {
+      chatSeenRef.current = { roomId: null, memberId: null, ids: new Set() };
+      setChatUnreadCount(0);
+      setChatToast(null);
+      return;
+    }
+
+    const messages = session.chatMessages ?? [];
+    const seen = chatSeenRef.current;
+    if (seen.roomId !== session.roomId || seen.memberId !== session.memberId) {
+      chatSeenRef.current = {
+        roomId: session.roomId,
+        memberId: session.memberId,
+        ids: new Set(messages.map((message) => message.id)),
+      };
+      setChatUnreadCount(0);
+      setChatToast(null);
+      return;
+    }
+
+    const incomingMessages = messages.filter(
+      (message) => !seen.ids.has(message.id) && message.senderId !== session.memberId,
+    );
+    chatSeenRef.current = {
+      roomId: session.roomId,
+      memberId: session.memberId,
+      ids: new Set(messages.map((message) => message.id)),
+    };
+
+    if (activeTab === 'chat') {
+      setChatUnreadCount(0);
+      setChatToast(null);
+      return;
+    }
+
+    if (incomingMessages.length > 0) {
+      setChatUnreadCount((current) => current + incomingMessages.length);
+      setChatToast(incomingMessages[incomingMessages.length - 1].id);
+    }
+  }, [
+    activeTab,
+    pairing.session?.chatMessages,
+    pairing.session?.memberId,
+    pairing.session?.roomId,
+  ]);
+
+  useEffect(() => {
     if (!notificationToast) return;
     const timer = window.setTimeout(() => setNotificationToast(null), 7000);
     return () => window.clearTimeout(timer);
   }, [notificationToast]);
+  useEffect(() => {
+    if (!chatToast || activeTab === 'projector') return;
+    const timer = window.setTimeout(() => setChatToast(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [chatToast, activeTab]);
 
   // Keep this hook above every render return (including projector mode) so
   // approval timers remain accurate whenever the user returns to Points.
@@ -316,10 +376,10 @@ export default function App() {
     localStorage.setItem('ras_edison_pairing_backup_v1', JSON.stringify(backup));
   };
 
-  const handleCreatePairing = async (name, password) => {
+  const handleCreatePairing = async (name, password, programManagerPassword) => {
     saveLocalBackup();
     try {
-      await pairing.create(name, password, {
+      await pairing.create(name, password, programManagerPassword, {
         ...localSnapshot(),
         groups: localGroups.map(group => ({ ...group, score: 0 })),
         history: [],
@@ -1128,9 +1188,15 @@ export default function App() {
                   ? 'ras-tab-active-cyan'
                   : 'ras-nav-chat'
               }`}
-              aria-label="Open room chat"
+              aria-label={`Open room chat${chatUnreadCount > 0 ? `, ${chatUnreadCount} unread ${chatUnreadCount === 1 ? 'message' : 'messages'}` : ''}`}
+              aria-current={activeTab === 'chat' ? 'page' : undefined}
             >
               <MessageSquare className="w-4 h-4" /> Chat
+              {chatUnreadCount > 0 && (
+                <span className="ras-chat-unread-badge ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-black" aria-hidden="true">
+                  {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                </span>
+              )}
             </button>
           </div>
           {isLiveCounselor && (
@@ -1245,6 +1311,40 @@ export default function App() {
             Tap to view
           </span>
         </button>
+      )}
+
+      {chatToast && chatUnreadCount > 0 && activeTab !== 'chat' && pairing.session && (
+        <section
+          className="ras-chat-toast fixed bottom-6 left-4 z-[70] w-[min(90vw,24rem)] rounded-2xl border px-4 py-3 shadow-2xl"
+          role="status"
+          aria-live="polite"
+        >
+          <h2 className="ras-chat-toast-title text-sm font-black">
+            {chatUnreadCount === 1 ? 'New chat message' : `${chatUnreadCount} new chat messages`}
+          </h2>
+          <p className="ras-chat-toast-copy mt-1 text-sm">Open Chat to read the latest messages.</p>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('chat');
+                setChatUnreadCount(0);
+                setChatToast(null);
+              }}
+              className="ras-chat-toast-action rounded-lg px-3 py-2 text-xs font-black"
+            >
+              Open Chat
+            </button>
+            <button
+              type="button"
+              onClick={() => setChatToast(null)}
+              className="ras-chat-toast-dismiss rounded-lg px-3 py-2 text-xs font-bold"
+              aria-label="Dismiss new chat message alert"
+            >
+              Dismiss
+            </button>
+          </div>
+        </section>
       )}
 
       {/* Main Content Area */}

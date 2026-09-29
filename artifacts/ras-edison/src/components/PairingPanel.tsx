@@ -20,7 +20,7 @@ type Props = {
   needsDailyAssignment: boolean;
   onClose: () => void;
   onOffline: () => Promise<void>;
-  onCreate: (name: string, password: string) => Promise<boolean>;
+  onCreate: (name: string, password: string, programManagerPassword: string) => Promise<boolean>;
   onJoin: (name: string, code: string, password: string, groupId: string) => Promise<boolean>;
   onUpdateAssignment: (groupId: string | null) => Promise<void>;
   onRemoveMember: (memberId: string) => Promise<void>;
@@ -33,6 +33,7 @@ export default function PairingPanel(props: Props) {
   const [path, setPath] = useState<'home' | 'create' | 'join'>('home');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [programManagerPassword, setProgramManagerPassword] = useState('');
   const [code, setCode] = useState('');
   const [group, setGroup] = useState('');
   const [assignment, setAssignment] = useState('');
@@ -63,11 +64,14 @@ export default function PairingPanel(props: Props) {
   if (!open) return null;
 
   const groupName = (id: string | null) => GROUPS.find((item) => item.id === id)?.name || 'Program Manager';
-  const clearPassword = () => setPassword('');
+  const clearPassword = () => {
+    setPassword('');
+    setProgramManagerPassword('');
+  };
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (name.trim() && password.length >= 4) {
-      const ok = await props.onCreate(name.trim(), password);
+    if (name.trim() && password.length >= 4 && programManagerPassword) {
+      const ok = await props.onCreate(name.trim(), password, programManagerPassword);
       if (ok) clearPassword();
     }
   };
@@ -165,8 +169,21 @@ export default function PairingPanel(props: Props) {
                   <Field label="Room code"><input required maxLength={10} autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck="false" value={code} onChange={e => setCode(e.target.value.toUpperCase())} className="field font-mono uppercase tracking-widest" /></Field>
                 )}
               </>}
+              {path === 'create' && (
+                <Field label="Program Manager access password">
+                  <input
+                    required
+                    maxLength={128}
+                    type="password"
+                    autoComplete="off"
+                    value={programManagerPassword}
+                    onChange={event => setProgramManagerPassword(event.target.value)}
+                    className="field"
+                  />
+                </Field>
+              )}
               <Field label="Session password / PIN (4–128 characters)"><input required minLength={4} maxLength={128} type="password" autoComplete={path === 'create' ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} className="field" /></Field>
-              <button disabled={busy || !name.trim() || password.length < 4 || (path === 'join' && (!code.trim() || !group))} className={`w-full py-3 rounded-xl font-black text-slate-950 disabled:opacity-50 ${path === 'create' ? 'bg-purple-400' : 'bg-cyan-400'}`}>{busy ? 'Connecting…' : path === 'create' ? 'Create Live Session' : 'Join Live Session'}</button>
+              <button disabled={busy || !name.trim() || password.length < 4 || (path === 'create' && !programManagerPassword) || (path === 'join' && (!code.trim() || !group))} className={`w-full py-3 rounded-xl font-black text-slate-950 disabled:opacity-50 ${path === 'create' ? 'bg-purple-400' : 'bg-cyan-400'}`}>{busy ? 'Connecting…' : path === 'create' ? 'Create Live Session' : 'Join Live Session'}</button>
             </form>
           )}
 

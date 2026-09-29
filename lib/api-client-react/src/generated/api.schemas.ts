@@ -378,6 +378,11 @@ export interface PairingCreateInput {
      * @maxLength 128
      */
   password: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  programManagerPassword: string;
   state: PairingState;
   /**
      * @minLength 1

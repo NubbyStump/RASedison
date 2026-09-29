@@ -174,7 +174,7 @@ return customFetch<Session>(getCreatePairingUrl(),
 
 export const getCreatePairingMutationKey = () => ['createPairing'] as const;
 
-export const getCreatePairingMutationOptions = <TError = ErrorType<BadRequestResponse | RateLimitedResponse>,
+export const getCreatePairingMutationOptions = <TError = ErrorType<BadRequestResponse | void | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPairing>>, TError,CreatePairingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createPairing>>, TError,CreatePairingMutationVariables, TContext> => {
 
@@ -203,10 +203,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreatePairingMutationResult = NonNullable<Awaited<ReturnType<typeof createPairing>>>
     export type CreatePairingMutationBody = BodyType<PairingCreateInput>
-    export type CreatePairingMutationError = ErrorType<BadRequestResponse | RateLimitedResponse>
+    export type CreatePairingMutationError = ErrorType<BadRequestResponse | void | RateLimitedResponse>
     export type CreatePairingMutationVariables = {data: BodyType<PairingCreateInput>}
 
-    export const useCreatePairing = <TError = ErrorType<BadRequestResponse | RateLimitedResponse>,
+    export const useCreatePairing = <TError = ErrorType<BadRequestResponse | void | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPairing>>, TError,CreatePairingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createPairing>>,

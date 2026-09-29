@@ -18,6 +18,8 @@ export const createPairingBodyNameMax = 60;
 export const createPairingBodyPasswordMin = 4;
 export const createPairingBodyPasswordMax = 128;
 
+export const createPairingBodyProgramManagerPasswordMax = 128;
+
 export const createPairingBodyStateGroupsItemIdMax = 80;
 
 export const createPairingBodyStateGroupsItemNameMax = 100;
@@ -137,6 +139,7 @@ export const createPairingBodyAssignmentDateRegExp = new RegExp('^\\d{4}-(0[1-9]
 export const CreatePairingBody = zod.object({
   "name": zod.string().min(1).max(createPairingBodyNameMax),
   "password": zod.string().min(createPairingBodyPasswordMin).max(createPairingBodyPasswordMax),
+  "programManagerPassword": zod.string().min(1).max(createPairingBodyProgramManagerPasswordMax),
   "state": zod.object({
   "groups": zod.array(zod.object({
   "id": zod.string().min(1).max(createPairingBodyStateGroupsItemIdMax),

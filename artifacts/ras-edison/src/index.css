@@ -415,6 +415,42 @@
   border-color: #b8dcd6;
 }
 
+.ras-scoreboard-nav .ras-chat-unread-badge {
+  background: #b54748;
+  color: #fffefa !important;
+}
+
+.ras-workspace-shell .ras-chat-toast {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+  border-color: #bfdad0 !important;
+  background: #fffefa !important;
+  color: #264c47 !important;
+  box-shadow: 0 12px 32px rgba(37, 68, 60, .18);
+}
+
+.ras-workspace-shell .ras-chat-toast-title {
+  color: #173d39 !important;
+}
+
+.ras-workspace-shell .ras-chat-toast-copy {
+  color: #697a72 !important;
+}
+
+.ras-workspace-shell .ras-chat-toast-action {
+  background: #177c8d;
+  color: #fffefa !important;
+}
+
+.ras-workspace-shell .ras-chat-toast-action:hover {
+  background: #126976;
+}
+
+.ras-workspace-shell .ras-chat-toast-dismiss {
+  border: 1px solid #d7e3dc;
+  background: #fffefa;
+  color: #47645d !important;
+}
+
 .ras-scoreboard .ras-assigned-banner {
   background: #effcf9;
   border-color: #79dce1;

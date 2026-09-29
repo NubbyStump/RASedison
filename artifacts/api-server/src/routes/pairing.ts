@@ -148,6 +148,14 @@ export async function passwordMatches(password: string, encoded: string): Promis
   }
 }
 
+function programManagerPasswordMatches(password: string): boolean {
+  const configuredPassword = process.env.PROGRAM_MANAGER_PASSWORD;
+  if (!configuredPassword) return false;
+  const actualHash = createHash("sha256").update(password).digest();
+  const expectedHash = createHash("sha256").update(configuredPassword).digest();
+  return timingSafeEqual(actualHash, expectedHash);
+}
+
 function roomHasGroup(state: unknown, groupId: string): boolean {
   if (!state || typeof state !== "object") return false;
   const groups = (state as { groups?: unknown }).groups;
@@ -702,6 +710,14 @@ router.post("/pairing/create", async (req, res): Promise<void> => {
   const parsed = CreatePairingBody.strict().safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+  if (!process.env.PROGRAM_MANAGER_PASSWORD) {
+    res.status(503).json({ error: "Program Manager access is not configured" });
+    return;
+  }
+  if (!programManagerPasswordMatches(parsed.data.programManagerPassword)) {
+    res.status(401).json({ error: "Invalid Program Manager access password" });
     return;
   }
   const name = parsed.data.name.trim();

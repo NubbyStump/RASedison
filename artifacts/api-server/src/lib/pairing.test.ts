@@ -322,6 +322,8 @@ test("browser push registration is counselor-only and validates subscription end
 });
 
 test("pairing HTTP lifecycle remains functional alongside message dismissal", async () => {
+  const originalProgramManagerPassword = process.env.PROGRAM_MANAGER_PASSWORD;
+  process.env.PROGRAM_MANAGER_PASSWORD = randomUUID();
   const server = app.listen(0);
   await new Promise<void>(resolve => server.once("listening", resolve));
   const address = server.address();
@@ -338,9 +340,10 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
   };
   try {
     const password = "test-room-password";
+    const programManagerPassword = process.env.PROGRAM_MANAGER_PASSWORD!;
     const assignmentDate = "2026-09-24";
     const owner = await request("/create", {
-      name: "Manager", password, assignmentDate, groupId: null, state: baseState(),
+      name: "Manager", password, programManagerPassword, assignmentDate, groupId: null, state: baseState(),
     });
     roomIds.push(owner.roomId);
     assert.ok(owner.token);
@@ -401,6 +404,8 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     await request("/end", undefined, owner.token);
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    if (originalProgramManagerPassword === undefined) delete process.env.PROGRAM_MANAGER_PASSWORD;
+    else process.env.PROGRAM_MANAGER_PASSWORD = originalProgramManagerPassword;
   }
 });
 
@@ -1298,4 +1303,47 @@ test("member removal enforces owner, room, and owner-member boundaries and revok
     }),
     /Unauthorized/,
   );
+});
+
+test("Program Manager session creation requires its separate access password", async () => {
+  const previousPassword = process.env.PROGRAM_MANAGER_PASSWORD;
+  const managerPassword = randomUUID();
+  const roomPassword = randomUUID();
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const endpoint = `http://127.0.0.1:${address.port}/api/pairing/create`;
+  const createRoom = (accessPassword: string) => fetch(endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: "Program Manager password test",
+      password: roomPassword,
+      programManagerPassword: accessPassword,
+      state: baseState(),
+      groupId: null,
+      assignmentDate: new Date().toISOString().slice(0, 10),
+    }),
+  });
+
+  try {
+    delete process.env.PROGRAM_MANAGER_PASSWORD;
+    const unconfigured = await createRoom(managerPassword);
+    assert.equal(unconfigured.status, 503);
+
+    process.env.PROGRAM_MANAGER_PASSWORD = managerPassword;
+    const rejected = await createRoom("incorrect-access-password");
+    assert.equal(rejected.status, 401);
+
+    const created = await createRoom(managerPassword);
+    assert.equal(created.status, 200);
+    const session = await created.json() as Session;
+    roomIds.push(session.roomId);
+    assert.equal(session.role, "owner");
+  } finally {
+    if (previousPassword === undefined) delete process.env.PROGRAM_MANAGER_PASSWORD;
+    else process.env.PROGRAM_MANAGER_PASSWORD = previousPassword;
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });
