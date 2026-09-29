@@ -707,6 +707,10 @@ export default function App() {
 
   const handleSaveCustomActivity = async (e) => {
     e.preventDefault();
+    if (pairing.isPaired && newActivity.type === 'Super Scramble' && !isLiveOwner) {
+      setActivityError('Only the Program Manager can create or change a Super Scramble.');
+      return;
+    }
     const title = newActivity.title.trim();
     const location = newActivity.location.trim();
     const scrambledPhrase = newActivity.scrambledPhrase.trim();
@@ -1478,7 +1482,11 @@ export default function App() {
 
                 {canCreateActivities && <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => { setNewActivity(createEmptyActivity()); setActivityError(''); setShowAddModal(true); }}
+                    onClick={() => {
+                      setNewActivity({ ...createEmptyActivity(), type: isLiveCounselor ? 'Mission' : 'Super Scramble' });
+                      setActivityError('');
+                      setShowAddModal(true);
+                    }}
                     className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition flex items-center gap-2 shadow-md"
                   >
                     <PlusCircle className="w-4 h-4" /> Create Custom Activity
@@ -1616,7 +1624,11 @@ export default function App() {
                   <p className="text-sm text-slate-400 mt-1 mb-5">Add a custom activity to start building your library again.</p>
                   {canCreateActivities && <button
                     type="button"
-                    onClick={() => { setNewActivity(createEmptyActivity()); setActivityError(''); setShowAddModal(true); }}
+                    onClick={() => {
+                      setNewActivity({ ...createEmptyActivity(), type: isLiveCounselor ? 'Mission' : 'Super Scramble' });
+                      setActivityError('');
+                      setShowAddModal(true);
+                    }}
                     className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-2xl font-extrabold text-sm transition inline-flex items-center gap-2"
                   >
                     <PlusCircle className="w-4 h-4" /> Add Activity
@@ -1852,7 +1864,11 @@ export default function App() {
             <h3 className="text-xl font-black text-white flex items-center gap-2">
               <PlusCircle className="w-5 h-5 text-amber-400" /> Create a Custom Activity
             </h3>
-            <p className="text-sm text-slate-400">Enter the activity yourself. Super Scramble prompts and answers are saved exactly as written—nothing is generated.</p>
+            <p className="text-sm text-slate-400">
+              {isLiveCounselor
+                ? 'Create a regular mission. Only the Program Manager can create or change a Super Scramble.'
+                : 'Enter the activity yourself. Super Scramble prompts and answers are saved exactly as written—nothing is generated.'}
+            </p>
 
             <form onSubmit={handleSaveCustomActivity} className="space-y-4">
               <label className="block">
@@ -1863,7 +1879,7 @@ export default function App() {
                   onChange={(e) => setNewActivity({ ...newActivity, type: e.target.value })}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-amber-500"
                 >
-                  <option value="Super Scramble">Super Scramble</option>
+                  {(!pairing.isPaired || isLiveOwner) && <option value="Super Scramble">Super Scramble</option>}
                   <option value="Mission">Mission</option>
                 </select>
               </label>

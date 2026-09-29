@@ -600,7 +600,7 @@ test("Program Managers can set any group's total immediately and record the actu
   assert.equal(updatedState.pendingPointApprovals?.length ?? 0, 0);
 });
 
-test("counselors can save fully custom missions and scrambles without gaining delete access", async () => {
+test("counselors can save regular missions but cannot set Super Scrambles or delete activities", async () => {
   const [room] = await db.insert(pairingRooms).values({
     code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
     state: baseState(),
@@ -630,7 +630,17 @@ test("counselors can save fully custom missions and scrambles without gaining de
     hint: "A value we practice together",
     steps: "Write the prompt on the board.",
   };
-  const withScramble = await executePairingCommand(counselor, {
+  await assert.rejects(
+    executePairingCommand(counselor, {
+      id: randomUUID(),
+      type: "addActivity",
+      payload: { activity: scramble },
+    }),
+    /Only the Program Manager can set a Super Scramble/,
+  );
+  assert.equal((await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id)))[0].state.activities.length, 0);
+
+  const withScramble = await executePairingCommand(owner, {
     id: randomUUID(),
     type: "addActivity",
     payload: { activity: scramble },

@@ -533,6 +533,12 @@ export async function executePairingCommand(
         state.pendingPointApprovals = requests.filter((item) => (
           (item.status ?? "pending") === "pending" || requests.indexOf(item) >= requests.length - APPROVAL_HISTORY_LIMIT
         ));
+      } else if (
+        command.type === "addActivity"
+        && command.payload.activity.type === "Super Scramble"
+        && activeMember.role !== "owner"
+      ) {
+        return { error: "Only the Program Manager can set a Super Scramble" as const };
       } else {
         Object.assign(state, reducePairingState(state, command));
         if (command.type === "addPoints" && state.history[0]) {
