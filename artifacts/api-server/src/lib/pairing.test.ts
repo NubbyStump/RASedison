@@ -525,15 +525,6 @@ test("counselors can request an exact assigned-group score for owner approval", 
   assert.equal(request?.amount, 25);
   assert.equal((submitted.state as PairingState).groups[0].score, 20);
 
-  await assert.rejects(
-    executePairingCommand(owner, {
-      id: randomUUID(),
-      type: "setGroupPoints",
-      payload: { groupId: "ladybugs", score: 45, reason: "Owner cannot submit" },
-    }),
-    /Counselor role required/,
-  );
-
   await executePairingCommand(owner, {
     id: randomUUID(),
     type: "addPoints",
@@ -571,6 +562,42 @@ test("counselors can request an exact assigned-group score for owner approval", 
     resolvedState.pendingPointApprovals?.find((item) => item.id === autoRequest?.id)?.status,
     "autoApproved",
   );
+});
+
+test("Program Managers can set any group's total immediately and record the actual score delta", async () => {
+  const state = baseState();
+  state.groups[0].score = 20;
+  state.groups.push({ id: "tigers", name: "Tigers", score: 12 });
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state,
+  }).returning();
+  roomIds.push(room.id);
+  const [owner] = await db.insert(pairingMembers).values({
+    roomId: room.id,
+    name: "Manager",
+    role: "owner",
+    tokenHash: randomUUID(),
+  }).returning();
+
+  const updated = await executePairingCommand(owner, {
+    id: randomUUID(),
+    type: "setGroupPoints",
+    payload: {
+      groupId: "tigers",
+      score: 37,
+      reason: "Correct the group tally",
+      specialMentions: "Verified with the scoreboard",
+    },
+  });
+  const updatedState = updated.state as PairingState;
+  assert.equal(updatedState.groups.find((group) => group.id === "ladybugs")?.score, 20);
+  assert.equal(updatedState.groups.find((group) => group.id === "tigers")?.score, 37);
+  assert.equal(updatedState.history[0].amount, 25);
+  assert.equal(updatedState.history[0].reason, "Correct the group tally");
+  assert.equal(updatedState.history[0].specialMentions, "Verified with the scoreboard");
+  assert.equal(updatedState.history[0].submittedByName, "Manager");
+  assert.equal(updatedState.pendingPointApprovals?.length ?? 0, 0);
 });
 
 test("counselors can save fully custom missions and scrambles without gaining delete access", async () => {

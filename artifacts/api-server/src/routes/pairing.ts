@@ -480,6 +480,21 @@ export async function executePairingCommand(
         } else {
           return { error: "Program Manager approval is unavailable" as const };
         }
+      } else if (command.type === "setGroupPoints" && activeMember.role === "owner") {
+        const group = state.groups.find((item) => item.id === command.payload.groupId);
+        if (!group) throw new Error("Group not found");
+        const oldScore = group.score;
+        group.score = command.payload.score;
+        state.history = [{
+          id: command.id,
+          groupId: group.id,
+          groupName: group.name,
+          amount: group.score - oldScore,
+          reason: command.payload.reason,
+          ...(command.payload.specialMentions ? { specialMentions: command.payload.specialMentions } : {}),
+          submittedByName: activeMember.name,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        }, ...state.history].slice(0, 36);
       } else if (command.type === "reduceGroupPoints" || command.type === "setGroupPoints") {
         return { error: "Counselor role required for this command" as const };
       } else if (command.type === "approvePoints" || command.type === "rejectPoints") {

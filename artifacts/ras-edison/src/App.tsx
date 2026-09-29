@@ -138,7 +138,7 @@ export default function App() {
 
   const [reasonInput, setReasonInput] = useState({ ladybugs: '', jellyfish: '', tigers: '' });
   const [specialMentionsInput, setSpecialMentionsInput] = useState({ ladybugs: '', jellyfish: '', tigers: '' });
-  const [setScoreInput, setSetScoreInput] = useState('');
+  const [setScoreInputs, setSetScoreInputs] = useState<Record<string, string>>({});
   const [reasonErrors, setReasonErrors] = useState({});
   const [pointActionError, setPointActionError] = useState('');
   const [approvalClock, setApprovalClock] = useState(() => Date.now());
@@ -214,7 +214,7 @@ export default function App() {
       ?? null
     : pairing.currentGroupId;
   useEffect(() => {
-    setSetScoreInput('');
+    setSetScoreInputs({});
   }, [assignedGroupId]);
   const ledGroup = assignedGroupId
     ? groups.find((group) => group.id === assignedGroupId) || null
@@ -512,11 +512,14 @@ export default function App() {
   };
 
   const handleSetGroupPoints = async (groupId) => {
-    if (!isLiveCounselor || assignedGroupId !== groupId || !pairing.isPaired) {
-      setPointActionError('Setting points is only available for your assigned group in a live counselor session.');
+    if (
+      !pairing.isPaired
+      || (!isLiveOwner && !(isLiveCounselor && assignedGroupId === groupId))
+    ) {
+      setPointActionError('In a live session, the Program Manager can set any group total and counselors can set only their assigned group.');
       return;
     }
-    const normalizedScore = setScoreInput.trim();
+    const normalizedScore = (setScoreInputs[groupId] ?? '').trim();
     if (!/^\d+$/.test(normalizedScore)) {
       setPointActionError('Enter a whole-number score from 0 to 1,000,000,000.');
       return;
@@ -556,9 +559,9 @@ export default function App() {
       });
       setReasonInput(prev => ({ ...prev, [groupId]: '' }));
       setSpecialMentionsInput(prev => ({ ...prev, [groupId]: '' }));
-      setSetScoreInput('');
+      setSetScoreInputs(prev => ({ ...prev, [groupId]: '' }));
     } catch (error) {
-      setPointActionError(error?.message || 'Unable to request this group score.');
+      setPointActionError(error?.message || 'Unable to set this group score.');
     }
   };
 
@@ -1108,6 +1111,7 @@ export default function App() {
               {pointsGroups.map((group) => {
                 const isLeading = group.score === maxScore && maxScore > 0;
                 const isMyGroup = group.id === assignedGroupId;
+                const setScoreValue = setScoreInputs[group.id] ?? '';
                 const cardTheme = ASSIGNED_GROUP_PAGE_THEMES[group.id] || assignedGroupTheme;
                 return (
                   <div 
@@ -1148,34 +1152,40 @@ export default function App() {
                         </div>
                       </div>
 
-                        {isLiveCounselor && isMyGroup && (
-                          <div className="mb-4 rounded-2xl border border-red-500/35 bg-red-950/20 p-3">
+                        {(isLiveOwner || (isLiveCounselor && isMyGroup)) && (
+                          <div className={`mb-4 rounded-2xl border p-3 ${isLiveOwner ? 'border-cyan-500/35 bg-cyan-950/20' : 'border-red-500/35 bg-red-950/20'}`}>
                             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                              <span className="text-sm font-black text-red-100">Change points for {group.name}</span>
-                              <span className="text-[11px] font-semibold text-red-200/80">Program Manager approval required</span>
+                              <span className={`text-sm font-black ${isLiveOwner ? 'text-cyan-100' : 'text-red-100'}`}>
+                                {isLiveOwner ? `Set total for ${group.name}` : `Change points for ${group.name}`}
+                              </span>
+                              <span className={`text-[11px] font-semibold ${isLiveOwner ? 'text-cyan-200/80' : 'text-red-200/80'}`}>
+                                {isLiveOwner ? 'Applies immediately' : 'Program Manager approval required'}
+                              </span>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleReduceGroupPoints(group.id, 'half')}
-                                disabled={group.score <= 0}
-                                aria-label={`Request removal of half the points from ${group.name}, rounded up`}
-                                className="bg-red-500/15 hover:bg-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-red-200 border border-red-500/40 rounded-xl px-2 py-2 font-bold text-xs transition active:scale-95 min-h-[44px]"
-                              >
-                                Remove half (−{Math.ceil(group.score / 2)})
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleReduceGroupPoints(group.id, 'all')}
-                                disabled={group.score <= 0}
-                                aria-label={`Request removal of all ${group.score} points from ${group.name}`}
-                                className="bg-red-500/25 hover:bg-red-500/35 disabled:opacity-40 disabled:cursor-not-allowed text-red-100 border border-red-500/50 rounded-xl px-2 py-2 font-bold text-xs transition active:scale-95 min-h-[44px]"
-                              >
-                                Remove all (−{group.score})
-                              </button>
-                            </div>
-                            <div className="mt-3 border-t border-red-500/25 pt-3">
-                              <label htmlFor={`points-set-total-${group.id}`} className="block text-xs font-bold text-red-100 mb-1">
+                            {isLiveCounselor && isMyGroup && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleReduceGroupPoints(group.id, 'half')}
+                                  disabled={group.score <= 0}
+                                  aria-label={`Request removal of half the points from ${group.name}, rounded up`}
+                                  className="bg-red-500/15 hover:bg-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-red-200 border border-red-500/40 rounded-xl px-2 py-2 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                                >
+                                  Remove half (−{Math.ceil(group.score / 2)})
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleReduceGroupPoints(group.id, 'all')}
+                                  disabled={group.score <= 0}
+                                  aria-label={`Request removal of all ${group.score} points from ${group.name}`}
+                                  className="bg-red-500/25 hover:bg-red-500/35 disabled:opacity-40 disabled:cursor-not-allowed text-red-100 border border-red-500/50 rounded-xl px-2 py-2 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                                >
+                                  Remove all (−{group.score})
+                                </button>
+                              </div>
+                            )}
+                            <div className={`mt-3 border-t pt-3 ${isLiveOwner ? 'border-cyan-500/25' : 'border-red-500/25'}`}>
+                              <label htmlFor={`points-set-total-${group.id}`} className={`block text-xs font-bold mb-1 ${isLiveOwner ? 'text-cyan-100' : 'text-red-100'}`}>
                                 Set group total
                               </label>
                               <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
@@ -1186,28 +1196,28 @@ export default function App() {
                                   min="0"
                                   max="1000000000"
                                   step="1"
-                                  value={setScoreInput}
+                                  value={setScoreValue}
                                   onChange={(event) => {
-                                    setSetScoreInput(event.target.value);
+                                    setSetScoreInputs(prev => ({ ...prev, [group.id]: event.target.value }));
                                     setPointActionError('');
                                   }}
                                   aria-label={`New total for ${group.name}`}
                                   placeholder={`Current total: ${group.score}`}
-                                  className="min-w-0 bg-slate-950/70 border border-red-500/35 rounded-xl px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:border-red-300"
+                                  className={`min-w-0 bg-slate-950/70 border rounded-xl px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none ${isLiveOwner ? 'border-cyan-500/35 focus:border-cyan-300' : 'border-red-500/35 focus:border-red-300'}`}
                                 />
                                 <button
                                   type="button"
                                   onClick={() => handleSetGroupPoints(group.id)}
                                   disabled={
-                                    !/^\d+$/.test(setScoreInput.trim())
-                                    || !Number.isSafeInteger(Number(setScoreInput))
-                                    || Number(setScoreInput) > 1_000_000_000
-                                    || Number(setScoreInput) === group.score
+                                    !/^\d+$/.test(setScoreValue.trim())
+                                    || !Number.isSafeInteger(Number(setScoreValue))
+                                    || Number(setScoreValue) > 1_000_000_000
+                                    || Number(setScoreValue) === group.score
                                   }
-                                  aria-label={`Request setting ${group.name} to ${setScoreInput || 'a new'} points`}
-                                  className="bg-red-500/25 hover:bg-red-500/35 disabled:opacity-40 disabled:cursor-not-allowed text-red-100 border border-red-500/50 rounded-xl px-3 py-2 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                                  aria-label={`${isLiveOwner ? 'Set' : 'Request setting'} ${group.name} total to ${setScoreValue || 'a new'} points`}
+                                  className={`disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-3 py-2 font-bold text-xs transition active:scale-95 min-h-[44px] ${isLiveOwner ? 'bg-cyan-500/25 hover:bg-cyan-500/35 text-cyan-100 border border-cyan-500/50' : 'bg-red-500/25 hover:bg-red-500/35 text-red-100 border border-red-500/50'}`}
                                 >
-                                  Request set
+                                  {isLiveOwner ? 'Set total' : 'Request set'}
                                 </button>
                               </div>
                             </div>
