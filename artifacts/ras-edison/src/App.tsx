@@ -1264,7 +1264,7 @@ export default function App() {
                   <div className="ras-assigned-kicker text-[11px] font-black uppercase tracking-widest">Your Assigned Group</div>
                   <div className="ras-assigned-name font-black">{ledGroup.name}</div>
                 </div>
-                <span className="ml-auto rounded-full border border-current/15 bg-white/60 px-3 py-1 text-[11px] font-bold text-[#3b7772]">Counselor view</span>
+                {isLiveCounselor && <span className="ml-auto rounded-full border border-current/15 bg-white/60 px-3 py-1 text-[11px] font-bold text-[#3b7772]">Counselor view</span>}
               </div>
             )}
             {/* Status Leader Banner */}
@@ -1303,7 +1303,9 @@ export default function App() {
                   <Calendar className="ras-month-icon w-5 h-5" />
                   <div>
                     <div className="ras-month-label text-xs font-medium">Month Ends In</div>
-                    <div className="ras-month-value text-sm font-extrabold">{getDaysLeftInMonth()} Days Remaining</div>
+                    <div className="ras-month-value text-sm font-extrabold">
+                      {getDaysLeftInMonth()} {getDaysLeftInMonth() === 1 ? 'Day' : 'Days'} Remaining
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1343,7 +1345,7 @@ export default function App() {
                       <div key={request.id} className={`ras-approval-row ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/75 border-slate-700/70'} border rounded-2xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3`}>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`font-black px-2 py-1 rounded-lg text-xs ${isSetScoreRequest ? 'bg-cyan-500/20 text-cyan-200' : request.amount >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
+                            <span className={`ras-approval-amount ${isSetScoreRequest ? 'ras-approval-amount-set' : request.amount >= 0 ? 'ras-approval-amount-positive' : 'ras-approval-amount-negative'} font-black px-2 py-1 rounded-lg text-xs ${isSetScoreRequest ? 'bg-cyan-500/20 text-cyan-200' : request.amount >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
                               {isSetScoreRequest ? `Set total to ${request.setScore}` : request.amount >= 0 ? `+${request.amount}` : request.amount}
                             </span>
                             <span className="ras-request-group font-bold">{request.groupName}</span>
@@ -1351,14 +1353,14 @@ export default function App() {
                           </div>
                           <p className="ras-request-reason text-sm mt-1 italic">“{request.reason}”</p>
                           {request.specialMentions && (
-                            <p className="text-xs text-cyan-200 mt-1"><span className="font-bold">Special mentions:</span> {request.specialMentions}</p>
+                            <p className="ras-approval-mentions text-xs mt-1"><span className="font-bold">Special mentions:</span> {request.specialMentions}</p>
                           )}
                           <p className="ras-approval-meta text-xs mt-1">Requested by {request.submittedByName}</p>
                         </div>
                         {isLiveOwner && (
                           <div className="flex items-center gap-2 shrink-0">
-                            <button type="button" onClick={() => handlePointApproval('approvePoints', request.id)} className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl px-3 py-2 text-xs font-black min-h-[44px]">Approve</button>
-                            <button type="button" onClick={() => handlePointApproval('rejectPoints', request.id)} className="bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/40 rounded-xl px-3 py-2 text-xs font-black min-h-[44px]">Reject</button>
+                            <button type="button" onClick={() => handlePointApproval('approvePoints', request.id)} className="ras-approval-approve bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl px-3 py-2 text-xs font-black min-h-[44px]">Approve</button>
+                            <button type="button" onClick={() => handlePointApproval('rejectPoints', request.id)} className="ras-approval-reject bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/40 rounded-xl px-3 py-2 text-xs font-black min-h-[44px]">Reject</button>
                           </div>
                         )}
                       </div>
@@ -1369,7 +1371,7 @@ export default function App() {
             )}
 
             {/* Score Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {pointsGroups.map((group) => {
                 const isLeading = group.score === maxScore && maxScore > 0;
                 const isMyGroup = group.id === assignedGroupId;
@@ -1377,9 +1379,10 @@ export default function App() {
                 const cardTheme = ASSIGNED_GROUP_PAGE_THEMES[group.id] || assignedGroupTheme;
                 return (
                   <div 
-                    key={group.id} 
+                    key={group.id}
+                    data-group-id={group.id}
                     style={assignedGroupTheme ? getGroupThemeStyle(cardTheme) : undefined}
-                    className={`ras-score-card ${assignedGroupTheme ? 'ras-theme-panel-raised' : 'bg-slate-800/90'} rounded-3xl p-5 border transition-all duration-300 relative flex flex-col justify-between ${
+                    className={`ras-score-card ${assignedGroupTheme ? 'ras-theme-panel-raised' : 'bg-slate-800/90'} rounded-3xl p-4 border transition-all duration-300 relative flex flex-col justify-between ${
                       isMyGroup
                         ? `ras-card-assigned ${assignedGroupTheme?.card || 'border-cyan-400/90 shadow-[0_0_35px_rgba(34,211,238,0.22)] ring-2 ring-cyan-400/30'}`
                         : isLeading ? `ras-card-leading border-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.2)] ring-2 ring-emerald-400/20` : assignedGroupTheme ? cardTheme?.cardIdle || 'border-slate-700/70' : 'border-slate-700/70'
@@ -1503,7 +1506,7 @@ export default function App() {
                             setReasonInput({ ...reasonInput, [group.id]: e.target.value });
                             setReasonErrors(prev => ({ ...prev, [group.id]: '' }));
                           }}
-                          className={`w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900/80 border-slate-700 focus:border-emerald-500'} border text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-400 focus:outline-none transition`}
+                          className={`ras-score-field w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900/80 border-slate-700 focus:border-emerald-500'} border text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-400 focus:outline-none transition`}
                         />
                         {reasonErrors[group.id] && (
                           <p id={`points-reason-error-${group.id}`} role="alert" className="text-xs text-red-300 mt-1">
@@ -1523,7 +1526,7 @@ export default function App() {
                            placeholder="Names or shout-outs for the log"
                           value={specialMentionsInput[group.id] || ''}
                           onChange={(e) => setSpecialMentionsInput(prev => ({ ...prev, [group.id]: e.target.value }))}
-                          className={`w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900/80 border-slate-700 focus:border-cyan-500'} border text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-400 focus:outline-none transition`}
+                          className={`ras-score-field w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900/80 border-slate-700 focus:border-cyan-500'} border text-xs rounded-xl px-3.5 py-2 text-slate-200 placeholder-slate-400 focus:outline-none transition`}
                         />
                       </div>
 
@@ -1623,7 +1626,7 @@ export default function App() {
                       <div key={item.id} className={`ras-history-row ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/70 border-slate-700/60'} border rounded-2xl p-3 flex items-start justify-between gap-3 text-sm`}>
                         <div className="flex items-start gap-3 min-w-0">
                           <span className={`font-black px-2.5 py-1 rounded-xl text-xs ${
-                            item.amount > 0 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                            item.amount > 0 ? 'ras-history-amount-positive bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'ras-history-amount-negative bg-red-500/20 text-red-300 border border-red-500/30'
                           }`}>
                             {item.amount > 0 ? `+${item.amount}` : item.amount}
                           </span>
@@ -1635,7 +1638,7 @@ export default function App() {
                             {(item.submittedByName || item.specialMentions) && (
                               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400">
                                 {item.submittedByName && <span>Entered by {item.submittedByName}</span>}
-                                {item.specialMentions && <span><strong className="text-cyan-200">Special mentions:</strong> {item.specialMentions}</span>}
+                                {item.specialMentions && <span className="ras-history-mentions"><strong>Special mentions:</strong> {item.specialMentions}</span>}
                               </div>
                             )}
                           </div>
@@ -1668,10 +1671,10 @@ export default function App() {
                          <div key={rec.id} className={`ras-archive-row ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900/80 border-slate-700/60'} border rounded-2xl p-3 text-xs`}>
                            <div className="flex items-center justify-between font-bold mb-1">
                              <span className="ras-archive-month">{rec.month}</span>
-                            <span className="text-emerald-400">Winner: {rec.winner}</span>
+                             <span className="ras-archive-winner">Winner: {rec.winner}</span>
                           </div>
-                          <div className="text-slate-400 text-[11px] mb-2">{rec.scores}</div>
-                            <label className={`flex items-center gap-2 text-slate-300 font-semibold ${pairing.isPaired && !isLiveOwner ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                          <div className="ras-archive-scores text-[11px] mb-2">{rec.scores}</div>
+                            <label className={`ras-reward-label flex items-center gap-2 font-semibold ${pairing.isPaired && !isLiveOwner ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                             <input
                               type="checkbox"
                               checked={rec.rewardClaimed}
@@ -1698,7 +1701,7 @@ export default function App() {
                 {(!pairing.isPaired || isLiveOwner) && (
                   <button
                     onClick={handleResetMonth}
-                    className={`w-full ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900 border-slate-700'} hover:bg-red-950/40 text-red-400 hover:text-red-300 border hover:border-red-500/40 rounded-2xl py-3 text-xs font-extrabold transition flex items-center justify-center gap-2`}
+                    className={`ras-reset-month w-full ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900 border-slate-700'} hover:bg-red-950/40 text-red-400 hover:text-red-300 border hover:border-red-500/40 rounded-2xl py-3 text-xs font-extrabold transition flex items-center justify-center gap-2`}
                   >
                     <RotateCcw className="w-4 h-4" /> Reset Scores For New Month
                   </button>
