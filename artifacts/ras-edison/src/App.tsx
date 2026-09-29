@@ -195,6 +195,12 @@ export default function App() {
   const [activityError, setActivityError] = useState('');
   const activitySubmittingRef = useRef(false);
   const [activitySubmitting, setActivitySubmitting] = useState(false);
+  const [activityAwardGroupId, setActivityAwardGroupId] = useState('');
+  const [activityAwardSpecialMention, setActivityAwardSpecialMention] = useState('');
+  const [activityAwardStatus, setActivityAwardStatus] = useState('');
+  const [activityAwardError, setActivityAwardError] = useState('');
+  const [activityAwardSubmitting, setActivityAwardSubmitting] = useState(false);
+  const activityAwardSubmittingRef = useRef(false);
 
   const pairing = usePairing();
   // Keep this hook above every render return (including projector mode) so
@@ -213,6 +219,12 @@ export default function App() {
       ?? pairing.session?.members.find((member) => member.id === pairing.session?.memberId)?.groupId
       ?? null
     : pairing.currentGroupId;
+  const selectedActivityAwardGroupId = isLiveCounselor
+    ? assignedGroupId ?? ''
+    : groups.some((group) => group.id === activityAwardGroupId)
+      ? activityAwardGroupId
+      : groups[0]?.id ?? '';
+  const activityAwardGroup = groups.find((group) => group.id === selectedActivityAwardGroupId) ?? null;
   useEffect(() => {
     setSetScoreInputs({});
   }, [assignedGroupId]);
@@ -763,6 +775,74 @@ export default function App() {
     }
     setShowAddModal(false);
     setNewActivity(createEmptyActivity());
+    setActivityAwardSpecialMention('');
+    setActivityAwardStatus('');
+    setActivityAwardError('');
+  };
+
+  const handleAwardActivityPoints = async () => {
+    if (!currentActivity || activityAwardSubmittingRef.current) return;
+    const targetGroup = activityAwardGroup;
+    const groupId = selectedActivityAwardGroupId;
+    const amount = Number(currentActivity.points);
+    if (!groupId || !targetGroup) {
+      setActivityAwardError('Choose a group to receive the activity points.');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setActivityAwardError('This activity needs a positive point value before it can be awarded.');
+      return;
+    }
+
+    const reason = `${currentActivity.type}: ${currentActivity.title}`.slice(0, 500);
+    const specialMentions = activityAwardSpecialMention.trim();
+    setActivityAwardError('');
+    setActivityAwardStatus('');
+    activityAwardSubmittingRef.current = true;
+    setActivityAwardSubmitting(true);
+    try {
+      if (pairing.isPaired) {
+        await pairing.command({
+          type: 'addPoints',
+          payload: {
+            groupId,
+            amount,
+            reason,
+            ...(specialMentions ? { specialMentions } : {}),
+          },
+        });
+      } else {
+        const nextScore = Math.min(1_000_000_000, targetGroup.score + amount);
+        const actualAmount = nextScore - targetGroup.score;
+        if (actualAmount <= 0) {
+          throw new Error(`${targetGroup.name} is already at the point limit.`);
+        }
+        setLocalGroups((previous) => previous.map((group) => (
+          group.id === groupId ? { ...group, score: nextScore } : group
+        )));
+        setLocalHistory((previous) => [{
+          id: Date.now().toString(),
+          groupId,
+          groupName: targetGroup.name,
+          amount: actualAmount,
+          reason,
+          ...(specialMentions ? { specialMentions } : {}),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }, ...previous].slice(0, 36));
+      }
+
+      setActivityAwardSpecialMention('');
+      setActivityAwardStatus(
+        pairing.isPaired && isLiveCounselor
+          ? `${amount.toLocaleString()} points requested for ${targetGroup.name}; awaiting Program Manager approval.`
+          : `${amount.toLocaleString()} points added to ${targetGroup.name}.`,
+      );
+    } catch (error) {
+      setActivityAwardError(error?.message || 'Unable to award this activity’s points.');
+    } finally {
+      activityAwardSubmittingRef.current = false;
+      setActivityAwardSubmitting(false);
+    }
   };
 
 
@@ -1528,7 +1608,12 @@ export default function App() {
                         <button
                           key={activity.id}
                           type="button"
-                          onClick={() => setCurrentActivity(activity)}
+                          onClick={() => {
+                            setCurrentActivity(activity);
+                            setActivityAwardSpecialMention('');
+                            setActivityAwardStatus('');
+                            setActivityAwardError('');
+                          }}
                           aria-pressed={selected}
                           className={`text-left rounded-2xl border p-4 transition ${selected ? 'border-amber-400 bg-amber-500/10' : assignedGroupTheme ? 'ras-theme-inset hover:border-slate-500' : 'border-slate-700 bg-slate-900/70 hover:border-slate-500'}`}
                         >
@@ -1630,6 +1715,76 @@ export default function App() {
                         <p className="text-slate-200">{currentActivity.safety}</p>
                       </div>
                     )}
+                  </div>
+
+                  <div className={`${assignedGroupTheme ? 'ras-theme-panel' : 'bg-emerald-950/25 border-emerald-500/30'} border rounded-2xl p-4 space-y-3`}>
+                    <div>
+                      <h4 className="text-sm font-black text-emerald-200">Award {currentActivity.type} points</h4>
+                      <p className="text-xs text-slate-300 mt-1">
+                        This activity is worth {Number(currentActivity.points || 0).toLocaleString()} points.
+                        {isLiveCounselor ? ' Your request goes to the Program Manager for approval.' : ' The points and mention will be saved in the group history.'}
+                      </p>
+                    </div>
+
+                    {isLiveCounselor ? (
+                      <p className="text-xs text-slate-200">
+                        Awarding to: <span className="font-bold">{activityAwardGroup?.name || 'No group assigned'}</span>
+                      </p>
+                    ) : (
+                      <label className="block">
+                        <span className="block text-xs font-bold text-slate-300 mb-1">Group receiving points</span>
+                        <select
+                          value={selectedActivityAwardGroupId}
+                          onChange={(event) => {
+                            setActivityAwardGroupId(event.target.value);
+                            setActivityAwardStatus('');
+                            setActivityAwardError('');
+                          }}
+                          className={`w-full ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900 border-slate-700'} border rounded-xl px-3 py-2.5 text-sm text-white`}
+                        >
+                          {groups.map((group) => (
+                            <option key={group.id} value={group.id}>{group.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+
+                    <label className="block">
+                      <span className="block text-xs font-bold text-slate-300 mb-1">Special mention (optional)</span>
+                      <textarea
+                        value={activityAwardSpecialMention}
+                        onChange={(event) => {
+                          setActivityAwardSpecialMention(event.target.value);
+                          setActivityAwardStatus('');
+                          setActivityAwardError('');
+                        }}
+                        maxLength={500}
+                        rows={2}
+                        placeholder="Add a student shout-out or recognition"
+                        className={`w-full resize-y ${assignedGroupTheme ? 'ras-theme-field' : 'bg-slate-900 border-slate-700 focus:border-emerald-500'} border rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-400 focus:outline-none`}
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={handleAwardActivityPoints}
+                      disabled={
+                        activityAwardSubmitting
+                        || !activityAwardGroup
+                        || !Number.isFinite(Number(currentActivity.points))
+                        || Number(currentActivity.points) <= 0
+                      }
+                      className="w-full min-h-[44px] rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-sm transition"
+                    >
+                      {activityAwardSubmitting
+                        ? 'Submitting…'
+                        : isLiveCounselor
+                          ? `Request ${Number(currentActivity.points || 0).toLocaleString()} points`
+                          : `Add ${Number(currentActivity.points || 0).toLocaleString()} points`}
+                    </button>
+
+                    {activityAwardError && <p role="alert" className="text-xs font-semibold text-red-200">{activityAwardError}</p>}
+                    {activityAwardStatus && <p role="status" className="text-xs font-semibold text-emerald-200">{activityAwardStatus}</p>}
                   </div>
                 </div>
               )}

@@ -358,6 +358,14 @@ test("counselors can submit points for approval but owner-only commands remain b
     }),
     /assigned group/,
   );
+  await assert.rejects(
+    executePairingCommand(member, {
+      id: randomUUID(),
+      type: "addPoints",
+      payload: { groupId: "tigers", amount: 10, reason: "Cannot award another group" },
+    }),
+    /assigned group/,
+  );
 
   const scored = await executePairingCommand(member, {
     id: randomUUID(),
