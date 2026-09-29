@@ -899,3 +899,361 @@
     transition-duration: .01ms !important;
   }
 }
+
+/*
+ * Shared light workspace treatment
+ * --------------------------------
+ * Points is the visual source of truth for the working dashboard. These
+ * scoped rules let the existing Activities and Laps markup keep its handlers,
+ * roles, and responsive structure while translating the former dark utility
+ * surfaces into the same warm paper / teal workspace.
+ */
+.ras-workspace-shell {
+  background:
+    radial-gradient(circle at 7% 2%, rgba(87, 190, 193, .11), transparent 25rem),
+    linear-gradient(135deg, #f1f6f2 0%, #e9f1ec 52%, #f5f3ea 100%) !important;
+  color: #264c47 !important;
+}
+
+.ras-workspace-shell .ras-theme-panel,
+.ras-workspace-shell .ras-theme-panel-raised,
+.ras-workspace-shell .ras-theme-inset {
+  background: #fffefa !important;
+  border-color: #d7e3dc !important;
+  color: #264c47 !important;
+}
+
+.ras-workspace-shell [class*="bg-slate-"],
+.ras-workspace-shell [class*="bg-emerald-950"],
+.ras-workspace-shell [class*="bg-cyan-950"],
+.ras-workspace-shell [class*="bg-amber-950"],
+.ras-workspace-shell [class*="bg-red-950"] {
+  background-color: #fffefa !important;
+  background-image: none !important;
+}
+
+.ras-workspace-shell [class*="border-slate-"] {
+  border-color: #d7e3dc !important;
+}
+
+.ras-workspace-shell [class*="text-white"],
+.ras-workspace-shell [class*="text-slate-100"],
+.ras-workspace-shell [class*="text-slate-200"],
+.ras-workspace-shell [class*="text-slate-300"] {
+  color: #264c47 !important;
+}
+
+.ras-workspace-shell [class*="text-slate-400"],
+.ras-workspace-shell [class*="text-slate-500"],
+.ras-workspace-shell [class*="text-slate-600"] {
+  color: #697a72 !important;
+}
+
+.ras-workspace-shell [class*="text-emerald-100"],
+.ras-workspace-shell [class*="text-cyan-100"],
+.ras-workspace-shell [class*="text-amber-100"] {
+  color: #365d55 !important;
+}
+
+.ras-workspace-shell input,
+.ras-workspace-shell select,
+.ras-workspace-shell textarea {
+  color: #264c47 !important;
+  background-color: #fffefa !important;
+  border-color: #d7e3dc !important;
+}
+
+.ras-workspace-shell input::placeholder,
+.ras-workspace-shell textarea::placeholder {
+  color: #879890 !important;
+}
+
+.ras-workspace-shell input:focus-visible,
+.ras-workspace-shell select:focus-visible,
+.ras-workspace-shell textarea:focus-visible,
+.ras-workspace-shell button:focus-visible {
+  outline: 3px solid #2baeb3 !important;
+  outline-offset: 2px;
+}
+
+.ras-workspace-shell [class*="shadow-[0_0_"],
+.ras-workspace-shell [class*="shadow-xl"] {
+  box-shadow: 0 8px 20px rgba(37, 68, 60, .08) !important;
+}
+
+.ras-workspace-shell .text-emerald-400,
+.ras-workspace-shell .text-emerald-300 {
+  color: #28725a !important;
+}
+
+.ras-workspace-shell .text-cyan-400,
+.ras-workspace-shell .text-cyan-300 {
+  color: #176c7a !important;
+}
+
+.ras-workspace-shell .text-amber-400,
+.ras-workspace-shell .text-amber-300,
+.ras-workspace-shell .text-amber-200 {
+  color: #805507 !important;
+}
+
+.ras-workspace-shell .text-red-300,
+.ras-workspace-shell .text-red-200 {
+  color: #a04444 !important;
+}
+
+.ras-workspace-shell .ras-tab-active-amber {
+  background: #d89a22 !important;
+  color: #fffefa !important;
+  box-shadow: 0 5px 12px rgba(126, 92, 27, .18);
+}
+
+.ras-workspace-shell .ras-tab-active-cyan {
+  background: #177c8d !important;
+  color: #fffefa !important;
+  box-shadow: 0 5px 12px rgba(23, 124, 141, .18);
+}
+
+/* Startup choice modal: warm, welcoming, and distinct from the live controls. */
+.ras-pairing-startup {
+  background: rgba(23, 61, 57, .52) !important;
+}
+
+.ras-pairing-startup > div {
+  border-color: #c9ddd5 !important;
+  background: #f7faf5 !important;
+  color: #264c47;
+  box-shadow: 0 24px 80px rgba(23, 61, 57, .24) !important;
+}
+
+.ras-pairing-startup > div > div:first-child {
+  background: linear-gradient(135deg, #e7f5ef, #f7f4e9) !important;
+  border-color: #d5e4dc !important;
+}
+
+.ras-pairing-startup [class*="text-white"],
+.ras-pairing-startup [class*="text-slate-200"],
+.ras-pairing-startup [class*="text-slate-300"] {
+  color: #264c47 !important;
+}
+
+.ras-pairing-startup [class*="text-slate-400"],
+.ras-pairing-startup [class*="text-slate-500"] {
+  color: #697a72 !important;
+}
+
+.ras-pairing-startup [class*="bg-slate-800"],
+.ras-pairing-startup [class*="bg-slate-900"],
+.ras-pairing-startup [class*="bg-slate-950"] {
+  background: #fffefa !important;
+}
+
+.ras-pairing-startup [class*="border-slate-"] {
+  border-color: #d7e3dc !important;
+}
+
+.ras-pairing-startup .field,
+.ras-pairing-startup input,
+.ras-pairing-startup select {
+  background: #fffefa !important;
+  color: #264c47 !important;
+  border-color: #c5d9d0 !important;
+}
+
+.ras-pairing-startup .field:focus,
+.ras-pairing-startup input:focus,
+.ras-pairing-startup select:focus,
+.ras-pairing-startup button:focus-visible {
+  outline: 3px solid #2baeb3 !important;
+  outline-offset: 2px;
+}
+
+.ras-pairing-startup .field::placeholder,
+.ras-pairing-startup input::placeholder {
+  color: #879890 !important;
+}
+
+.ras-pairing-startup button[class*="border-purple-"] {
+  border-color: #d2c5dc !important;
+  background: #f5eff7 !important;
+}
+
+.ras-pairing-startup button[class*="border-cyan-"] {
+  border-color: #b9e5ea !important;
+  background: #edfafd !important;
+}
+
+.ras-pairing-startup button[class*="border-purple-"]:hover,
+.ras-pairing-startup button[class*="border-cyan-"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(37, 68, 60, .09);
+}
+
+/* Chat uses the same paper cards as Points, with high-contrast message roles. */
+.ras-chat-panel {
+  border-color: #d2e0d8 !important;
+  background: #fffefa !important;
+  color: #264c47;
+  box-shadow: 0 10px 28px rgba(37, 68, 60, .08) !important;
+}
+
+.ras-chat-panel [class*="bg-slate-900"],
+.ras-chat-panel [class*="bg-slate-800"] {
+  background: #f7faf5 !important;
+}
+
+.ras-chat-panel [class*="border-slate-"] {
+  border-color: #d7e3dc !important;
+}
+
+.ras-chat-panel [class*="text-white"],
+.ras-chat-panel [class*="text-slate-100"],
+.ras-chat-panel [class*="text-slate-200"],
+.ras-chat-panel [class*="text-slate-300"] {
+  color: #264c47 !important;
+}
+
+.ras-chat-panel [class*="text-slate-400"],
+.ras-chat-panel [class*="text-slate-500"],
+.ras-chat-panel [class*="text-slate-600"] {
+  color: #697a72 !important;
+}
+
+.ras-chat-panel textarea {
+  color: #264c47 !important;
+  background: #fffefa !important;
+  border-color: #c5d9d0 !important;
+}
+
+.ras-chat-panel textarea::placeholder {
+  color: #879890 !important;
+}
+
+.ras-chat-panel textarea:focus-visible,
+.ras-chat-panel button:focus-visible {
+  outline: 3px solid #2baeb3 !important;
+  outline-offset: 2px;
+}
+
+.ras-chat-panel .bg-cyan-400 {
+  background: #177c8d !important;
+  color: #fffefa !important;
+}
+
+.ras-chat-panel .text-cyan-300,
+.ras-chat-panel .text-cyan-400 {
+  color: #176c7a !important;
+}
+
+/* Projector: the palette follows Points, while type stays intentionally huge. */
+.ras-projector-shell {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(87, 190, 193, .13), transparent 34rem),
+    linear-gradient(145deg, #eef5f0 0%, #f7f4e9 100%) !important;
+  color: #173d39 !important;
+}
+
+.ras-projector-shell [class*="bg-slate-900"],
+.ras-projector-shell [class*="bg-slate-800"],
+.ras-projector-shell [class*="bg-slate-950"] {
+  background: #fffefa !important;
+}
+
+.ras-projector-shell [class*="border-slate-"] {
+  border-color: #d7e3dc !important;
+}
+
+.ras-projector-shell .text-white,
+.ras-projector-shell [class*="text-slate-100"],
+.ras-projector-shell [class*="text-slate-200"],
+.ras-projector-shell [class*="text-slate-300"] {
+  color: #264c47 !important;
+}
+
+.ras-projector-shell [class*="text-slate-400"],
+.ras-projector-shell [class*="text-slate-500"] {
+  color: #697a72 !important;
+}
+
+.ras-projector-shell [class*="bg-gradient-to-r"][class*="from-emerald-"] {
+  background: #b8e6d5 !important;
+}
+
+.ras-projector-shell [class*="bg-gradient-to-r"][class*="from-amber-"] {
+  background: #fff3cf !important;
+  border-color: #e4c879 !important;
+}
+
+.ras-projector-shell .text-emerald-400,
+.ras-projector-shell .text-emerald-300 {
+  color: #28725a !important;
+}
+
+.ras-projector-shell .text-amber-400 {
+  color: #805507 !important;
+}
+
+.ras-projector-shell .bg-cyan-500,
+.ras-projector-shell .bg-emerald-400,
+.ras-projector-shell .bg-amber-500 {
+  color: #fffefa !important;
+}
+
+.ras-projector-shell .bg-cyan-500 {
+  background: #177c8d !important;
+}
+
+.ras-projector-shell .bg-emerald-400 {
+  background: #28725a !important;
+}
+
+.ras-projector-shell .bg-amber-500 {
+  background: #bd7b0c !important;
+}
+
+.ras-projector-shell button:focus-visible {
+  outline: 4px solid #2baeb3 !important;
+  outline-offset: 4px;
+}
+
+.ras-projector-shell h1 {
+  color: #173d39 !important;
+  background-image: none !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.ras-projector-shell .text-8xl,
+.ras-projector-shell .text-9xl {
+  color: #264c47 !important;
+  text-shadow: none !important;
+}
+
+.ras-projector-shell .projector-message-card {
+  background: #fffefa;
+  color: #264c47;
+  border-color: #177c8d;
+  box-shadow: 0 20px 58px rgba(23, 61, 57, .16);
+}
+
+.ras-projector-shell .projector-message-sender {
+  color: #176c7a;
+}
+
+.ras-projector-shell .projector-message-role {
+  color: #697a72;
+  border-color: #c5d9d0;
+}
+
+.ras-projector-shell .projector-message-card p {
+  color: #173d39;
+}
+
+@media (max-width: 640px) {
+  .ras-pairing-startup > div {
+    border-radius: 1.5rem;
+  }
+
+  .ras-projector-shell {
+    padding: 1rem !important;
+  }
+}

@@ -905,7 +905,7 @@ export default function App() {
 
   if (activeTab === 'projector') {
     return (
-      <div className="min-h-[100dvh] bg-slate-950 text-white flex flex-col justify-between p-6 md:p-10 font-sans relative overflow-hidden select-none">
+      <div className="ras-projector-shell min-h-[100dvh] bg-slate-950 text-white flex flex-col justify-between p-6 md:p-10 font-sans relative overflow-hidden select-none">
         <ProjectorMessage roomId={pairing.session?.roomId ?? null} messages={projectorMessages} />
         <MessageComposer
           open={messageComposerOpen}
@@ -1057,11 +1057,11 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-[100dvh] ${activeTab === 'scoreboard' ? 'ras-scoreboard-shell' : assignedGroupTheme ? 'ras-edison-theme' : 'bg-slate-900'} ${activeTab === 'scoreboard' ? 'text-slate-800' : 'text-slate-100'} flex flex-col font-sans pb-12`}
+      className={`min-h-[100dvh] ${activeTab === 'scoreboard' ? 'ras-scoreboard-shell' : 'ras-scoreboard-shell ras-workspace-shell'} ${activeTab === 'scoreboard' ? 'text-slate-800' : 'text-slate-800'} flex flex-col font-sans pb-12`}
       style={assignedGroupTheme ? getGroupThemeStyle(assignedGroupTheme) : undefined}
     >
       {/* Header Bar */}
-      <header className={`${activeTab === 'scoreboard' ? 'ras-scoreboard-header' : assignedGroupTheme ? 'ras-theme-header' : 'bg-slate-800/90 border-slate-700/80'} backdrop-blur border-b sticky top-0 z-30 px-4 py-3`}>
+      <header className="ras-scoreboard-header backdrop-blur border-b sticky top-0 z-30 px-4 py-3">
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img
@@ -1071,17 +1071,17 @@ export default function App() {
             />
             <div>
               {/* Explicit School Title Header */}
-              <div className={`text-[10px] uppercase font-black tracking-widest ${activeTab === 'scoreboard' ? 'ras-brand-kicker' : assignedGroupTheme?.brandLabel || 'text-emerald-400'} flex items-center gap-1`}>
+              <div className="ras-brand-kicker text-[10px] uppercase font-black tracking-widest flex items-center gap-1">
                 Right At School
               </div>
-              <h1 className={`font-black text-base md:text-lg ${activeTab === 'scoreboard' ? 'ras-brand-title' : 'text-white'} tracking-tight leading-tight`}>
+              <h1 className="ras-brand-title font-black text-base md:text-lg tracking-tight leading-tight">
                 Edison Language Academy
               </h1>
             </div>
           </div>
 
           {/* Nav Tabs */}
-          <div className={`flex items-center ${activeTab === 'scoreboard' ? 'ras-scoreboard-nav' : assignedGroupTheme ? 'ras-theme-nav' : 'bg-slate-900 border-slate-700'} p-1 rounded-2xl border overflow-x-auto max-w-full`}>
+          <div className="ras-scoreboard-nav flex items-center p-1 rounded-2xl border overflow-x-auto max-w-full">
             <button
               onClick={() => setActiveTab('scoreboard')}
               className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
@@ -1093,7 +1093,7 @@ export default function App() {
             <button
               onClick={() => setActiveTab('generator')}
               className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
-                activeTab === 'generator' ? 'bg-amber-500 text-slate-950 shadow-md' : activeTab === 'scoreboard' ? 'ras-nav-muted' : 'text-slate-400 hover:text-white'
+                activeTab === 'generator' ? 'ras-tab-active-amber' : 'ras-nav-muted'
               }`}
             >
                 <FileText className="w-4 h-4" /> Activities
@@ -1101,14 +1101,14 @@ export default function App() {
             <button
               onClick={() => setActiveTab('fastest_lap')}
               className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
-                activeTab === 'fastest_lap' ? 'bg-cyan-500 text-slate-950 shadow-md' : activeTab === 'scoreboard' ? 'ras-nav-muted' : 'text-slate-400 hover:text-white'
+                activeTab === 'fastest_lap' ? 'ras-tab-active-cyan' : 'ras-nav-muted'
               }`}
             >
               <Timer className="w-4 h-4" /> Laps
             </button>
             <button
               onClick={() => setSessionModal(pairing.isPaired ? 'controls' : 'startup')}
-              className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 border ${pairing.isPaired ? (activeTab === 'scoreboard' ? 'ras-nav-live' : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40') : activeTab === 'scoreboard' ? 'ras-nav-muted' : 'text-slate-400 border-slate-700 hover:text-white'}`}
+              className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 border ${pairing.isPaired ? 'ras-nav-live' : 'ras-nav-muted'}`}
               aria-label="Open live session controls"
             >
               {pairing.isPaired ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
@@ -1116,7 +1116,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('projector')}
-              className={`flex items-center gap-1 px-2.5 py-2.5 min-h-[44px] rounded-xl font-bold text-xs transition border ml-1 shrink-0 ${activeTab === 'scoreboard' ? 'ras-nav-projector' : 'text-cyan-400 hover:bg-cyan-950/50 border-cyan-500/20'}`}
+              className="ras-nav-projector flex items-center gap-1 px-2.5 py-2.5 min-h-[44px] rounded-xl font-bold text-xs transition border ml-1 shrink-0"
             >
               <Tv className="w-4 h-4" /> Projector
             </button>
@@ -1126,7 +1126,7 @@ export default function App() {
               className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 border ${
                 activeTab === 'chat'
                   ? 'border-cyan-400 bg-cyan-400 text-slate-950 shadow-md'
-                  : activeTab === 'scoreboard' ? 'ras-nav-chat' : 'border-cyan-500/30 text-cyan-300 hover:bg-cyan-950/50'
+                  : 'ras-nav-chat'
               }`}
               aria-label="Open room chat"
             >

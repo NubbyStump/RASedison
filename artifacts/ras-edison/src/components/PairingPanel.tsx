@@ -112,7 +112,7 @@ export default function PairingPanel(props: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[80] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="session-title">
+    <div className={`ras-pairing-overlay fixed inset-0 z-[80] backdrop-blur-md flex items-center justify-center p-3 sm:p-6 ${mode === 'startup' ? 'ras-pairing-startup' : 'ras-pairing-controls'}`} role="dialog" aria-modal="true" aria-labelledby="session-title">
       <div className="w-full max-w-2xl max-h-[94vh] overflow-y-auto rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl pb-[env(safe-area-inset-bottom)]">
         <div className="p-5 sm:p-7 border-b border-slate-800 bg-gradient-to-br from-emerald-500/10 to-cyan-500/5">
           <div className="flex items-start justify-between gap-4">

@@ -82,7 +82,7 @@ export default function ChatPanel({ session, status, onOpenLobby, onSend }: Prop
 
   if (!session) {
     return (
-      <section className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-slate-700 bg-slate-800/80 shadow-xl">
+      <section className="ras-chat-panel mx-auto max-w-3xl overflow-hidden rounded-3xl border border-slate-700 bg-slate-800/80 shadow-xl">
         <div className="border-b border-slate-700 bg-gradient-to-br from-cyan-500/10 to-emerald-500/5 p-6">
           <h2 className="flex items-center gap-2 text-2xl font-black text-white">
             <MessageCircle className="h-6 w-6 text-cyan-400" /> Room chat
@@ -109,7 +109,7 @@ export default function ChatPanel({ session, status, onOpenLobby, onSend }: Prop
   }
 
   return (
-    <section className="mx-auto flex h-[calc(100vh-11rem)] min-h-[30rem] max-h-[52rem] max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-700 bg-slate-800/80 shadow-xl sm:h-[calc(100vh-12rem)] supports-[height:100dvh]:h-[calc(100dvh-11rem)] sm:supports-[height:100dvh]:h-[calc(100dvh-12rem)]">
+    <section className="ras-chat-panel mx-auto flex h-[calc(100vh-11rem)] min-h-[30rem] max-h-[52rem] max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-700 bg-slate-800/80 shadow-xl sm:h-[calc(100vh-12rem)] supports-[height:100dvh]:h-[calc(100dvh-11rem)] sm:supports-[height:100dvh]:h-[calc(100dvh-12rem)]">
       <div className="flex items-center justify-between gap-4 border-b border-slate-700 bg-gradient-to-br from-cyan-500/10 to-emerald-500/5 px-5 py-4 sm:px-6">
         <div>
           <h2 className="flex items-center gap-2 text-xl font-black text-white">
