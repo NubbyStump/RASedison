@@ -183,6 +183,26 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /pairing/member-role:
+    patch:
+      operationId: changePairingMemberRole
+      tags: [pairing]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PairingMemberRoleInput" }
+      responses:
+        "200":
+          description: Member role changed and updated session returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /pairing/leave:
     post:
       operationId: leavePairing
@@ -461,6 +481,14 @@ components:
       required: [memberId]
       properties:
         memberId: { type: string, format: uuid }
+    PairingMemberRoleInput:
+      type: object
+      additionalProperties: false
+      required: [memberId, role]
+      properties:
+        memberId: { type: string, format: uuid }
+        role: { type: string, enum: [owner, counselor] }
+        programManagerRolePassword: { type: string, minLength: 1, maxLength: 128 }
     PairingMessageInput:
       type: object
       additionalProperties: false

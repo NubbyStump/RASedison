@@ -48,6 +48,8 @@ test("owner dismissal reaches every polling session, preserves data, and enforce
     roomId: room.id,
     name: `Dismissal test ${index}`,
     role: index === 0 ? "owner" as const : "counselor" as const,
+    groupId: index === 0 ? null : "ladybugs",
+    assignmentDate: index === 0 ? null : calendarDay(),
     tokenHash: createHash("sha256").update(token).digest("hex"),
   }))).returning();
   await sendProjectorMessage(members[1], { id: randomUUID(), text: "Older announcement" });
@@ -111,7 +113,7 @@ test("mission and manual or automatic approval alerts stay counselor-scoped", as
     name: `Notification test ${index}`,
     role: index === 0 ? "owner" as const : "counselor" as const,
     groupId: index === 0 ? null : "ladybugs",
-    assignmentDate: index === 0 ? null : "2026-09-28",
+    assignmentDate: index === 0 ? null : calendarDay(),
     tokenHash: createHash("sha256").update(token).digest("hex"),
   }))).returning();
   const [owner, author, otherCounselor] = members;
@@ -324,6 +326,7 @@ test("browser push registration is counselor-only and validates subscription end
 
 test("pairing HTTP lifecycle remains functional alongside message dismissal", async () => {
   const originalProgramManagerPassword = process.env.PROGRAM_MANAGER_PASSWORD;
+  const originalProgramManagerRolePassword = process.env.PROGRAM_MANAGER_ROLE_PASSWORD;
   process.env.PROGRAM_MANAGER_PASSWORD = randomUUID();
   const server = app.listen(0);
   await new Promise<void>(resolve => server.once("listening", resolve));
@@ -339,10 +342,16 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     assert.equal(response.status, 200, `${method} ${path}: ${response.status}`);
     return await response.json() as Session;
   };
+  const requestRoleChange = async (body: unknown, token: string) => fetch(url + "/member-role", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
   try {
+    process.env.PROGRAM_MANAGER_ROLE_PASSWORD = "role-test-password";
     const password = "test-room-password";
     const programManagerPassword = process.env.PROGRAM_MANAGER_PASSWORD!;
-    const assignmentDate = "2026-09-24";
+    const assignmentDate = calendarDay(new Date(), "America/Los_Angeles");
     const owner = await request("/create", {
       name: "Manager", password, programManagerPassword, assignmentDate, groupId: null, state: baseState(),
     });
@@ -395,6 +404,58 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     assert.equal(polled.state.groups[0].score, 7);
     const rotated = await request("/rotate-code", undefined, owner.token);
     assert.notEqual(rotated.code, owner.code);
+    const roleCandidate = await request("/join", {
+      name: "Potential manager", password, code: rotated.code, assignmentDate, groupId: null,
+    });
+    const blockedUnassignedCommand = await fetch(url + "/command", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", authorization: `Bearer ${roleCandidate.token}` },
+      body: JSON.stringify({
+        id: randomUUID(),
+        type: "addPoints",
+        payload: { groupId: "ladybugs", amount: 1, reason: "Should be blocked while unassigned" },
+      }),
+    });
+    assert.equal(blockedUnassignedCommand.status, 403);
+    const blockedUnassignedMessage = await fetch(url + "/message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", authorization: `Bearer ${roleCandidate.token}` },
+      body: JSON.stringify({ id: randomUUID(), text: "Should be blocked while unassigned" }),
+    });
+    assert.equal(blockedUnassignedMessage.status, 403);
+    const unassignedView = await request("/session", undefined, roleCandidate.token, "GET");
+    assert.equal(unassignedView.members.find((member) => member.id === roleCandidate.memberId)?.groupId, null);
+    const assignedCandidate = await request("/assignment", {
+      groupId: "ladybugs", assignmentDate,
+    }, roleCandidate.token, "PATCH");
+    assert.equal(assignedCandidate.members.find((member) => member.id === roleCandidate.memberId)?.groupId, "ladybugs");
+    await request("/message", { id: randomUUID(), text: "Assigned and able to send" }, roleCandidate.token);
+    const selfDemotion = await requestRoleChange({
+      memberId: owner.memberId, role: "counselor",
+    }, owner.token);
+    assert.equal(selfDemotion.status, 400);
+    const counselorPromotion = await requestRoleChange({
+      memberId: roleCandidate.memberId, role: "owner", programManagerRolePassword: "role-test-password",
+    }, counselor.token);
+    assert.equal(counselorPromotion.status, 403);
+    const missingRolePassword = await requestRoleChange({
+      memberId: roleCandidate.memberId, role: "owner",
+    }, owner.token);
+    assert.equal(missingRolePassword.status, 403);
+    const incorrectRolePassword = await requestRoleChange({
+      memberId: roleCandidate.memberId, role: "owner", programManagerRolePassword: "wrong-role-password",
+    }, owner.token);
+    assert.equal(incorrectRolePassword.status, 403);
+    const promoted = await request("/member-role", {
+      memberId: roleCandidate.memberId, role: "owner", programManagerRolePassword: "role-test-password",
+    }, owner.token, "PATCH");
+    assert.equal(promoted.members.find((member) => member.id === roleCandidate.memberId)?.role, "owner");
+    const demoted = await request("/member-role", {
+      memberId: roleCandidate.memberId, role: "counselor",
+    }, owner.token, "PATCH");
+    const demotedMember = demoted.members.find((member) => member.id === roleCandidate.memberId);
+    assert.equal(demotedMember?.role, "counselor");
+    assert.equal(demotedMember?.groupId, null);
     const removable = await request("/join", {
       name: "Other counselor", password, code: rotated.code, assignmentDate, groupId: "ladybugs",
     });
@@ -407,6 +468,8 @@ test("pairing HTTP lifecycle remains functional alongside message dismissal", as
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     if (originalProgramManagerPassword === undefined) delete process.env.PROGRAM_MANAGER_PASSWORD;
     else process.env.PROGRAM_MANAGER_PASSWORD = originalProgramManagerPassword;
+    if (originalProgramManagerRolePassword === undefined) delete process.env.PROGRAM_MANAGER_ROLE_PASSWORD;
+    else process.env.PROGRAM_MANAGER_ROLE_PASSWORD = originalProgramManagerRolePassword;
   }
 });
 
@@ -578,7 +641,7 @@ test("counselors can submit points for approval but owner-only commands remain b
     name: "Counselor",
     role: "counselor",
     groupId: "ladybugs",
-    assignmentDate: "2025-01-01",
+    assignmentDate: calendarDay(),
     tokenHash: randomUUID(),
   }).returning();
 
@@ -666,7 +729,7 @@ test("counselors can request half or all of their assigned group's points remove
     name: "Counselor",
     role: "counselor",
     groupId: "ladybugs",
-    assignmentDate: "2025-01-01",
+    assignmentDate: calendarDay(),
     tokenHash: randomUUID(),
   }).returning();
 
@@ -738,7 +801,7 @@ test("counselors can request an exact assigned-group score for owner approval", 
     name: "Counselor",
     role: "counselor",
     groupId: "ladybugs",
-    assignmentDate: "2025-01-01",
+    assignmentDate: calendarDay(),
     tokenHash: randomUUID(),
   }).returning();
 
@@ -865,6 +928,7 @@ test("counselors can save regular missions but cannot set Super Scrambles or del
     name: "Counselor",
     role: "counselor",
     groupId: "ladybugs",
+    assignmentDate: calendarDay(),
     tokenHash: randomUUID(),
   }).returning();
 
@@ -962,6 +1026,7 @@ test("owners can reject requests and expired requests auto-approve", async () =>
     name: "Counselor",
     role: "counselor",
     groupId: "ladybugs",
+    assignmentDate: calendarDay(),
     tokenHash: randomUUID(),
   }).returning();
 
@@ -1079,7 +1144,7 @@ test("projector messages attribute sender and idempotently increment room versio
     name: "Ms. Edison",
     role: "counselor",
     groupId: "ladybugs",
-    assignmentDate: "2025-01-01",
+    assignmentDate: calendarDay(),
     tokenHash: randomUUID(),
   }).returning();
   const input = { id: randomUUID(), text: "Line up at the blue doors" };
@@ -1132,6 +1197,8 @@ test("chat history retains expired messages in order while projector messages st
     roomId: room.id,
     name: "Current sender",
     role: "counselor",
+    groupId: "ladybugs",
+    assignmentDate: calendarDay(),
     tokenHash: randomUUID(),
   }).returning();
 

@@ -432,6 +432,24 @@ export interface PairingMemberRemovalInput {
   memberId: string;
 }
 
+export type PairingMemberRoleInputRole = typeof PairingMemberRoleInputRole[keyof typeof PairingMemberRoleInputRole];
+
+
+export const PairingMemberRoleInputRole = {
+  owner: 'owner',
+  counselor: 'counselor',
+} as const;
+
+export interface PairingMemberRoleInput {
+  memberId: string;
+  role: PairingMemberRoleInputRole;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  programManagerRolePassword?: string;
+}
+
 export interface PairingMessageInput {
   id: string;
   /**

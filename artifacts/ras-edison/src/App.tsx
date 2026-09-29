@@ -1003,6 +1003,7 @@ export default function App() {
           onJoin={handleJoinPairing}
           onUpdateAssignment={handleUpdateAssignment}
           onRemoveMember={handleRemoveMember}
+          onChangeMemberRole={pairing.changeMemberRole}
           onLeave={handleLeavePairing}
           onEnd={handleEndPairing}
         />
@@ -2417,6 +2418,7 @@ export default function App() {
         onJoin={handleJoinPairing}
         onUpdateAssignment={handleUpdateAssignment}
         onRemoveMember={handleRemoveMember}
+        onChangeMemberRole={pairing.changeMemberRole}
         onLeave={handleLeavePairing}
         onEnd={handleEndPairing}
       />

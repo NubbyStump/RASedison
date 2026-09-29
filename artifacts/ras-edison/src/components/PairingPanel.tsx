@@ -24,6 +24,7 @@ type Props = {
   onJoin: (name: string, code: string, password: string, groupId: string | null) => Promise<boolean>;
   onUpdateAssignment: (groupId: string | null) => Promise<void>;
   onRemoveMember: (memberId: string) => Promise<void>;
+  onChangeMemberRole: (memberId: string, role: 'owner' | 'counselor', programManagerRolePassword?: string) => Promise<void>;
   onLeave: () => Promise<void>;
   onEnd: () => Promise<void>;
 };
@@ -42,6 +43,9 @@ export default function PairingPanel(props: Props) {
   const [showInviteQr, setShowInviteQr] = useState(false);
   const [joiningFromInvite, setJoiningFromInvite] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [roleChangeMemberId, setRoleChangeMemberId] = useState<string | null>(null);
+  const [roleChangePassword, setRoleChangePassword] = useState('');
+  const [roleChangeError, setRoleChangeError] = useState('');
   const inviteLinkRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -117,6 +121,18 @@ export default function PairingPanel(props: Props) {
     inviteLinkRef.current?.focus();
     inviteLinkRef.current?.select();
     setTimeout(() => setInviteCopyError(false), 4000);
+  };
+
+  const submitRoleChange = async (event: React.FormEvent<HTMLFormElement>, memberId: string) => {
+    event.preventDefault();
+    setRoleChangeError('');
+    try {
+      await props.onChangeMemberRole(memberId, 'owner', roleChangePassword);
+      setRoleChangeMemberId(null);
+      setRoleChangePassword('');
+    } catch (roleError) {
+      setRoleChangeError((roleError as Error).message || 'Unable to change this member’s role.');
+    }
   };
 
   return (
@@ -259,14 +275,39 @@ export default function PairingPanel(props: Props) {
               </div>
               <div>
                 <h3 className="font-black text-white flex items-center gap-2"><Users className="w-5 h-5 text-cyan-400" /> Session roster</h3>
+                {session.role === 'owner' && <p className="mt-1 text-xs text-slate-400">Change a counselor to Program Manager or back. Granting Program Manager access requires the role password.</p>}
                 <div className="mt-2 divide-y divide-slate-700 rounded-2xl border border-slate-700 overflow-hidden">
                   {session.members.map(member => {
-                    const canRemove = session.role === 'owner' && member.role !== 'owner' && member.id !== session.memberId;
+                    const canChangeRole = session.role === 'owner' && member.id !== session.memberId;
+                    const canRemove = session.role === 'owner' && member.role === 'counselor' && member.id !== session.memberId;
                     const removing = removingMemberId === member.id;
-                    return <div key={member.id} className="p-3 bg-slate-800 flex items-center justify-between gap-3 text-sm">
-                      <span className="font-bold text-white">{member.name}{member.id === session.memberId ? ' (You)' : ''}</span>
-                      <div className="flex items-center gap-3">
-                       <span className="text-slate-400 text-right">{member.role === 'owner' ? 'Host' : member.assignmentDate === today ? (member.groupId ? groupName(member.groupId) : 'Unassigned · view only') : `No group for ${today}`}</span>
+                    return <div key={member.id} className="p-3 bg-slate-800 space-y-3 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="font-bold text-white">{member.name}{member.id === session.memberId ? ' (You)' : ''}</span>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <span className="text-slate-400 text-right">{member.role === 'owner' ? 'Program Manager' : member.assignmentDate === today ? (member.groupId ? groupName(member.groupId) : 'Unassigned · view only') : `No group for ${today}`}</span>
+                          {canChangeRole && <button
+                            type="button"
+                            disabled={busy}
+                            onClick={async () => {
+                              setRoleChangeError('');
+                              if (member.role === 'owner') {
+                                if (!confirm(`Change ${member.name} to Counselor? They will need to choose a group again.`)) return;
+                                try {
+                                  await props.onChangeMemberRole(member.id, 'counselor');
+                                  setRoleChangeMemberId(null);
+                                  setRoleChangePassword('');
+                                } catch (roleError) {
+                                  setRoleChangeMemberId(member.id);
+                                  setRoleChangeError((roleError as Error).message || 'Unable to change this member’s role.');
+                                }
+                              } else {
+                                setRoleChangeMemberId(member.id);
+                                setRoleChangePassword('');
+                              }
+                            }}
+                            className="rounded-lg border border-cyan-400/40 px-2.5 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-950/60 disabled:opacity-50"
+                          >{member.role === 'owner' ? 'Change to Counselor' : 'Make Program Manager'}</button>}
                         {canRemove && <button
                           type="button"
                           disabled={busy || Boolean(removingMemberId)}
@@ -282,7 +323,30 @@ export default function PairingPanel(props: Props) {
                           className="p-2 rounded-lg border border-red-500/40 text-red-300 hover:bg-red-950 disabled:opacity-50"
                           aria-label={`Remove ${member.name} from session`}
                         >{removing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>}
+                        </div>
                       </div>
+                      {roleChangeMemberId === member.id && member.role === 'counselor' && (
+                        <form onSubmit={(event) => void submitRoleChange(event, member.id)} className="rounded-xl border border-cyan-500/25 bg-slate-900/70 p-3">
+                          <label className="block text-xs font-bold text-slate-300">
+                            Program Manager role password
+                            <input
+                              required
+                              type="password"
+                              maxLength={128}
+                              autoComplete="off"
+                              value={roleChangePassword}
+                              onChange={(event) => setRoleChangePassword(event.target.value)}
+                              className="field mt-1.5"
+                            />
+                          </label>
+                          {roleChangeError && <p role="alert" className="mt-2 text-xs font-bold text-red-300">{roleChangeError}</p>}
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button type="submit" disabled={busy || !roleChangePassword} className="rounded-lg bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950 disabled:opacity-50">Grant Program Manager role</button>
+                            <button type="button" disabled={busy} onClick={() => { setRoleChangeMemberId(null); setRoleChangePassword(''); setRoleChangeError(''); }} className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-bold text-slate-300 disabled:opacity-50">Cancel</button>
+                          </div>
+                        </form>
+                      )}
+                      {roleChangeMemberId === member.id && member.role === 'owner' && roleChangeError && <p role="alert" className="text-xs font-bold text-red-300">{roleChangeError}</p>}
                     </div>;
                   })}
                 </div>

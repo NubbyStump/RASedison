@@ -607,6 +607,52 @@ export function usePairing() {
     }
   }, [applySession, authenticatedRequest, beginOperation, endOperation]);
 
+  const changeMemberRole = useCallback(async (
+    memberId: string,
+    role: 'owner' | 'counselor',
+    programManagerRolePassword?: string,
+  ) => {
+    const current = sessionRef.current;
+    if (!current) throw new Error('The paired room is still loading.');
+    if (current.role !== 'owner') throw new Error('Only the Program Manager can change counselor roles.');
+    if (memberId === current.memberId) throw new Error('The Program Manager cannot change their own role.');
+    const member = current.members.find((item) => item.id === memberId);
+    if (!member) throw new Error('That counselor is not available to change.');
+    if (role === 'owner' && !programManagerRolePassword) {
+      throw new Error('Enter the Program Manager role password to grant Program Manager access.');
+    }
+
+    const generation = generationRef.current;
+    const expectedRoom = current.roomId;
+    beginOperation();
+    stickyErrorRef.current = false;
+    setError('');
+    try {
+      const next = await authenticatedRequest(
+        '/api/pairing/member-role',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            memberId,
+            role,
+            ...(role === 'owner' ? { programManagerRolePassword } : {}),
+          }),
+        },
+        generation,
+        expectedRoom,
+      );
+      applySession(next, generation, expectedRoom);
+    } catch (requestError) {
+      if (generationRef.current === generation) {
+        stickyErrorRef.current = true;
+        setError((requestError as Error).message || 'Unable to change that member’s role.');
+      }
+      throw requestError;
+    } finally {
+      endOperation();
+    }
+  }, [applySession, authenticatedRequest, beginOperation, endOperation]);
+
   const leave = useCallback(async () => {
     const generation = generationRef.current;
     beginOperation();
@@ -810,6 +856,7 @@ export function usePairing() {
     end,
     rotateCode,
     removeMember,
+    changeMemberRole,
     command,
     sendMessage,
     clearMessage,
