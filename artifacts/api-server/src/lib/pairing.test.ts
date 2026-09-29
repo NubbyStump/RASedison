@@ -628,6 +628,14 @@ test("counselors can submit points for approval but owner-only commands remain b
     }),
     /Owner role required/,
   );
+  await assert.rejects(
+    executePairingCommand(member, {
+      id: randomUUID(),
+      type: "resetMonth",
+      payload: { month: "January 2025" },
+    }),
+    /Owner role required/,
+  );
   const [unchanged] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
   assert.equal(unchanged.version, 3);
   assert.equal((unchanged.state as PairingState).groups[0].score, 5);

@@ -158,6 +158,10 @@ export default function App() {
     const saved = localStorage.getItem('ras_edison_monthly_v5');
     return saved ? JSON.parse(saved) : [];
   });
+  const [monthlyResetStep, setMonthlyResetStep] = useState<'review' | 'confirm' | null>(null);
+  const [monthlyResetPhrase, setMonthlyResetPhrase] = useState('');
+  const [monthlyResetError, setMonthlyResetError] = useState('');
+  const [monthlyResetSubmitting, setMonthlyResetSubmitting] = useState(false);
 
   const [localLapRecords, setLocalLapRecords] = useState(() => {
     const saved = localStorage.getItem('ras_edison_lap_v5');
@@ -231,6 +235,12 @@ export default function App() {
   }, []);
   const isLiveOwner = pairing.session?.role === 'owner';
   const isLiveCounselor = pairing.session?.role === 'counselor';
+  useEffect(() => {
+    if (isLiveOwner) return;
+    setMonthlyResetStep(null);
+    setMonthlyResetPhrase('');
+    setMonthlyResetError('');
+  }, [isLiveOwner]);
   useEffect(() => {
     const currentRoomId = pairing.session?.roomId;
     if (!isLiveCounselor || !currentRoomId) {
@@ -662,25 +672,23 @@ export default function App() {
   };
 
   const handleResetMonth = async () => {
-    if (pairing.isPaired) {
-      try {
-        await pairing.command({ type: 'resetMonth', payload: { month: currentMonthName } });
-      } catch {}
+    if (!isLiveOwner || !pairing.isPaired || monthlyResetSubmitting) return;
+    if (monthlyResetPhrase.trim().toUpperCase() !== 'RESET') {
+      setMonthlyResetError('Type RESET to confirm this monthly reset.');
       return;
     }
-    const winners = groups.filter(g => g.score === maxScore && maxScore > 0).map(g => g.name);
-    
-    const newRecord = {
-      id: Date.now().toString(),
-      month: currentMonthName,
-      winner: winners.length > 0 ? winners.join(' & ') : 'No winner',
-      scores: groups.map(g => `${g.name}: ${g.score} pts`).join(' | '),
-      rewardClaimed: false
-    };
 
-    setLocalMonthlyRecords(prev => [newRecord, ...prev]);
-    setLocalGroups(prev => prev.map(g => ({ ...g, score: 0 })));
-    setLocalHistory([]);
+    setMonthlyResetSubmitting(true);
+    setMonthlyResetError('');
+    try {
+      await pairing.command({ type: 'resetMonth', payload: { month: currentMonthName } });
+      setMonthlyResetStep(null);
+      setMonthlyResetPhrase('');
+    } catch (error) {
+      setMonthlyResetError(error instanceof Error ? error.message : 'Could not reset monthly scores. Try again.');
+    } finally {
+      setMonthlyResetSubmitting(false);
+    }
   };
 
   const handleSaveLap = async (e) => {
@@ -1698,13 +1706,116 @@ export default function App() {
                   </div>
                 </div>
 
-                {(!pairing.isPaired || isLiveOwner) && (
+                {isLiveOwner && !monthlyResetStep && (
                   <button
-                    onClick={handleResetMonth}
-                    className={`ras-reset-month w-full ${assignedGroupTheme ? 'ras-theme-inset' : 'bg-slate-900 border-slate-700'} hover:bg-red-950/40 text-red-400 hover:text-red-300 border hover:border-red-500/40 rounded-2xl py-3 text-xs font-extrabold transition flex items-center justify-center gap-2`}
+                    type="button"
+                    onClick={() => {
+                      setMonthlyResetError('');
+                      setMonthlyResetPhrase('');
+                      setMonthlyResetStep('review');
+                    }}
+                    className="ras-reset-month w-full rounded-2xl py-3 text-xs font-extrabold transition flex items-center justify-center gap-2 min-h-[44px]"
                   >
-                    <RotateCcw className="w-4 h-4" /> Reset Scores For New Month
+                    <RotateCcw className="w-4 h-4" /> Start monthly reset
                   </button>
+                )}
+
+                {isLiveOwner && monthlyResetStep && (
+                  <section className="ras-monthly-reset-flow mt-3 rounded-2xl border p-3" aria-labelledby="monthly-reset-heading">
+                    <div className="ras-monthly-reset-step text-[11px] font-black uppercase tracking-wide">
+                      Step {monthlyResetStep === 'review' ? '1' : '2'} of 2
+                    </div>
+                    <h4 id="monthly-reset-heading" className="mt-1 font-extrabold text-sm">
+                      {monthlyResetStep === 'review' ? 'Review this reset' : 'Confirm monthly reset'}
+                    </h4>
+
+                    {monthlyResetStep === 'review' ? (
+                      <div className="mt-2 text-xs leading-relaxed">
+                        <p>This will:</p>
+                        <ul className="mt-1 list-disc space-y-1 pl-4">
+                          <li>Save this month’s scores to the Monthly Slime Champions archive.</li>
+                          <li>Clear all group scores, today’s points log, and pending point requests.</li>
+                        </ul>
+                        <p className="mt-2 font-bold">Previous monthly archive entries will stay. This reset cannot be undone.</p>
+                      </div>
+                    ) : (
+                      <div className="mt-2">
+                        <p id="monthly-reset-instructions" className="text-xs leading-relaxed">
+                          Type <strong>RESET</strong> to confirm. Active scores, today’s log, and pending point requests will be cleared.
+                        </p>
+                        <label htmlFor="monthly-reset-confirmation" className="mt-3 block text-xs font-bold">
+                          Confirmation
+                        </label>
+                        <input
+                          id="monthly-reset-confirmation"
+                          type="text"
+                          autoComplete="off"
+                          spellCheck={false}
+                          maxLength={12}
+                          value={monthlyResetPhrase}
+                          onChange={(event) => {
+                            setMonthlyResetPhrase(event.target.value);
+                            setMonthlyResetError('');
+                          }}
+                          aria-describedby="monthly-reset-instructions"
+                          aria-invalid={Boolean(monthlyResetError)}
+                          placeholder="Type RESET"
+                          className="ras-reset-confirm-input mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                        />
+                      </div>
+                    )}
+
+                    {monthlyResetError && (
+                      <p role="alert" className="ras-reset-error mt-2 rounded-lg border px-2 py-1.5 text-xs font-semibold">
+                        {monthlyResetError}
+                      </p>
+                    )}
+
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        disabled={monthlyResetSubmitting}
+                        onClick={() => {
+                          setMonthlyResetStep(null);
+                          setMonthlyResetPhrase('');
+                          setMonthlyResetError('');
+                        }}
+                        className="ras-reset-flow-cancel min-h-[44px] flex-1 rounded-xl border px-3 py-2 text-xs font-bold"
+                      >
+                        Cancel
+                      </button>
+                      {monthlyResetStep === 'review' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMonthlyResetStep('confirm');
+                            setMonthlyResetPhrase('');
+                            setMonthlyResetError('');
+                          }}
+                          className="ras-reset-flow-next min-h-[44px] flex-1 rounded-xl px-3 py-2 text-xs font-bold"
+                        >
+                          Continue
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void handleResetMonth()}
+                          disabled={monthlyResetPhrase.trim().toUpperCase() !== 'RESET' || monthlyResetSubmitting}
+                          className="ras-reset-flow-final min-h-[44px] flex-1 rounded-xl px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {monthlyResetSubmitting ? 'Resetting…' : 'Confirm & reset'}
+                        </button>
+                      )}
+                    </div>
+                  </section>
+                )}
+
+                {!isLiveOwner && (
+                  <p className="ras-reset-manager-note mt-3 rounded-xl border px-3 py-2 text-xs">
+                    {pairing.isPaired
+                      ? 'Monthly reset is available to the Program Manager only.'
+                      : 'Connect as the Program Manager to reset monthly scores.'}
+                  </p>
                 )}
               </div>
             </div>

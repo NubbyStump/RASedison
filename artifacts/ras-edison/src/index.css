@@ -795,6 +795,72 @@
   border-color: #e6a9a0;
 }
 
+.ras-scoreboard .ras-monthly-reset-flow {
+  color: #4d4430;
+  background: #fff8e7;
+  border-color: #ead7a9;
+}
+
+.ras-scoreboard .ras-monthly-reset-step {
+  color: #8b6c28;
+}
+
+.ras-scoreboard .ras-reset-confirm-input {
+  color: #264c47;
+  background: #fffefa;
+  border-color: #d7e3dc;
+}
+
+.ras-scoreboard .ras-reset-confirm-input:focus {
+  border-color: #c18d2d;
+  outline: 3px solid rgba(193, 141, 45, .2);
+}
+
+.ras-scoreboard .ras-reset-error {
+  color: #8e3636;
+  background: #fff0ee;
+  border-color: #efc4bd;
+}
+
+.ras-scoreboard .ras-reset-manager-note {
+  color: #776f5c;
+  background: #f7f4e9;
+  border-color: #e4ddc8;
+}
+
+.ras-scoreboard .ras-reset-flow-cancel {
+  color: #53665f;
+  background: #fffefa;
+  border-color: #d5e1db;
+}
+
+.ras-scoreboard .ras-reset-flow-cancel:hover {
+  background: #edf4f0;
+}
+
+.ras-scoreboard .ras-reset-flow-next {
+  color: #fff;
+  background: #286b59;
+}
+
+.ras-scoreboard .ras-reset-flow-next:hover {
+  background: #205543;
+}
+
+.ras-scoreboard .ras-reset-flow-final {
+  color: #fff;
+  background: #9f3a3a;
+}
+
+.ras-scoreboard .ras-reset-flow-final:hover:not(:disabled) {
+  background: #852f2f;
+}
+
+.ras-scoreboard .ras-reset-flow-final:disabled {
+  color: #8e9692;
+  background: #e5e8e4;
+}
+
 .ras-scoreboard .ras-focus:focus-visible,
 .ras-scoreboard button:focus-visible,
 .ras-scoreboard input:focus-visible {
