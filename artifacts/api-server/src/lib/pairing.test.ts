@@ -4,7 +4,7 @@ import app from "../app";
 import type { Session } from "@workspace/api-zod";
 import { after, test } from "node:test";
 import { eq, sql } from "drizzle-orm";
-import { db, pairingMembers, pairingRooms } from "@workspace/db";
+import { db, pairingMembers, pairingPushSubscriptions, pairingRooms } from "@workspace/db";
 import {
   commandSchema,
   projectorMessageInputSchema,
@@ -22,6 +22,7 @@ import {
   rolloverActivitiesForLockedRoom,
   sendProjectorMessage,
 } from "../routes/pairing";
+import { deriveVapidKeys } from "./web-push";
 
 const roomIds: string[] = [];
 const baseState = (): PairingState => ({
@@ -92,6 +93,231 @@ test("owner dismissal reaches every polling session, preserves data, and enforce
 after(async () => {
   for (const id of roomIds) {
     await db.delete(pairingRooms).where(eq(pairingRooms.id, id));
+  }
+});
+
+test("mission and manual or automatic approval alerts stay counselor-scoped", async () => {
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state: baseState(),
+    activitiesMonth: calendarMonth(),
+  }).returning();
+  roomIds.push(room.id);
+
+  const tokens = [randomUUID(), randomUUID(), randomUUID()];
+  const members = await db.insert(pairingMembers).values(tokens.map((token, index) => ({
+    roomId: room.id,
+    name: `Notification test ${index}`,
+    role: index === 0 ? "owner" as const : "counselor" as const,
+    groupId: index === 0 ? null : "ladybugs",
+    assignmentDate: index === 0 ? null : "2026-09-28",
+    tokenHash: createHash("sha256").update(token).digest("hex"),
+  }))).returning();
+  const [owner, author, otherCounselor] = members;
+
+  await executePairingCommand(author, {
+    id: randomUUID(),
+    type: "addActivity",
+    payload: {
+      activity: {
+        title: "Shared Counselor Mission",
+        type: "Mission",
+        points: 10,
+        location: "Playground",
+        steps: "Follow these steps.",
+      },
+    },
+  });
+
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const sessionFor = async (token: string) => {
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/pairing/session`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(response.status, 200);
+    return await response.json() as {
+      notifications: Array<{
+        id: string;
+        kind: string;
+        title: string;
+        body: string;
+        details: Record<string, unknown>;
+      }>;
+    };
+  };
+
+  try {
+    const authorSession = await sessionFor(tokens[1]);
+    const otherSession = await sessionFor(tokens[2]);
+    assert.deepEqual(authorSession.notifications, []);
+    assert.equal(otherSession.notifications.length, 1);
+    assert.equal(otherSession.notifications[0].kind, "mission_added");
+    assert.match(otherSession.notifications[0].body, /Shared Counselor Mission/);
+
+    await executePairingCommand(owner, {
+      id: randomUUID(),
+      type: "addActivity",
+      payload: {
+        activity: {
+          title: "Scramble should not alert",
+          type: "Super Scramble",
+          points: 10,
+          location: "Whiteboard",
+          scrambledPhrase: "WOTKREMA",
+          solvedPhrase: "TEAMWORK",
+        },
+      },
+    });
+    assert.equal((await sessionFor(tokens[2])).notifications.length, 1);
+
+    const submitted = await executePairingCommand(author, {
+      id: randomUUID(),
+      type: "addPoints",
+      payload: {
+        groupId: "ladybugs",
+        amount: 8,
+        reason: "private approval reason",
+        specialMentions: "private student note",
+      },
+    });
+    const requestId = (submitted.state as PairingState).pendingPointApprovals?.at(-1)?.id;
+    assert.ok(requestId);
+    await executePairingCommand(owner, {
+      id: randomUUID(),
+      type: "approvePoints",
+      payload: { requestId },
+    });
+
+    const approvedNotification = (await sessionFor(tokens[1])).notifications
+      .find((notification) => notification.kind === "points_approved");
+    assert.ok(approvedNotification);
+    assert.equal(approvedNotification.details.amount, 8);
+    assert.match(approvedNotification.body, /Ladybugs/);
+    assert.equal(JSON.stringify(approvedNotification).includes("private approval reason"), false);
+    assert.equal(JSON.stringify(approvedNotification).includes("private student note"), false);
+    assert.equal(
+      (await sessionFor(tokens[2])).notifications.filter(
+        (notification) => notification.kind === "points_approved",
+      ).length,
+      0,
+    );
+
+    const automaticRequest = await executePairingCommand(author, {
+      id: randomUUID(),
+      type: "addPoints",
+      payload: {
+        groupId: "ladybugs",
+        amount: 3,
+        reason: "automatic approval test",
+      },
+    });
+    const automaticRequestId = (automaticRequest.state as PairingState)
+      .pendingPointApprovals?.at(-1)?.id;
+    assert.ok(automaticRequestId);
+    const [currentRoom] = await db.select().from(pairingRooms).where(eq(pairingRooms.id, room.id));
+    const overdueState = structuredClone(currentRoom.state as PairingState);
+    const request = overdueState.pendingPointApprovals?.find((item) => item.id === automaticRequestId);
+    assert.ok(request);
+    request.dueAt = new Date(Date.now() - 1_000).toISOString();
+    await db.update(pairingRooms).set({ state: overdueState }).where(eq(pairingRooms.id, room.id));
+    await resolveDuePointApprovals();
+
+    const autoApprovedNotification = (await sessionFor(tokens[1])).notifications
+      .find((notification) => notification.details.requestId === automaticRequestId);
+    assert.ok(autoApprovedNotification);
+    assert.equal(autoApprovedNotification.kind, "points_approved");
+    assert.match(autoApprovedNotification.body, /\+3 points/);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+});
+
+test("browser push registration is counselor-only and validates subscription endpoints", async () => {
+  const [room] = await db.insert(pairingRooms).values({
+    code: randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase(),
+    state: baseState(),
+    activitiesMonth: calendarMonth(),
+  }).returning();
+  roomIds.push(room.id);
+  const ownerToken = randomUUID();
+  const counselorToken = randomUUID();
+  const [owner, counselor] = await db.insert(pairingMembers).values([
+    {
+      roomId: room.id,
+      name: "Push owner",
+      role: "owner",
+      tokenHash: createHash("sha256").update(ownerToken).digest("hex"),
+    },
+    {
+      roomId: room.id,
+      name: "Push counselor",
+      role: "counselor",
+      groupId: "ladybugs",
+      assignmentDate: "2026-09-28",
+      tokenHash: createHash("sha256").update(counselorToken).digest("hex"),
+    },
+  ]).returning();
+
+  const originalSessionSecret = process.env.SESSION_SECRET;
+  process.env.SESSION_SECRET = "test-only-web-push-secret-with-sufficient-entropy";
+  const expectedKey = deriveVapidKeys(process.env.SESSION_SECRET).publicKey;
+  assert.equal(deriveVapidKeys(process.env.SESSION_SECRET).publicKey, expectedKey);
+
+  const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const url = `http://127.0.0.1:${address.port}/api/pairing`;
+  const send = (path: string, method: string, token: string, body?: unknown) => fetch(url + path, {
+    method,
+    headers: {
+      authorization: `Bearer ${token}`,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const endpoint = "https://fcm.googleapis.com/fcm/send/test-subscription";
+
+  try {
+    const config = await send("/push-config", "GET", counselorToken);
+    assert.equal(config.status, 200);
+    assert.equal((await config.json() as { publicKey: string }).publicKey, expectedKey);
+    assert.equal((await send("/push-config", "GET", ownerToken)).status, 403);
+
+    const body = {
+      endpoint,
+      expirationTime: null,
+      keys: { p256dh: "A".repeat(87), auth: "B".repeat(22) },
+    };
+    const subscribed = await send("/push-subscription", "POST", counselorToken, body);
+    assert.equal(subscribed.status, 200);
+    const [saved] = await db.select().from(pairingPushSubscriptions)
+      .where(eq(pairingPushSubscriptions.memberId, counselor.id));
+    assert.equal(saved.endpoint, endpoint);
+
+    const rejected = await send("/push-subscription", "POST", counselorToken, {
+      ...body,
+      endpoint: "https://attacker.example/push/endpoint",
+    });
+    assert.equal(rejected.status, 400);
+
+    const removed = await send("/push-subscription", "DELETE", counselorToken, { endpoint });
+    assert.equal(removed.status, 200);
+    const remaining = await db.select().from(pairingPushSubscriptions)
+      .where(eq(pairingPushSubscriptions.memberId, counselor.id));
+    assert.deepEqual(remaining, []);
+    assert.ok(owner.id);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+    if (originalSessionSecret === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = originalSessionSecret;
   }
 });
 

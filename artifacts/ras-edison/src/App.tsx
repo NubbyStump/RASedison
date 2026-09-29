@@ -27,7 +27,8 @@ import {
   ChevronRight,
   Wifi,
   WifiOff,
-  MessageSquare
+  MessageSquare,
+  Bell
 } from 'lucide-react';
 
 const formatLapTime = (minutes, seconds, ms) => {
@@ -125,6 +126,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('scoreboard');
   const [sessionModal, setSessionModal] = useState('startup');
   const [messageComposerOpen, setMessageComposerOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationToast, setNotificationToast] = useState(null);
+  const [notificationError, setNotificationError] = useState('');
+  const notificationSeenRef = useRef({ roomId: null, ids: new Set() });
 
   // Persistent Group Scores State
   const [localGroups, setLocalGroups] = useState(() => {
@@ -203,6 +208,21 @@ export default function App() {
   const activityAwardSubmittingRef = useRef(false);
 
   const pairing = usePairing();
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const onServiceWorkerMessage = (event) => {
+      if (event.data?.type === 'ras-notification') void pairing.refresh();
+    };
+    navigator.serviceWorker.addEventListener('message', onServiceWorkerMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onServiceWorkerMessage);
+  }, [pairing.refresh]);
+
+  useEffect(() => {
+    if (!notificationToast) return;
+    const timer = window.setTimeout(() => setNotificationToast(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [notificationToast]);
+
   // Keep this hook above every render return (including projector mode) so
   // approval timers remain accurate whenever the user returns to Points.
   useEffect(() => {
@@ -211,6 +231,32 @@ export default function App() {
   }, []);
   const isLiveOwner = pairing.session?.role === 'owner';
   const isLiveCounselor = pairing.session?.role === 'counselor';
+  useEffect(() => {
+    const currentRoomId = pairing.session?.roomId;
+    if (!isLiveCounselor || !currentRoomId) {
+      notificationSeenRef.current = { roomId: null, ids: new Set() };
+      setNotificationToast(null);
+      return;
+    }
+    const notifications = pairing.session?.notifications ?? [];
+    const seen = notificationSeenRef.current;
+    if (seen.roomId !== currentRoomId) {
+      notificationSeenRef.current = {
+        roomId: currentRoomId,
+        ids: new Set(notifications.map((notification) => notification.id)),
+      };
+      return;
+    }
+    const newNotifications = notifications.filter(
+      (notification) => !seen.ids.has(notification.id) && !notification.readAt,
+    );
+    notificationSeenRef.current = {
+      roomId: currentRoomId,
+      ids: new Set(notifications.map((notification) => notification.id)),
+    };
+    if (newNotifications.length) setNotificationToast(newNotifications[0]);
+  }, [isLiveCounselor, pairing.session?.roomId, pairing.session?.notifications]);
+
   const canManageActivities = !pairing.isPaired || isLiveOwner;
   const canCreateActivities = !pairing.isPaired || Boolean(pairing.session);
   const groups = pairing.session?.state.groups ?? localGroups;
@@ -244,6 +290,9 @@ export default function App() {
   const projectorMessages = pairing.session?.projectorMessages ?? [];
   const pendingPointApprovals = (pairing.session?.state.pendingPointApprovals ?? [])
     .filter((request) => (request.status ?? 'pending') === 'pending');
+  const counselorNotifications = isLiveCounselor ? (pairing.session?.notifications ?? []) : [];
+  const unreadNotificationCount = counselorNotifications
+    .filter((notification) => !notification.readAt).length;
   const localSnapshot = () => ({
     groups: localGroups,
     history: localHistory,
@@ -1076,8 +1125,119 @@ export default function App() {
               <MessageSquare className="w-4 h-4" /> Chat
             </button>
           </div>
+          {isLiveCounselor && (
+            <div className="relative self-end lg:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  const opening = !notificationsOpen;
+                  setNotificationsOpen(opening);
+                  setNotificationError('');
+                  if (opening) {
+                    void pairing.markNotificationsRead().catch((error) => {
+                      setNotificationError(error.message || 'Unable to load notifications.');
+                    });
+                  }
+                }}
+                className="relative flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-xl border border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-700 transition"
+                aria-label={`Notifications${unreadNotificationCount ? `, ${unreadNotificationCount} unread` : ''}`}
+                aria-expanded={notificationsOpen}
+                aria-haspopup="dialog"
+              >
+                <Bell className="w-4 h-4" />
+                <span className="text-xs font-bold">Alerts</span>
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+              {notificationsOpen && (
+                <section
+                  role="dialog"
+                  aria-label="Counselor notifications"
+                  className="absolute right-0 top-full mt-2 z-[60] w-[min(92vw,24rem)] rounded-2xl border border-slate-600 bg-slate-900 shadow-2xl overflow-hidden"
+                >
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-700">
+                    <div>
+                      <h2 className="font-black text-white">Notifications</h2>
+                      <p className="text-xs text-slate-400">Mission updates and approved point requests</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationError('');
+                        void (pairing.browserAlertsEnabled
+                          ? pairing.disableBrowserAlerts()
+                          : pairing.enableBrowserAlerts()).catch((error) => {
+                          setNotificationError(error.message || 'Unable to update browser alerts.');
+                        });
+                      }}
+                      className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition ${
+                        pairing.browserAlertsEnabled
+                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'
+                          : 'bg-cyan-500 text-slate-950 hover:bg-cyan-400'
+                      }`}
+                    >
+                      {pairing.browserAlertsEnabled ? 'Browser alerts on' : 'Enable browser alerts'}
+                    </button>
+                  </div>
+                  {(notificationError || pairing.browserAlertsError) && (
+                    <p className="px-4 py-2 text-xs text-rose-300" role="alert">
+                      {notificationError || pairing.browserAlertsError}
+                    </p>
+                  )}
+                  <div className="max-h-[55vh] overflow-y-auto">
+                    {counselorNotifications.length === 0 ? (
+                      <p className="px-4 py-8 text-center text-sm text-slate-400">No notifications yet.</p>
+                    ) : (
+                      counselorNotifications.map((notification) => (
+                        <article
+                          key={notification.id}
+                          className={`px-4 py-3 border-b border-slate-800 last:border-b-0 ${
+                            notification.readAt ? 'bg-slate-900' : 'bg-cyan-950/30'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <h3 className="text-sm font-extrabold text-white">{notification.title}</h3>
+                            <time className="shrink-0 text-[10px] text-slate-500">
+                              {new Date(notification.createdAt).toLocaleString([], {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </time>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-300">{notification.body}</p>
+                        </article>
+                      ))
+                    )}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
         </div>
       </header>
+
+      {notificationToast && isLiveCounselor && (
+        <button
+          type="button"
+          aria-live="polite"
+          onClick={() => {
+            setActiveTab(notificationToast.kind === 'mission_added' ? 'generator' : 'scoreboard');
+            setNotificationToast(null);
+          }}
+          className="fixed top-24 right-4 z-50 w-[min(90vw,24rem)] rounded-2xl border border-cyan-400/50 bg-slate-800 px-4 py-3 text-left shadow-2xl"
+        >
+          <span className="block text-sm font-black text-white">{notificationToast.title}</span>
+          <span className="mt-1 block text-sm text-slate-300">{notificationToast.body}</span>
+          <span className="mt-2 block text-[10px] font-bold uppercase tracking-wider text-cyan-300">
+            Tap to view
+          </span>
+        </button>
+      )}
 
       {/* Main Content Area */}
       <main className="max-w-6xl mx-auto w-full px-4 pt-6 flex-1">

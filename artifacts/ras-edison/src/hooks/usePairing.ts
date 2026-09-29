@@ -62,6 +62,16 @@ export type ChatMessage = {
   createdAt: string;
 };
 
+export type PairingNotification = {
+  id: string;
+  kind: 'mission_added' | 'points_approved';
+  title: string;
+  body: string;
+  details: Record<string, unknown>;
+  createdAt: string;
+  readAt: string | null;
+};
+
 export type PairingSession = {
   roomId: string;
   code: string;
@@ -80,6 +90,7 @@ export type PairingSession = {
   }>;
   projectorMessages: ProjectorMessage[];
   chatMessages: ChatMessage[];
+  notifications: PairingNotification[];
   token?: string;
 };
 
@@ -114,6 +125,26 @@ async function readJson(response: Response) {
   }
 }
 
+function decodeApplicationServerKey(encoded: string): Uint8Array {
+  const padding = '='.repeat((4 - (encoded.length % 4)) % 4);
+  const base64 = (encoded + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(base64);
+  return Uint8Array.from(raw, (character) => character.charCodeAt(0));
+}
+
+function pairingServiceWorkerUrl(): string {
+  return new URL(`${import.meta.env.BASE_URL}service-worker.js`, window.location.origin).toString();
+}
+
+function subscriptionUsesServerKey(subscription: PushSubscription, encodedKey: string): boolean {
+  const actualKey = subscription.options.applicationServerKey;
+  if (!actualKey) return false;
+  const expected = decodeApplicationServerKey(encodedKey);
+  const actual = new Uint8Array(actualKey);
+  return actual.length === expected.length
+    && actual.every((value, index) => value === expected[index]);
+}
+
 export function usePairing() {
   const initialToken = typeof window === 'undefined' ? null : localStorage.getItem(TOKEN_KEY);
   const tokenRef = useRef<string | null>(initialToken);
@@ -131,6 +162,9 @@ export function usePairing() {
   const [busy, setBusy] = useState(false);
   const [isPaired, setIsPaired] = useState(Boolean(initialToken));
   const [today, setToday] = useState(localCalendarDate);
+  const [browserAlertsEnabled, setBrowserAlertsEnabled] = useState(false);
+  const [browserAlertsError, setBrowserAlertsError] = useState('');
+  const pushSyncKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const updateToday = () => setToday(localCalendarDate());
@@ -159,6 +193,11 @@ export function usePairing() {
     if (expectedRoom && next.roomId !== expectedRoom) return false;
     const current = sessionRef.current;
     if (current && current.roomId === next.roomId && next.version < current.version) return false;
+    if (current && (current.roomId !== next.roomId || current.memberId !== next.memberId)) {
+      pushSyncKeyRef.current = null;
+      setBrowserAlertsEnabled(false);
+      setBrowserAlertsError('');
+    }
 
     const merged = { ...next, token: undefined };
     sessionRef.current = merged;
@@ -202,6 +241,9 @@ export function usePairing() {
       setSession(null);
       setIsPaired(false);
       setStatus('local');
+      setBrowserAlertsEnabled(false);
+      setBrowserAlertsError('');
+      pushSyncKeyRef.current = null;
       stickyErrorRef.current = true;
       setError('You were logged out because this session ended or the Program Manager removed you. This device’s local data was not changed; join a session again to reconnect.');
       throw new Error('The pairing session is no longer authorized.');
@@ -212,6 +254,68 @@ export function usePairing() {
     }
     return body;
   }, []);
+
+  const syncExistingBrowserAlerts = useCallback(async (
+    current: PairingSession,
+    generation: number,
+  ) => {
+    if (
+      current.role !== 'counselor'
+      || typeof window === 'undefined'
+      || !('serviceWorker' in navigator)
+      || !('PushManager' in window)
+      || typeof Notification === 'undefined'
+      || Notification.permission !== 'granted'
+    ) {
+      setBrowserAlertsEnabled(false);
+      return;
+    }
+    const syncKey = `${current.roomId}:${current.memberId}`;
+    if (pushSyncKeyRef.current === syncKey) return;
+    pushSyncKeyRef.current = syncKey;
+    try {
+      const registration = await navigator.serviceWorker.register(pairingServiceWorkerUrl());
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        setBrowserAlertsEnabled(false);
+        return;
+      }
+      const config = await authenticatedRequest(
+        '/api/pairing/push-config',
+        { method: 'GET' },
+        generation,
+        current.roomId,
+      );
+      if (!subscriptionUsesServerKey(subscription, config.publicKey)) {
+        await subscription.unsubscribe();
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: decodeApplicationServerKey(config.publicKey) as BufferSource,
+        });
+      }
+      await authenticatedRequest(
+        '/api/pairing/push-subscription',
+        { method: 'POST', body: JSON.stringify(subscription.toJSON()) },
+        generation,
+        current.roomId,
+      );
+      setBrowserAlertsEnabled(true);
+      setBrowserAlertsError('');
+    } catch {
+      pushSyncKeyRef.current = null;
+      setBrowserAlertsEnabled(false);
+      setBrowserAlertsError('Browser alerts could not reconnect. Try enabling them again.');
+    }
+  }, [authenticatedRequest]);
+
+  useEffect(() => {
+    if (!session || session.role !== 'counselor') {
+      pushSyncKeyRef.current = null;
+      setBrowserAlertsEnabled(false);
+      return;
+    }
+    void syncExistingBrowserAlerts(session, generationRef.current);
+  }, [session?.roomId, session?.memberId, session?.role, syncExistingBrowserAlerts]);
 
   const refresh = useCallback(async () => {
     if (!tokenRef.current || pollRunningRef.current) return;
@@ -575,6 +679,118 @@ export function usePairing() {
     }
   }, [applySession, authenticatedRequest, beginOperation, endOperation, status]);
 
+  const enableBrowserAlerts = useCallback(async () => {
+    const current = sessionRef.current;
+    if (!current || current.role !== 'counselor') {
+      throw new Error('Join a live room as a counselor before enabling browser alerts.');
+    }
+    if (status !== 'connected') {
+      throw new Error('Wait for the live room to reconnect before enabling browser alerts.');
+    }
+    if (
+      !('serviceWorker' in navigator)
+      || !('PushManager' in window)
+      || typeof Notification === 'undefined'
+    ) {
+      throw new Error('This browser does not support browser alerts.');
+    }
+
+    const generation = generationRef.current;
+    beginOperation();
+    setBrowserAlertsError('');
+    try {
+      const permission = Notification.permission === 'granted'
+        ? 'granted'
+        : await Notification.requestPermission();
+      if (permission !== 'granted') {
+        throw new Error('Allow notifications in your browser settings to enable browser alerts.');
+      }
+      const config = await authenticatedRequest(
+        '/api/pairing/push-config',
+        { method: 'GET' },
+        generation,
+        current.roomId,
+      );
+      const registration = await navigator.serviceWorker.register(pairingServiceWorkerUrl());
+      let subscription = await registration.pushManager.getSubscription();
+      if (subscription && !subscriptionUsesServerKey(subscription, config.publicKey)) {
+        await subscription.unsubscribe();
+        subscription = null;
+      }
+      subscription ??= await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: decodeApplicationServerKey(config.publicKey) as BufferSource,
+      });
+      await authenticatedRequest(
+        '/api/pairing/push-subscription',
+        { method: 'POST', body: JSON.stringify(subscription.toJSON()) },
+        generation,
+        current.roomId,
+      );
+      pushSyncKeyRef.current = `${current.roomId}:${current.memberId}`;
+      setBrowserAlertsEnabled(true);
+    } catch (requestError) {
+      const message = (requestError as Error).message || 'Unable to enable browser alerts.';
+      setBrowserAlertsEnabled(false);
+      setBrowserAlertsError(message);
+      throw requestError;
+    } finally {
+      endOperation();
+    }
+  }, [authenticatedRequest, beginOperation, endOperation, status]);
+
+  const disableBrowserAlerts = useCallback(async () => {
+    const current = sessionRef.current;
+    if (!current || current.role !== 'counselor') {
+      throw new Error('Join a live room as a counselor before changing browser alerts.');
+    }
+    const generation = generationRef.current;
+    beginOperation();
+    setBrowserAlertsError('');
+    try {
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration(pairingServiceWorkerUrl());
+        const subscription = await registration?.pushManager.getSubscription();
+        if (subscription) {
+          await authenticatedRequest(
+            '/api/pairing/push-subscription',
+            {
+              method: 'DELETE',
+              body: JSON.stringify({ endpoint: subscription.endpoint }),
+            },
+            generation,
+            current.roomId,
+          );
+          await subscription.unsubscribe();
+        }
+      }
+      setBrowserAlertsEnabled(false);
+      pushSyncKeyRef.current = `${current.roomId}:${current.memberId}`;
+    } catch (requestError) {
+      const message = (requestError as Error).message || 'Unable to disable browser alerts.';
+      setBrowserAlertsError(message);
+      throw requestError;
+    } finally {
+      endOperation();
+    }
+  }, [authenticatedRequest, beginOperation, endOperation]);
+
+  const markNotificationsRead = useCallback(async () => {
+    const current = sessionRef.current;
+    if (!current || current.role !== 'counselor') return;
+    const generation = generationRef.current;
+    const body = await authenticatedRequest(
+      '/api/pairing/notifications/read',
+      { method: 'PATCH', body: '{}' },
+      generation,
+      current.roomId,
+    );
+    if (generationRef.current !== generation || !sessionRef.current) return;
+    const updated = { ...sessionRef.current, notifications: body.notifications ?? [] };
+    sessionRef.current = updated;
+    setSession(updated);
+  }, [authenticatedRequest]);
+
   const currentGroupId = session?.assignmentDate === today ? session.groupId : null;
   const needsDailyAssignment = Boolean(session && session.assignmentDate !== today);
 
@@ -597,5 +813,11 @@ export function usePairing() {
     command,
     sendMessage,
     clearMessage,
+    refresh,
+    browserAlertsEnabled,
+    browserAlertsError,
+    enableBrowserAlerts,
+    disableBrowserAlerts,
+    markNotificationsRead,
   };
 }

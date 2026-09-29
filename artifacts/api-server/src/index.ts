@@ -3,6 +3,7 @@ import helmet from "helmet";
 import cors from "cors";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { dispatchPendingPairingPush } from "./lib/web-push";
 import { resolveDuePointApprovals } from "./routes/pairing";
 
 // 1. Security Middlewares (Helmet, Strict CORS, Body Limits)
@@ -56,8 +57,14 @@ const server = app.listen(port, "0.0.0.0", (err?: Error) => {
       logger.error({ err: error }, "Point approval sweep failed")
     );
   }, 15_000);
+  const pushTimer = setInterval(() => {
+    void dispatchPendingPairingPush().catch((error) =>
+      logger.error({ err: error }, "Browser alert delivery sweep failed")
+    );
+  }, 10_000);
 
   approvalTimer.unref();
+  pushTimer.unref();
 });
 
 // 4. Graceful Shutdown Handlers

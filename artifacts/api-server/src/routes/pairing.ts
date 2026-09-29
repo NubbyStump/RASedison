@@ -5,8 +5,15 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
-import { and, eq, isNull, sql } from "drizzle-orm";
-import { db, pairingCommands, pairingMembers, pairingRooms } from "@workspace/db";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { z } from "zod";
+import {
+  db,
+  pairingCommands,
+  pairingMembers,
+  pairingPushSubscriptions,
+  pairingRooms,
+} from "@workspace/db";
 import {
   CreatePairingBody,
   JoinPairingBody,
@@ -21,6 +28,13 @@ import {
   type PointApproval,
   type PairingState,
 } from "../lib/pairing";
+import {
+  listPairingNotifications,
+  markPairingNotificationsRead,
+  queuePairingNotifications,
+  type PairingTransaction,
+} from "../lib/pairing-notifications";
+import { getVapidPublicKey } from "../lib/web-push";
 
 const router: IRouter = Router();
 const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -38,7 +52,6 @@ const OWNER_COMMANDS = new Set<PairingCommand["type"]>([
   "approvePoints",
   "rejectPoints",
 ]);
-type PairingTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type PairingRoom = typeof pairingRooms.$inferSelect;
 const PROJECTOR_MESSAGE_LIFETIME_MS = 8_000;
 const PROJECTOR_MESSAGE_LIMIT = 20;
@@ -46,6 +59,34 @@ const CHAT_MESSAGE_LIMIT = 100;
 const PROJECTOR_MESSAGE_RATE_WINDOW_MS = 10_000;
 const PROJECTOR_MESSAGE_RATE_LIMIT = 5;
 const APPROVAL_HISTORY_LIMIT = 100;
+const browserPushSubscriptionSchema = z.object({
+  endpoint: z.string().url().max(2048),
+  expirationTime: z.number().finite().nullable().optional(),
+  keys: z.object({
+    p256dh: z.string().regex(/^[A-Za-z0-9_-]{20,200}$/),
+    auth: z.string().regex(/^[A-Za-z0-9_-]{16,200}$/),
+  }).strict(),
+}).strict();
+const browserPushEndpointSchema = z.object({
+  endpoint: z.string().url().max(2048),
+}).strict();
+
+function supportedBrowserPushEndpoint(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === "https:"
+      && (
+        host === "fcm.googleapis.com"
+        || host.endsWith(".fcm.googleapis.com")
+        || host === "push.services.mozilla.com"
+        || host.endsWith(".push.services.mozilla.com")
+        || host === "web.push.apple.com"
+      );
+  } catch {
+    return false;
+  }
+}
 
 export function calendarMonth(
   now = new Date(),
@@ -209,10 +250,20 @@ export async function rolloverActivitiesForLockedRoom(
   return updated;
 }
 
-function resolveDueApprovals(state: PairingState, now = new Date()): boolean {
+type ResolvedApproval = {
+  request: PointApproval;
+  groupName: string;
+  amount: number;
+};
+
+function resolveDueApprovals(
+  state: PairingState,
+  now = new Date(),
+): { changed: boolean; approved: ResolvedApproval[] } {
   const requests = state.pendingPointApprovals;
-  if (!requests?.length) return false;
+  if (!requests?.length) return { changed: false, approved: [] };
   let changed = false;
+  const approved: ResolvedApproval[] = [];
   for (const request of requests) {
     if ((request.status ?? "pending") !== "pending" || Date.parse(request.dueAt) > now.getTime()) continue;
     const group = state.groups.find((item) => item.id === request.groupId);
@@ -226,6 +277,11 @@ function resolveDueApprovals(state: PairingState, now = new Date()): boolean {
     group.score = request.setScore === undefined
       ? Math.max(0, Math.min(1_000_000_000, oldScore + request.amount))
       : request.setScore;
+    approved.push({
+      request,
+      groupName: group.name,
+      amount: group.score - oldScore,
+    });
     state.history = [{
       id: request.id,
       groupId: group.id,
@@ -240,7 +296,64 @@ function resolveDueApprovals(state: PairingState, now = new Date()): boolean {
     request.resolvedAt = now.toISOString();
     changed = true;
   }
-  return changed;
+  return { changed, approved };
+}
+
+async function queueApprovalNotifications(
+  tx: PairingTransaction,
+  roomId: string,
+  approvals: ResolvedApproval[],
+  actorMemberId: string | null = null,
+): Promise<void> {
+  if (approvals.length === 0) return;
+  const recipientIds = [...new Set(approvals.map(({ request }) => request.submittedById))];
+  const activeCounselors = await tx.select({ id: pairingMembers.id }).from(pairingMembers).where(and(
+    eq(pairingMembers.roomId, roomId),
+    eq(pairingMembers.role, "counselor"),
+    inArray(pairingMembers.id, recipientIds),
+    isNull(pairingMembers.revokedAt),
+  ));
+  const activeIds = new Set(activeCounselors.map(({ id }) => id));
+  await queuePairingNotifications(tx, approvals
+    .filter(({ request }) => activeIds.has(request.submittedById))
+    .map(({ request, groupName, amount }) => ({
+      roomId,
+      recipientMemberId: request.submittedById,
+      actorMemberId,
+      kind: "points_approved",
+      sourceId: request.id,
+      title: "Points approved",
+      body: `${amount > 0 ? `+${amount}` : amount} points were approved for ${groupName}.`,
+      details: { groupName, amount, requestId: request.id },
+    })));
+}
+
+async function queueMissionNotifications(
+  tx: PairingTransaction,
+  roomId: string,
+  actorMemberId: string,
+  sourceId: string,
+  activity: Record<string, unknown> & { id: string },
+): Promise<void> {
+  const recipients = await tx.select({ id: pairingMembers.id }).from(pairingMembers).where(and(
+    eq(pairingMembers.roomId, roomId),
+    eq(pairingMembers.role, "counselor"),
+    ne(pairingMembers.id, actorMemberId),
+    isNull(pairingMembers.revokedAt),
+  ));
+  await queuePairingNotifications(tx, recipients.map(({ id }) => ({
+    roomId,
+    recipientMemberId: id,
+    actorMemberId,
+    kind: "mission_added",
+    sourceId,
+    title: "New Mission",
+    body: `A new Mission was added: ${String(activity.title ?? "Untitled Mission")}.`,
+    details: {
+      activityId: activity.id,
+      activityTitle: String(activity.title ?? "Untitled Mission"),
+    },
+  })));
 }
 
 export async function resolveDuePointApprovals(): Promise<void> {
@@ -250,12 +363,14 @@ export async function resolveDuePointApprovals(): Promise<void> {
       const room = await lockRoomById(tx, candidate.id);
       if (!room || room.endedAt) continue;
       const state = structuredClone(room.state as PairingState);
-      if (!resolveDueApprovals(state)) continue;
+      const resolved = resolveDueApprovals(state);
+      if (!resolved.changed) continue;
       await tx.update(pairingRooms).set({
         state,
         version: room.version + 1,
         updatedAt: new Date(),
       }).where(eq(pairingRooms.id, room.id));
+      await queueApprovalNotifications(tx, room.id, resolved.approved);
     }
   });
 }
@@ -283,13 +398,15 @@ async function sessionFor(
     .where(eq(pairingRooms.id, member.roomId)).limit(1))[0];
   if (!room) throw new Error("Room not found");
   const resolvedState = structuredClone(room.state as PairingState);
-  if (resolveDueApprovals(resolvedState)) {
+  const resolvedApprovals = resolveDueApprovals(resolvedState);
+  if (resolvedApprovals.changed) {
     const [updated] = await executor.update(pairingRooms).set({
       state: resolvedState,
       version: room.version + 1,
       updatedAt: new Date(),
     }).where(eq(pairingRooms.id, room.id)).returning();
     if (updated) room = updated;
+    await queueApprovalNotifications(executor, room.id, resolvedApprovals.approved);
   }
   const members = await executor.select({
     id: pairingMembers.id,
@@ -309,6 +426,9 @@ async function sessionFor(
   const chatMessages = [...room.projectorMessages]
     .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
     .slice(-CHAT_MESSAGE_LIMIT);
+  const notifications = member.role === "counselor"
+    ? await listPairingNotifications(executor, room.id, member.id)
+    : [];
   return {
     roomId: room.id,
     code: room.code,
@@ -323,6 +443,7 @@ async function sessionFor(
     members,
     projectorMessages,
     chatMessages,
+    notifications,
     ...(token ? { token } : {}),
   };
 }
@@ -419,7 +540,8 @@ export async function executePairingCommand(
       .where(and(eq(pairingCommands.roomId, member.roomId), eq(pairingCommands.id, command.id))).limit(1);
     if (!duplicate) {
       const state = structuredClone(room.state as PairingState);
-      resolveDueApprovals(state);
+      const approvalsResolvedBeforeCommand = resolveDueApprovals(state);
+      await queueApprovalNotifications(tx, room.id, approvalsResolvedBeforeCommand.approved);
       if (
         (
           command.type === "addPoints"
@@ -500,7 +622,8 @@ export async function executePairingCommand(
         if ((request.status ?? "pending") === "pending") {
           const now = new Date();
           if (Date.parse(request.dueAt) <= now.getTime()) {
-            resolveDueApprovals(state, now);
+            const resolved = resolveDueApprovals(state, now);
+            await queueApprovalNotifications(tx, room.id, resolved.approved);
           } else if (command.type === "approvePoints") {
             const group = state.groups.find((item) => item.id === request.groupId);
             if (!group) throw new Error("Group not found");
@@ -520,6 +643,11 @@ export async function executePairingCommand(
             }, ...state.history].slice(0, 36);
             request.status = "approved";
             request.resolvedAt = now.toISOString();
+            await queueApprovalNotifications(tx, room.id, [{
+              request,
+              groupName: group.name,
+              amount: group.score - oldScore,
+            }], activeMember.id);
           } else {
             request.status = "rejected";
             request.resolvedAt = now.toISOString();
@@ -537,6 +665,12 @@ export async function executePairingCommand(
         return { error: "Only the Program Manager can set a Super Scramble" as const };
       } else {
         Object.assign(state, reducePairingState(state, command));
+        if (command.type === "addActivity" && command.payload.activity.type === "Mission") {
+          const createdActivity = state.activities[0];
+          if (createdActivity) {
+            await queueMissionNotifications(tx, room.id, activeMember.id, command.id, createdActivity);
+          }
+        }
         if (command.type === "addPoints" && state.history[0]) {
           state.history[0].submittedByName = activeMember.name;
         }
@@ -690,6 +824,123 @@ router.get("/pairing/session", async (req, res): Promise<void> => {
     return;
   }
   res.json(result);
+});
+
+router.patch("/pairing/notifications/read", async (req, res): Promise<void> => {
+  const member = await authenticate(req);
+  if (!member) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const notifications = await db.transaction(async (tx) => {
+    const lockedRoom = await lockRoomById(tx, member.roomId);
+    if (!lockedRoom || lockedRoom.endedAt) return null;
+    const activeMember = await activeMemberForRoom(tx, member.id, lockedRoom.id);
+    if (!activeMember || activeMember.role !== "counselor") return null;
+    await markPairingNotificationsRead(tx, lockedRoom.id, activeMember.id);
+    return listPairingNotifications(tx, lockedRoom.id, activeMember.id);
+  });
+  if (!notifications) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  res.json({ notifications });
+});
+
+router.get("/pairing/push-config", async (req, res): Promise<void> => {
+  const member = await authenticate(req);
+  if (!member) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (member.role !== "counselor") {
+    res.status(403).json({ error: "Browser alerts are available to counselors." });
+    return;
+  }
+  const publicKey = getVapidPublicKey();
+  if (!publicKey) {
+    res.status(503).json({ error: "Browser alerts are not configured on this server." });
+    return;
+  }
+  const authorized = await db.transaction(async (tx) => {
+    const room = await lockRoomById(tx, member.roomId);
+    if (!room || room.endedAt) return false;
+    const activeMember = await activeMemberForRoom(tx, member.id, room.id);
+    return Boolean(activeMember && activeMember.role === "counselor");
+  });
+  if (!authorized) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  res.json({ publicKey });
+});
+
+router.post("/pairing/push-subscription", async (req, res): Promise<void> => {
+  const member = await authenticate(req);
+  if (!member) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (member.role !== "counselor") {
+    res.status(403).json({ error: "Browser alerts are available to counselors." });
+    return;
+  }
+  const parsed = browserPushSubscriptionSchema.safeParse(req.body);
+  if (!parsed.success || !supportedBrowserPushEndpoint(parsed.data.endpoint)) {
+    res.status(400).json({ error: "Invalid browser alert subscription." });
+    return;
+  }
+  if (!getVapidPublicKey()) {
+    res.status(503).json({ error: "Browser alerts are not configured on this server." });
+    return;
+  }
+  const saved = await db.transaction(async (tx) => {
+    const room = await lockRoomById(tx, member.roomId);
+    if (!room || room.endedAt) return false;
+    const activeMember = await activeMemberForRoom(tx, member.id, room.id);
+    if (!activeMember || activeMember.role !== "counselor") return false;
+    await tx.insert(pairingPushSubscriptions).values({
+      roomId: room.id,
+      memberId: activeMember.id,
+      endpoint: parsed.data.endpoint,
+      p256dh: parsed.data.keys.p256dh,
+      auth: parsed.data.keys.auth,
+    }).onConflictDoUpdate({
+      target: pairingPushSubscriptions.endpoint,
+      set: {
+        roomId: room.id,
+        memberId: activeMember.id,
+        p256dh: parsed.data.keys.p256dh,
+        auth: parsed.data.keys.auth,
+        updatedAt: new Date(),
+      },
+    });
+    return true;
+  });
+  if (!saved) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+router.delete("/pairing/push-subscription", async (req, res): Promise<void> => {
+  const member = await authenticate(req);
+  if (!member) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const parsed = browserPushEndpointSchema.safeParse(req.body);
+  if (!parsed.success || !supportedBrowserPushEndpoint(parsed.data.endpoint)) {
+    res.status(400).json({ error: "Invalid browser alert subscription." });
+    return;
+  }
+  await db.delete(pairingPushSubscriptions).where(and(
+    eq(pairingPushSubscriptions.memberId, member.id),
+    eq(pairingPushSubscriptions.roomId, member.roomId),
+    eq(pairingPushSubscriptions.endpoint, parsed.data.endpoint),
+  ));
+  res.json({ ok: true });
 });
 
 router.patch("/pairing/assignment", async (req, res): Promise<void> => {
@@ -880,6 +1131,8 @@ export async function removePairingMember(
       isNull(pairingMembers.revokedAt),
     )).returning();
     if (!revoked) return { error: "not-found" as const };
+    await tx.delete(pairingPushSubscriptions)
+      .where(eq(pairingPushSubscriptions.memberId, target.id));
 
     const [updatedRoom] = await tx.update(pairingRooms).set({
       version: room.version + 1,
@@ -932,8 +1185,21 @@ router.post("/pairing/leave", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  await db.update(pairingMembers).set({ revokedAt: new Date() })
-    .where(eq(pairingMembers.id, member.id));
+  const left = await db.transaction(async (tx) => {
+    const room = await lockRoomById(tx, member.roomId);
+    if (!room || room.endedAt) return false;
+    const activeMember = await activeMemberForRoom(tx, member.id, room.id);
+    if (!activeMember) return false;
+    await tx.delete(pairingPushSubscriptions)
+      .where(eq(pairingPushSubscriptions.memberId, activeMember.id));
+    await tx.update(pairingMembers).set({ revokedAt: new Date() })
+      .where(eq(pairingMembers.id, activeMember.id));
+    return true;
+  });
+  if (!left) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   res.json({ ok: true });
 });
 
@@ -958,6 +1224,8 @@ router.post("/pairing/end", async (req, res): Promise<void> => {
       .where(eq(pairingRooms.id, member.roomId));
     await tx.update(pairingMembers).set({ revokedAt: endedAt })
       .where(eq(pairingMembers.roomId, member.roomId));
+    await tx.delete(pairingPushSubscriptions)
+      .where(eq(pairingPushSubscriptions.roomId, member.roomId));
     return "ok" as const;
   });
   if (result === "unauthorized") {
