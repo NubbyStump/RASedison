@@ -4,6 +4,7 @@ import PairingPanel from './components/PairingPanel';
 import MessageComposer from './components/MessageComposer';
 import ProjectorMessage from './components/ProjectorMessage';
 import ChatPanel from './components/ChatPanel';
+import OfflineCounselorsPanel from './components/OfflineCounselorsPanel';
 import { localCalendarDate, usePairing } from './hooks/usePairing';
 import { 
   Trophy, 
@@ -219,6 +220,12 @@ export default function App() {
   const activityAwardSubmittingRef = useRef(false);
 
   const pairing = usePairing();
+  useEffect(() => {
+    if (pairing.isPaired && activeTab === 'ai_counselors') {
+      setActiveTab('scoreboard');
+    }
+  }, [pairing.isPaired, activeTab]);
+
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     const onServiceWorkerMessage = (event) => {
@@ -1177,6 +1184,18 @@ export default function App() {
             >
               <Timer className="w-4 h-4" /> Laps
             </button>
+            {!pairing.isPaired && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('ai_counselors')}
+                className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 ${
+                  activeTab === 'ai_counselors' ? 'ras-nav-active' : 'ras-nav-muted'
+                }`}
+                aria-current={activeTab === 'ai_counselors' ? 'page' : undefined}
+              >
+                <Sparkles className="w-4 h-4" /> AI Counselors
+              </button>
+            )}
             <button
               onClick={() => setSessionModal(pairing.isPaired ? 'controls' : 'startup')}
               className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs md:text-sm transition shrink-0 border ${pairing.isPaired ? 'ras-nav-live' : 'ras-nav-muted'}`}
@@ -1369,6 +1388,9 @@ export default function App() {
           <div role="status" className="mb-5 rounded-2xl border border-amber-500/40 bg-amber-950/35 px-4 py-3 text-sm text-amber-100">
             <strong>View-only counselor.</strong> You can see the dashboard and chat. Choose a group in Live session controls to enable counselor actions.
           </div>
+        )}
+        {activeTab === 'ai_counselors' && !pairing.isPaired && (
+          <OfflineCounselorsPanel groups={localGroups} />
         )}
         {activeTab === 'chat' && (
           <ChatPanel
