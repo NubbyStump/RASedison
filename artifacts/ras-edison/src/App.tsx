@@ -59,6 +59,8 @@ const createEmptyActivity = () => ({
   safety: '',
 });
 
+const POINT_REMOVAL_PRESETS = [100, 500, 1000];
+
 const ASSIGNED_GROUP_PAGE_THEMES = {
   ladybugs: {
     glow: 'rgba(244, 63, 94, 0.17)',
@@ -592,6 +594,10 @@ export default function App() {
     const reason = enteredReason;
     setPointActionError('');
     const targetGroup = groups.find(g => g.id === groupId);
+    if (!targetGroup) {
+      setPointActionError('The selected group could not be found.');
+      return;
+    }
 
     if (pairing.isPaired) {
       try {
@@ -607,13 +613,18 @@ export default function App() {
       return;
     }
 
-    setLocalGroups(prev => prev.map(g => g.id === groupId ? { ...g, score: Math.max(0, g.score + amount) } : g));
+    const actualAmount = amount < 0 ? Math.max(amount, -targetGroup.score) : amount;
+    if (actualAmount === 0) {
+      setPointActionError('This group has no points to remove.');
+      return;
+    }
+    setLocalGroups(prev => prev.map(g => g.id === groupId ? { ...g, score: Math.max(0, g.score + actualAmount) } : g));
 
     const newLog = {
       id: Date.now().toString(),
       groupId,
       groupName: targetGroup.name,
-      amount,
+      amount: actualAmount,
       reason,
       ...(specialMentions ? { specialMentions } : {}),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -626,8 +637,20 @@ export default function App() {
 
   const handleReduceGroupPoints = async (groupId, mode) => {
     if (isLiveReadOnlyCounselor) return;
-    if (!isLiveCounselor || assignedGroupId !== groupId) {
-      setPointActionError('Bulk point removal is only available for your assigned group in a live counselor session.');
+    const targetGroup = groups.find((group) => group.id === groupId);
+    if (!targetGroup || targetGroup.score <= 0) {
+      setPointActionError('There are no points to remove from this group.');
+      return;
+    }
+    if (!isLiveCounselor) {
+      const amount = mode === 'all'
+        ? -targetGroup.score
+        : -Math.ceil(targetGroup.score / 2);
+      await handleAddPoints(groupId, amount);
+      return;
+    }
+    if (assignedGroupId !== groupId) {
+      setPointActionError('Counselors may only remove points from their assigned group.');
       return;
     }
     const enteredReason = reasonInput[groupId]?.trim();
@@ -1574,28 +1597,6 @@ export default function App() {
                                 {isLiveOwner ? 'Applies immediately' : 'Program Manager approval required'}
                               </span>
                             </div>
-                            {isLiveCounselor && isMyGroup && (
-                              <div className="grid grid-cols-2 gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleReduceGroupPoints(group.id, 'half')}
-                                  disabled={group.score <= 0}
-                                  aria-label={`Request removal of half the points from ${group.name}, rounded up`}
-                                  className="bg-red-500/15 hover:bg-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed text-red-200 border border-red-500/40 rounded-xl px-2 py-2 font-bold text-xs transition active:scale-95 min-h-[44px]"
-                                >
-                                  Remove half (−{Math.ceil(group.score / 2)})
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleReduceGroupPoints(group.id, 'all')}
-                                  disabled={group.score <= 0}
-                                  aria-label={`Request removal of all ${group.score} points from ${group.name}`}
-                                  className="bg-red-500/25 hover:bg-red-500/35 disabled:opacity-40 disabled:cursor-not-allowed text-red-100 border border-red-500/50 rounded-xl px-2 py-2 font-bold text-xs transition active:scale-95 min-h-[44px]"
-                                >
-                                  Remove all (−{group.score})
-                                </button>
-                              </div>
-                            )}
                              <div className={`mt-3 border-t pt-3 ${isLiveOwner ? 'border-cyan-500/25' : 'border-red-500/25'}`}>
                                <label htmlFor={`points-set-total-${group.id}`} className="ras-control-label block text-xs font-bold mb-1">
                                 Set group total
@@ -1730,21 +1731,42 @@ export default function App() {
                         </div>
 
                         {(!isLiveCounselor || isMyGroup) && (
-                          <div className="grid grid-cols-2 gap-1.5 pt-1">
-                            <button
-                              onClick={() => handleAddPoints(group.id, -10)}
-                              aria-label={`Subtract 10 points from ${group.name}`}
-                               className="ras-point-negative bg-red-500/10 hover:bg-red-500/20 border rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
-                            >
-                              -10
-                            </button>
-                            <button
-                              onClick={() => handleAddPoints(group.id, -50)}
-                              aria-label={`Subtract 50 points from ${group.name}`}
-                               className="ras-point-negative bg-red-500/20 hover:bg-red-500/30 border rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
-                            >
-                              -50
-                            </button>
+                          <div className="space-y-1.5 pt-1">
+                            <span className="ras-field-label block text-[11px] font-bold uppercase tracking-wide">Remove points</span>
+                            <div className="grid grid-cols-3 gap-1.5">
+                              {POINT_REMOVAL_PRESETS.map((amount) => (
+                                <button
+                                  key={amount}
+                                  type="button"
+                                  onClick={() => handleAddPoints(group.id, -amount)}
+                                  disabled={group.score < amount}
+                                  aria-label={`Remove ${amount} points from ${group.name}`}
+                                  className="ras-point-negative bg-red-500/15 hover:bg-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed border rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                                >
+                                  −{amount.toLocaleString()}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleReduceGroupPoints(group.id, 'half')}
+                                disabled={group.score <= 0}
+                                aria-label={`${isLiveCounselor ? 'Request removal' : 'Remove'} half the points from ${group.name}, rounded up`}
+                                className="ras-point-negative bg-red-500/20 hover:bg-red-500/30 disabled:opacity-40 disabled:cursor-not-allowed border rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                              >
+                                Half (−{Math.ceil(group.score / 2).toLocaleString()})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleReduceGroupPoints(group.id, 'all')}
+                                disabled={group.score <= 0}
+                                aria-label={`${isLiveCounselor ? 'Request removal' : 'Remove'} all ${group.score} points from ${group.name}`}
+                                className="ras-point-negative bg-red-500/30 hover:bg-red-500/40 disabled:opacity-40 disabled:cursor-not-allowed border rounded-xl py-1.5 font-bold text-xs transition active:scale-95 min-h-[44px]"
+                              >
+                                All (−{group.score.toLocaleString()})
+                              </button>
+                            </div>
                           </div>
                         )}
 

@@ -4,3 +4,4 @@
 - [Counselor score changes](counselor-score-approval.md) — counselor score changes target only the assigned group and go through Program Manager approval.
 - [Counselor assignment terminology](counselor-assignment-terminology.md) — changing counselor “roles” means reassigning groups, never promoting them to Program Manager.
 - [Program Manager permissions](program-manager-permissions.md) — counselors can create regular missions, but only the Program Manager can set Super Scrambles.
+- [Managed AI provider setup](managed-ai-provider-setup.md) — account restrictions can block managed setup; get consent before switching to a user-owned key.
