@@ -9,6 +9,25 @@ const GROUPS = [
   { id: 'tigers', name: 'Tigers', icon: '🐯' },
 ];
 
+const parseJoinInput = (input: string) => {
+  const value = input.trim();
+  if (!value) return { code: '', fromInviteLink: false };
+
+  try {
+    const inviteUrl = new URL(value, window.location.href);
+    const inviteCode = inviteUrl.searchParams.get('join')?.trim().toUpperCase() ?? '';
+    if (/^[A-Z0-9]{1,10}$/.test(inviteCode)) {
+      return { code: inviteCode, fromInviteLink: true };
+    }
+  } catch {}
+
+  const code = value.toUpperCase();
+  return {
+    code: /^[A-Z0-9]{1,10}$/.test(code) ? code : '',
+    fromInviteLink: false,
+  };
+};
+
 type Props = {
   open: boolean;
   mode: 'startup' | 'controls';
@@ -34,7 +53,8 @@ export default function PairingPanel(props: Props) {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [programManagerPassword, setProgramManagerPassword] = useState('');
-  const [code, setCode] = useState('');
+  const [joinInput, setJoinInput] = useState('');
+  const [joinInputError, setJoinInputError] = useState('');
   const [group, setGroup] = useState('unassigned');
   const [assignment, setAssignment] = useState('');
   const [inviteCopied, setInviteCopied] = useState(false);
@@ -50,10 +70,11 @@ export default function PairingPanel(props: Props) {
 
   useEffect(() => {
     if (!open || mode !== 'startup') return;
-    const inviteCode = new URLSearchParams(window.location.search).get('join')?.trim().toUpperCase();
-    if (status === 'local' && !session && inviteCode && /^[A-Z0-9]{1,10}$/.test(inviteCode)) {
+    const invite = parseJoinInput(window.location.href);
+    if (status === 'local' && !session && invite.fromInviteLink && invite.code) {
       setPath('join');
-      setCode(inviteCode);
+      setJoinInput(window.location.href);
+      setJoinInputError('');
       setJoiningFromInvite(true);
     } else {
       setPath('home');
@@ -85,11 +106,18 @@ export default function PairingPanel(props: Props) {
   };
   const join = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (name.trim() && code.trim() && group && password.length >= 4) {
-      const ok = await props.onJoin(name.trim(), code.trim(), password, group === 'unassigned' ? null : group);
+    const parsedInput = parseJoinInput(joinInput);
+    if (!parsedInput.code) {
+      setJoinInputError('Enter a room code or paste the full invite link from the host.');
+      return;
+    }
+    setJoinInputError('');
+    if (name.trim() && group && password.length >= 4) {
+      const ok = await props.onJoin(name.trim(), parsedInput.code, password, group === 'unassigned' ? null : group);
       if (ok) {
         clearPassword();
         setJoiningFromInvite(false);
+        setJoinInput('');
         const url = new URL(window.location.href);
         if (url.searchParams.has('join')) {
           url.searchParams.delete('join');
@@ -190,7 +218,7 @@ export default function PairingPanel(props: Props) {
               </button>
               <button onClick={() => setPath('join')} className="w-full text-left rounded-2xl border border-cyan-500/30 bg-slate-800 p-4 hover:border-cyan-400">
                 <span className="flex items-center gap-2 text-white font-black"><LogIn className="w-5 h-5 text-cyan-400" /> Join Live Session</span>
-                <span className="block text-xs text-slate-400 mt-1">Open an invite link, or enter a room code and password.</span>
+                <span className="block text-xs text-slate-400 mt-1">Open or paste an invite link, or enter a room code and session password.</span>
               </button>
               <button onClick={props.onOffline} disabled={busy} className="w-full rounded-2xl border border-slate-700 py-3 text-slate-300 font-bold hover:bg-slate-800 disabled:opacity-50">Continue Offline</button>
               </>}
@@ -218,11 +246,30 @@ export default function PairingPanel(props: Props) {
                 {joiningFromInvite ? (
                   <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/30 p-3 text-sm text-cyan-100">
                     This invite link selected the room. Enter your name, assignment, and session password to join.
-                    <button type="button" onClick={() => { setJoiningFromInvite(false); setCode(''); }} className="block mt-2 text-xs font-bold text-cyan-300 underline underline-offset-2">Use a different room code</button>
+                    <button type="button" onClick={() => { setJoiningFromInvite(false); setJoinInput(''); setJoinInputError(''); }} className="block mt-2 text-xs font-bold text-cyan-300 underline underline-offset-2">Use a different invite link or room code</button>
                   </div>
                 ) : (
-                  <Field label="Room code"><input required maxLength={10} autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck="false" value={code} onChange={e => setCode(e.target.value.toUpperCase())} className="field font-mono uppercase tracking-widest" /></Field>
+                  <Field label="Invite link or room code">
+                    <input
+                      required
+                      maxLength={2048}
+                      autoCapitalize="none"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck="false"
+                      value={joinInput}
+                      onChange={event => {
+                        const value = event.target.value;
+                        setJoinInput(value);
+                        setJoinInputError('');
+                        setJoiningFromInvite(parseJoinInput(value).fromInviteLink);
+                      }}
+                      className="field"
+                      placeholder="Paste the host’s invite link or enter a room code"
+                    />
+                  </Field>
                 )}
+                {joinInputError && <p role="alert" className="text-sm font-bold text-rose-300">{joinInputError}</p>}
               </>}
               {path === 'create' && (
                 <Field label="Program Manager access password">
@@ -238,7 +285,7 @@ export default function PairingPanel(props: Props) {
                 </Field>
               )}
               <Field label="Session password / PIN (4–128 characters)"><input required minLength={4} maxLength={128} type="password" autoComplete={path === 'create' ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} className="field" /></Field>
-              <button disabled={busy || !name.trim() || password.length < 4 || (path === 'create' && !programManagerPassword) || (path === 'join' && (!code.trim() || !group))} className={`w-full py-3 rounded-xl font-black text-slate-950 disabled:opacity-50 ${path === 'create' ? 'bg-purple-400' : 'bg-cyan-400'}`}>{busy ? 'Connecting…' : path === 'create' ? 'Create Live Session' : 'Join Live Session'}</button>
+              <button disabled={busy || !name.trim() || password.length < 4 || (path === 'create' && !programManagerPassword) || (path === 'join' && (!joinInput.trim() || !group))} className={`w-full py-3 rounded-xl font-black text-slate-950 disabled:opacity-50 ${path === 'create' ? 'bg-purple-400' : 'bg-cyan-400'}`}>{busy ? 'Connecting…' : path === 'create' ? 'Create Live Session' : 'Join Live Session'}</button>
             </form>
           )}
 
