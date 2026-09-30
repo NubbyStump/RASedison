@@ -5,3 +5,4 @@
 - [Counselor assignment terminology](counselor-assignment-terminology.md) — changing counselor “roles” means reassigning groups, never promoting them to Program Manager.
 - [Program Manager permissions](program-manager-permissions.md) — counselors can create regular missions, but only the Program Manager can set Super Scrambles.
 - [Managed AI provider setup](managed-ai-provider-setup.md) — account restrictions can block managed setup; get consent before switching to a user-owned key.
+- [Render Program Manager secret](render-program-manager-secret.md) — Replit Secrets do not reach Render; configure the role-password key on Render's API service too.
