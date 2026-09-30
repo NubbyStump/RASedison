@@ -44,6 +44,33 @@ const totalSecondsFromLap = (minutes, seconds, ms) => {
 };
 
 const ACTIVITY_MONTH_KEY = 'ras_edison_activities_month_v1';
+const OFFLINE_DAY_OFFSET_KEY = 'ras_edison_offline_day_offset_v1';
+
+const addCalendarDays = (calendarDate, days) => {
+  const [year, month, day] = calendarDate.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+};
+
+const formatCalendarDate = (calendarDate) => {
+  const [year, month, day] = calendarDate.split('-').map(Number);
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+};
+
+const monthYearForCalendarDate = (calendarDate) => {
+  const [year, month, day] = calendarDate.split('-').map(Number);
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+};
+
 const createEmptyActivity = () => ({
   title: '',
   type: 'Super Scramble',
@@ -178,6 +205,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [offlineDayOffset, setOfflineDayOffset] = useState(() => {
+    const savedOffset = Number.parseInt(localStorage.getItem(OFFLINE_DAY_OFFSET_KEY) ?? '0', 10);
+    return Number.isSafeInteger(savedOffset) && savedOffset > 0 ? savedOffset : 0;
+  });
+
   const [newLap, setNewLap] = useState({
     runnerName: '',
     group: 'Ladybugs',
@@ -222,6 +254,34 @@ export default function App() {
   const activityAwardSubmittingRef = useRef(false);
 
   const pairing = usePairing();
+  const offlineToday = addCalendarDays(pairing.today, offlineDayOffset);
+  const defaultLapDate = pairing.isPaired ? pairing.today : offlineToday;
+  const previousDefaultLapDateRef = useRef(localCalendarDate());
+
+  useEffect(() => {
+    try {
+      if (offlineDayOffset === 0) {
+        localStorage.removeItem(OFFLINE_DAY_OFFSET_KEY);
+      } else {
+        localStorage.setItem(OFFLINE_DAY_OFFSET_KEY, String(offlineDayOffset));
+      }
+    } catch {
+      // Keep the simulated date usable for this visit if storage is unavailable.
+    }
+  }, [offlineDayOffset]);
+
+  useEffect(() => {
+    const previousDefaultDate = previousDefaultLapDateRef.current;
+    if (previousDefaultDate !== defaultLapDate) {
+      setNewLap((current) => (
+        current.date === previousDefaultDate
+          ? { ...current, date: defaultLapDate }
+          : current
+      ));
+      previousDefaultLapDateRef.current = defaultLapDate;
+    }
+  }, [defaultLapDate]);
+
   useEffect(() => {
     if (pairing.isPaired && activeTab === 'ai_counselors') {
       setActiveTab('scoreboard');
@@ -463,6 +523,16 @@ export default function App() {
       return;
     }
     setSessionModal(null);
+  };
+
+  const handleNextOfflineDay = () => {
+    if (pairing.isPaired) return;
+    setOfflineDayOffset((current) => current + 1);
+  };
+
+  const handleReturnToActualDay = () => {
+    if (pairing.isPaired) return;
+    setOfflineDayOffset(0);
   };
 
   const handleUpdateAssignment = async (groupId, memberId) => {
@@ -812,8 +882,8 @@ export default function App() {
       timeFormatted: formatted,
       totalSeconds: totalSecs,
       courseName: newLap.courseName.trim() || 'Edison Field Lap',
-      date: newLap.date || localCalendarDate(),
-      monthYear: currentMonthName
+      date: newLap.date || defaultLapDate,
+      monthYear: pairing.isPaired ? currentMonthName : monthYearForCalendarDate(newLap.date || defaultLapDate)
     };
 
     if (pairing.isPaired) {
@@ -837,7 +907,7 @@ export default function App() {
       seconds: '',
       ms: '00',
       courseName: 'Edison Field Lap',
-      date: localCalendarDate()
+      date: defaultLapDate
     });
   };
 
@@ -1402,6 +1472,42 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="max-w-6xl mx-auto w-full px-4 pt-6 flex-1">
+        {!pairing.isPaired && (
+          <section
+            data-testid="offline-day-controls"
+            className="mb-5 flex flex-col gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            aria-label="Offline program date"
+          >
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-widest text-cyan-700">Offline program date</p>
+              <time className="mt-1 block font-bold text-slate-800" dateTime={offlineToday} aria-live="polite">
+                {formatCalendarDate(offlineToday)}
+              </time>
+              <p className="mt-1 text-xs text-slate-600">
+                New lap entries use this date. Your device date and saved activities are unchanged.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {offlineDayOffset > 0 && (
+                <button
+                  type="button"
+                  onClick={handleReturnToActualDay}
+                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                >
+                  Return to today
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleNextOfflineDay}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
+              >
+                <Calendar className="h-4 w-4" aria-hidden="true" />
+                Next day
+              </button>
+            </div>
+          </section>
+        )}
         {pairing.error && (
           <div className="mb-5 bg-red-950/80 border border-red-500/50 text-red-100 px-4 py-3 rounded-2xl text-sm font-bold shadow-lg">
             Pairing error: {pairing.error}
